@@ -84,8 +84,12 @@
       padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer;
       transition: all 0.2s; font-family: inherit;
     }
-    .copy-btn:hover { background: var(--purple-dim); color: var(--text); border-color: var(--purple); }
-    .copy-btn.copied { background: var(--success-dim); color: var(--success); border-color: var(--success); }
+    .comparison-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+    .comparison-table th { text-align: left; padding: 0.75rem; font-size: 0.8rem; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .comparison-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .comparison-table .check { color: var(--success); font-weight: 700; }
+    .comparison-table .x { color: var(--error); font-weight: 700; }
+    .comparison-table tr:hover { background: var(--bg3); }
 
     /* Flow Demo */
     .flow-demo { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 600px; margin: 3rem auto; text-align: left; font-family: 'SF Mono', monospace; font-size: 0.8rem; position: relative; overflow: hidden; }
@@ -340,6 +344,81 @@
 
 <hr class="divider">
 
+<!-- Bus vs S3 Comparison -->
+<section id="comparison">
+  <h2>Bus vs S3 Presigned URLs</h2>
+  <p class="lead">Why not just use S3? Here's what you get with Bus.</p>
+  
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Bus</th>
+        <th>S3 Presigned URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Per-agent identity</td>
+        <td class="check">✓ Built-in</td>
+        <td class="x">✗ Shared credentials</td>
+      </tr>
+      <tr>
+        <td>Content verification (SHA-256)</td>
+        <td class="check">✓ Automatic</td>
+        <td class="x">✗ Manual implementation</td>
+      </tr>
+      <tr>
+        <td>Signed manifests</td>
+        <td class="check">✓ Non-repudiable</td>
+        <td class="x">✗ Not available</td>
+      </tr>
+      <tr>
+        <td>Time-bound access</td>
+        <td class="check">✓ Granular per-share</td>
+        <td class="warning">⚠ URL-level only</td>
+      </tr>
+      <tr>
+        <td>Instant revocation</td>
+        <td class="check">✓ Per-grant</td>
+        <td class="x">✗ Must rotate credentials</td>
+      </tr>
+      <tr>
+        <td>Audit log</td>
+        <td class="check">✓ Per-action logs</td>
+        <td class="warning">⚠ Access logs only</td>
+      </tr>
+      <tr>
+        <td>Single-use tokens</td>
+        <td class="check">✓ Built-in</td>
+        <td class="x">✗ Not available</td>
+      </tr>
+      <tr>
+        <td>Setup complexity</td>
+        <td class="check">✓ One curl command</td>
+        <td class="x">✗ IAM + bucket policies + CORS</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="code-block">
+    <div class="cb-header">When to use S3</div>
+    <pre><span class="comment">// S3 is great for:
+// - Public static assets
+// - Long-term archival
+// - Cross-region replication
+// - Petabyte-scale storage
+
+// Bus is designed for:
+// - Agent-to-agent file handoffs
+// - Cryptographic verification
+// - Compliance audit trails
+// - Time-bound access control</span></pre>
+  </div>
+</section>
+
+<hr class="divider">
+
 <!-- Quickstart -->
 <section id="quickstart">
   <h2>Quick start</h2>
@@ -513,6 +592,7 @@ X-RateLimit-Reset: 1646745600</pre>
         <li>10,000 operations/mo</li>
         <li>90-day audit retention</li>
         <li>Priority support</li>
+        <li><span style="color: var(--muted);">$0.005 per operation overage</span></li>
       </ul>
     </div>
     
@@ -593,6 +673,16 @@ X-RateLimit-Reset: 1646745600</pre>
   
   window.addEventListener('load', () => setTimeout(simulateTransfer, 1000));
 </script>
+
+<footer>
+  <p><span class="live-dot"></span>API live at bus.meetkai.xyz · <a href="/health">Status</a> · <a href="https://github.com/cgallic/agent-sentinel">GitHub</a> · <a href="https://twitter.com/SnappedAI">@SnappedAI</a></p>
+  <p style="margin-top:0.5rem; font-size: 0.75rem;">
+    © 2026 <a href="https://meetkai.xyz">Kai</a> · 
+    <a href="#">Privacy Policy</a> · 
+    <a href="#">Terms of Service</a> · 
+    <a href="#">GDPR</a>
+  </p>
+</footer>
 
 </body>
 </html>
