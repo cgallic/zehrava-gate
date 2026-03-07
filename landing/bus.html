@@ -107,6 +107,32 @@
 
     footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; font-size: 0.825rem; color: #555; }
     .live-dot { display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; margin-right: 0.5rem; animation: pulse 2s infinite; vertical-align: middle; }
+
+    /* copy button */
+    .code-block { position: relative; }
+    .copy-btn { position: absolute; top: 0.5rem; right: 0.75rem; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-family: sans-serif; transition: color 0.15s, border-color 0.15s; z-index: 10; }
+    .copy-btn:hover { color: var(--text); border-color: var(--purple); }
+    .copy-btn.copied { color: #22c55e; border-color: #22c55e; }
+
+    /* vs table */
+    .vs-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 2rem 0; }
+    .vs-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .vs-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
+    .vs-table tr:last-child td { border-bottom: none; }
+    .vs-table .yes { color: #22c55e; font-weight: 700; }
+    .vs-table .no { color: #ef4444; }
+    .vs-table .partial { color: #f59e0b; }
+    .vs-table td:first-child { color: var(--text); font-weight: 600; }
+
+    /* error codes */
+    .error-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .error-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+    .error-card .code { font-family: monospace; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .error-card .code.e401 { color: #f59e0b; }
+    .error-card .code.e403 { color: #ef4444; }
+    .error-card .code.e404 { color: #888; }
+    .error-card .code.e429 { color: #a78bfa; }
+    .error-card p { font-size: 0.78rem; color: var(--muted); }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
     /* === FILE TRANSFER ANIMATION === */
@@ -343,6 +369,26 @@
 <section id="why">
   <h2>Why Bus exists</h2>
   <p class="lead">Agents on different servers need to share files. Right now everyone is doing it wrong.</p>
+
+  <h3 style="font-size:1rem;font-weight:700;color:var(--muted);margin-bottom:1rem;margin-top:2rem;">Bus vs. S3 Presigned URLs</h3>
+  <table class="vs-table">
+    <thead>
+      <tr>
+        <th>Capability</th>
+        <th>S3 Presigned URL</th>
+        <th>Bus</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Per-agent identity</td><td class="no">✗ No — shared IAM role</td><td class="yes">✓ Yes — per-agent key</td></tr>
+      <tr><td>Recipient-scoped access</td><td class="no">✗ No — anyone with URL</td><td class="yes">✓ Yes — agent_id required</td></tr>
+      <tr><td>Instant revocation</td><td class="no">✗ No — must invalidate bucket policy</td><td class="yes">✓ Yes — single API call</td></tr>
+      <tr><td>Signed manifest (sender + hash)</td><td class="no">✗ No</td><td class="yes">✓ Yes — HMAC-SHA256</td></tr>
+      <tr><td>Immutable audit trail</td><td class="partial">~ CloudTrail (complex)</td><td class="yes">✓ Built in, queryable</td></tr>
+      <tr><td>MCP native tools</td><td class="no">✗ No</td><td class="yes">✓ Yes — 7 tools</td></tr>
+      <tr><td>Zero AWS dependency</td><td class="no">✗ No</td><td class="yes">✓ Yes — self-contained</td></tr>
+    </tbody>
+  </table>
   <div class="why-grid">
     <div class="why-card">
       <div class="icon">🔓</div>
@@ -650,6 +696,16 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
   </div>
 
   <div class="api-section">
+    <h3>Error responses</h3>
+    <div class="error-grid">
+      <div class="error-card"><div class="code e401">401 Unauthorized</div><p>Missing or invalid API key. Include <code style="color:var(--purple)">Authorization: Bearer fbus_...</code> on every request.</p></div>
+      <div class="error-card"><div class="code e403">403 Forbidden</div><p>Agent exists but doesn't have access to this resource. Check grant status — it may have expired or been revoked.</p></div>
+      <div class="error-card"><div class="code e404">404 Not Found</div><p>File, grant, or agent doesn't exist. Verify the ID from the original upload or registration response.</p></div>
+      <div class="error-card"><div class="code e429">429 Rate Limited</div><p>Too many requests. Back off exponentially. Retry-After header included. Default: 100 req/min per agent.</p></div>
+    </div>
+  </div>
+
+  <div class="api-section">
     <h3>Audit</h3>
     <div class="endpoint">
       <div class="method get">GET</div>
@@ -710,11 +766,12 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
 <section id="pricing">
   <h2>Pricing</h2>
   <p class="lead">Free to start. Scales with your agent stack.</p>
+  <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.5rem;">Annual billing saves 20%. Overage: $0.05/operation beyond plan limit, $0.02/GB beyond storage limit.</p>
   <div class="pricing-grid">
     <div class="price-card">
       <div class="plan">Starter</div>
       <div class="price">Free</div>
-      <div class="price-note">No card needed</div>
+      <div class="price-note">No card needed · no overage</div>
       <ul>
         <li>3 agents</li>
         <li>1GB storage</li>
@@ -726,7 +783,7 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
     <div class="price-card featured">
       <div class="plan">Growth</div>
       <div class="price">$49<span style="font-size:1rem;font-weight:400">/mo</span></div>
-      <div class="price-note">For real agent pipelines</div>
+      <div class="price-note">$39/mo billed annually · overage applies</div>
       <ul>
         <li>25 agents</li>
         <li>50GB storage</li>
@@ -738,7 +795,7 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
     <div class="price-card">
       <div class="plan">Scale</div>
       <div class="price">$199<span style="font-size:1rem;font-weight:400">/mo</span></div>
-      <div class="price-note">For agencies and platforms</div>
+      <div class="price-note">$159/mo billed annually · overage applies</div>
       <ul>
         <li>Unlimited agents</li>
         <li>500GB storage</li>
@@ -748,12 +805,33 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
       </ul>
     </div>
   </div>
+  <p style="text-align:center;margin-top:1.5rem;font-size:0.85rem;color:var(--muted)">Need custom limits, data residency, or compliance requirements? <a href="mailto:hello@meetkai.xyz">Talk to us</a>.</p>
 </section>
 
 <footer>
-  <p><span class="live-dot"></span>API live at bus.meetkai.xyz · v0.1.0 · Built with SnappedAI + Kai-CMO</p>
-  <p style="margin-top:0.5rem"><a href="/health">Health</a> · <a href="https://canary.meetkai.xyz">Canary Agent Monitoring</a> · <a href="https://github.com/cgallic/agent-sentinel">GitHub</a></p>
+  <p><span class="live-dot"></span>API live at bus.meetkai.xyz · v0.1.0</p>
+  <p style="margin-top:0.5rem"><a href="/health">Health</a> · <a href="https://canary.meetkai.xyz">Canary — Agent Monitoring</a> · <a href="https://github.com/cgallic/agent-sentinel">GitHub</a></p>
+  <p style="margin-top:0.5rem;font-size:0.75rem">Bus and Canary are part of the <a href="https://meetkai.xyz">MeetKai</a> agent infrastructure suite.</p>
 </footer>
 
+<script>
+// Copy-to-clipboard for all code blocks
+document.querySelectorAll('.code-block').forEach(block => {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'copy';
+  block.appendChild(btn);
+  btn.addEventListener('click', () => {
+    const pre = block.querySelector('pre');
+    // Strip HTML tags to get plain text
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
+});
+</script>
 </body>
 </html>
