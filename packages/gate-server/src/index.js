@@ -56,6 +56,25 @@ app.get('/v1/policies', authenticate, (req, res) => {
   res.json({ policies: listPolicies() });
 });
 
+// List proposals by status (for dashboard)
+app.get('/v1/proposals', authenticate, (req, res) => {
+  const { status, limit = 50 } = req.query;
+  let query = 'SELECT p.*, a.name as agent_name FROM proposals p LEFT JOIN agents a ON p.sender_agent_id = a.id';
+  const params = [];
+  if (status) {
+    query += ' WHERE p.status = ?';
+    params.push(status);
+  }
+  query += ' ORDER BY p.created_at DESC LIMIT ?';
+  params.push(parseInt(limit));
+  const proposals = db.prepare(query).all(...params).map(p => ({
+    ...p,
+    created_at: new Date(p.created_at).toISOString(),
+    expires_at: p.expires_at ? new Date(p.expires_at).toISOString() : null
+  }));
+  res.json({ proposals, count: proposals.length });
+});
+
 // Mount all routers at /v1
 app.use('/v1', proposalsRouter);
 app.use('/v1', approvalsRouter);
