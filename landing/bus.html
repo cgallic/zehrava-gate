@@ -288,12 +288,12 @@
 <nav>
   <div class="nav-logo">🚌 Bus</div>
   <div class="nav-links">
-    <a href="#why">Why</a>
+    <a href="#contrast">Why</a>
     <a href="#how-it-works">How it works</a>
     <a href="#features">Features</a>
     <a href="#quickstart">Quick start</a>
     <a href="#api">API</a>
-    <a href="#mcp">MCP</a>
+    <a href="#deploy">Deploy</a>
     <a href="#pricing">Pricing</a>
   </div>
   <a href="#quickstart" class="nav-cta">Get started</a>
@@ -301,12 +301,13 @@
 
 <div class="hero">
   <div class="badge">Agent Infrastructure</div>
-  <h1>Dropbox for<br><span class="accent">AI agents.</span></h1>
-  <p>Bus gives every file exchange between agents a verified sender, explicit recipient, signed manifest, time-bound access, and immutable audit trail.</p>
+  <h1>Secure file handoff<br>for <span class="accent">AI agents.</span></h1>
+  <p>Bus gives every agent-to-agent file exchange a verified sender, explicit recipient, signed manifest, time-bound access, and append-only audit trail — across servers, tools, and environments.</p>
   <div class="hero-actions">
     <a href="#quickstart" class="btn-primary">Start for free</a>
     <a href="#api" class="btn-secondary">View API docs</a>
   </div>
+  <p style="margin-top:1.25rem;font-size:0.85rem;color:#555">"Dropbox for AI agents" — without the shared bucket credentials.</p>
 </div>
 
 <div class="transfer-demo">
@@ -363,6 +364,38 @@
     <div class="receipt-chip">contents: <span>✓ verified</span></div>
   </div>
 </div>
+
+<hr class="divider">
+
+<!-- BEFORE / AFTER CONTRAST -->
+<section id="contrast" style="max-width:960px;margin:0 auto;padding:4rem 2rem;">
+  <h2>What changes when you use Bus</h2>
+  <p class="lead">File sharing between agents is a solved problem — badly.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div style="background:#110a0a;border:1px solid #3b1212;border-radius:12px;padding:1.5rem;">
+      <div style="font-size:0.75rem;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;">Without Bus</div>
+      <ul style="list-style:none;">
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#888;border-bottom:1px solid #1a1a1a;">❌ Shared bucket credentials across agents</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#888;border-bottom:1px solid #1a1a1a;">❌ Anyone with the URL can download</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#888;border-bottom:1px solid #1a1a1a;">❌ No sender identity — can't verify who sent what</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#888;border-bottom:1px solid #1a1a1a;">❌ Revocation means changing bucket policy</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#888;border-bottom:1px solid #1a1a1a;">❌ Files in Slack, Discord, or pasted as base64</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#888;">❌ No audit trail — no idea who accessed what</li>
+      </ul>
+    </div>
+    <div style="background:#0a110a;border:1px solid #14532d;border-radius:12px;padding:1.5rem;">
+      <div style="font-size:0.75rem;font-weight:700;color:#22c55e;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;">With Bus</div>
+      <ul style="list-style:none;">
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#f0f0f0;border-bottom:1px solid #1a1a1a;">✓ Per-agent identity — every action attributed</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#f0f0f0;border-bottom:1px solid #1a1a1a;">✓ Explicit share grants — recipient required</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#f0f0f0;border-bottom:1px solid #1a1a1a;">✓ SHA-256 signed manifest on every handoff</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#f0f0f0;border-bottom:1px solid #1a1a1a;">✓ Instant revocation — single API call</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#f0f0f0;border-bottom:1px solid #1a1a1a;">✓ Single-use download tokens, 5-min TTL</li>
+        <li style="padding:0.4rem 0;font-size:0.875rem;color:#f0f0f0;">✓ Append-only audit log — queryable by actor</li>
+      </ul>
+    </div>
+  </div>
+</section>
 
 <hr class="divider">
 
@@ -484,7 +517,7 @@
       <div class="step-line"></div>
       <div class="step-content">
         <h3>Audit everything</h3>
-        <p>Every action — upload, share, access grant, download, revoke — is written to an immutable audit log. Queryable by actor, target, action, or time range.</p>
+        <p>Every action — upload, share, access grant, download, revoke — is written to an append-only audit log. Queryable by actor, target, action, or time range.</p>
       </div>
     </div>
   </div>
@@ -626,7 +659,7 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
       <div class="method post">POST</div>
       <div class="endpoint-info">
         <div class="endpoint-path">/files.put</div>
-        <div class="endpoint-desc">Upload a file. Multipart form upload. Returns file_id, content_hash, manifest_id. Max 100MB.</div>
+        <div class="endpoint-desc">Upload a file. Multipart form upload. Returns file_id, content_hash, manifest_id. v0.1 max: 100MB.</div>
       </div>
     </div>
     <div class="endpoint">
@@ -763,6 +796,34 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
 
 <hr class="divider">
 
+<!-- DEPLOYMENT -->
+<section id="deploy" style="max-width:960px;margin:0 auto;padding:4rem 2rem;">
+  <h2>Deploy how your team needs</h2>
+  <p class="lead">Cloud for speed. Self-hosted for control. Hybrid for both.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem;">☁️</div>
+      <h3 style="font-weight:700;margin-bottom:0.5rem;">Cloud</h3>
+      <p style="font-size:0.875rem;color:var(--muted);">Fastest onboarding. Register, upload, and share in under 5 minutes. Zero infrastructure to manage.</p>
+      <p style="font-size:0.8rem;color:#555;margin-top:0.75rem;">Best for: most teams</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem;">🖥</div>
+      <h3 style="font-weight:700;margin-bottom:0.5rem;">Self-hosted</h3>
+      <p style="font-size:0.875rem;color:var(--muted);">Run the full stack in your VPC or on-prem. Files never leave your environment. Full policy control.</p>
+      <p style="font-size:0.8rem;color:#555;margin-top:0.75rem;">Best for: compliance-sensitive teams</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid #3730a3;border-radius:12px;padding:1.5rem;">
+      <div style="font-size:1.5rem;margin-bottom:0.75rem;">🔀</div>
+      <h3 style="font-weight:700;margin-bottom:0.5rem;">Hybrid</h3>
+      <p style="font-size:0.875rem;color:var(--muted);">Bus manages the control plane. Your data plane stays inside your environment. Data sovereignty without ops overhead.</p>
+      <p style="font-size:0.8rem;color:#555;margin-top:0.75rem;">Best for: enterprise with data residency requirements</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
 <section id="pricing">
   <h2>Pricing</h2>
   <p class="lead">Free to start. Scales with your agent stack.</p>
@@ -781,31 +842,39 @@ curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</
       </ul>
     </div>
     <div class="price-card featured">
-      <div class="plan">Growth</div>
-      <div class="price">$49<span style="font-size:1rem;font-weight:400">/mo</span></div>
-      <div class="price-note">$39/mo billed annually · overage applies</div>
+      <div class="plan">Pro</div>
+      <div class="price">$149<span style="font-size:1rem;font-weight:400">/mo</span></div>
+      <div class="price-note">$119/mo billed annually · overage applies</div>
       <ul>
         <li>25 agents</li>
         <li>50GB storage</li>
-        <li>10,000 operations/mo</li>
+        <li>50,000 operations/mo</li>
         <li>90-day audit retention</li>
-        <li>Canary monitoring included</li>
+        <li>SSO + admin console</li>
+        <li>Slack + email alerts</li>
       </ul>
     </div>
     <div class="price-card">
-      <div class="plan">Scale</div>
-      <div class="price">$199<span style="font-size:1rem;font-weight:400">/mo</span></div>
-      <div class="price-note">$159/mo billed annually · overage applies</div>
+      <div class="plan">Business</div>
+      <div class="price">$499<span style="font-size:1rem;font-weight:400">/mo</span></div>
+      <div class="price-note">$399/mo billed annually · overage applies</div>
       <ul>
-        <li>Unlimited agents</li>
+        <li>100 agents</li>
         <li>500GB storage</li>
         <li>Unlimited operations</li>
-        <li>Unlimited audit retention</li>
-        <li>Self-host option</li>
+        <li>1-year audit retention</li>
+        <li>Advanced policy controls</li>
+        <li>Priority support</li>
       </ul>
     </div>
   </div>
-  <p style="text-align:center;margin-top:1.5rem;font-size:0.85rem;color:var(--muted)">Need custom limits, data residency, or compliance requirements? <a href="mailto:hello@meetkai.xyz">Talk to us</a>.</p>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-top:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div style="font-weight:700;margin-bottom:0.25rem;">Enterprise</div>
+      <div style="font-size:0.875rem;color:var(--muted);">Self-hosted or hybrid · SCIM/SSO · private networking · tenant policy packs · custom SLA</div>
+    </div>
+    <a href="mailto:hello@meetkai.xyz" style="background:var(--purple);color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-weight:600;font-size:0.875rem;white-space:nowrap;">Talk to us</a>
+  </div>
 </section>
 
 <footer>
