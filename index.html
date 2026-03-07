@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bus — Secure File Exchange for AI Agents</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1;
+      --purple-dim: #3730a3;
+      --purple-glow: rgba(99, 102, 241, 0.4);
+      --bg: #0a0a0a;
+      --bg2: #111;
+      --bg3: #1a1a1a;
+      --border: #222;
+      --text: #f0f0f0;
+      --muted: #888;
+      --code: #6366f1;
+      --success: #22c55e;
+      --success-dim: #14532d;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.05); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes flowRight {
+      0% { transform: translateX(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateX(100%); opacity: 0; }
+    }
+    @keyframes flowDown {
+      0% { transform: translateY(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(100%); opacity: 0; }
+    }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 5px var(--purple-glow), 0 0 10px var(--purple-glow); }
+      50% { box-shadow: 0 0 20px var(--purple-glow), 0 0 30px var(--purple-glow), 0 0 40px var(--purple); }
+    }
+    @keyframes typewriter {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    @keyframes blink {
+      50% { border-color: transparent; }
+    }
+    @keyframes checkmark {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    @keyframes particle {
+      0% { transform: translate(0, 0); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+    }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.95); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .nav-logo::before {
+      content: "🚌";
+      animation: pulse 2s infinite;
+    }
+    .nav-links { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--muted); }
+    .nav-links a { color: var(--muted); transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-cta { background: var(--purple); color: #fff; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s; }
+    .nav-cta:hover { text-decoration: none; opacity: 0.9; transform: translateY(-1px); }
+
+    .hero { text-align: center; padding: 5rem 2rem 4rem; max-width: 800px; margin: 0 auto; }
+    .badge { 
+      display: inline-block; font-size: 0.75rem; background: #1a1a2e; color: var(--purple); 
+      border: 1px solid var(--purple-dim); padding: 0.25rem 0.75rem; border-radius: 999px; 
+      margin-bottom: 2rem; letter-spacing: 0.05em; text-transform: uppercase;
+      animation: slideIn 0.5s ease-out;
+    }
+    .hero h1 { font-size: clamp(2.5rem, 7vw, 5rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.5rem; }
+    .hero h1 .accent { color: var(--purple); }
+    .hero p { font-size: 1.25rem; color: var(--muted); max-width: 560px; margin: 0 auto 2.5rem; }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { 
+      background: var(--purple); color: #fff; padding: 0.75rem 1.75rem; border-radius: 8px; 
+      font-weight: 700; font-size: 1rem; transition: all 0.2s;
+    }
+    .btn-primary:hover { text-decoration: none; opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 20px var(--purple-glow); }
+    .btn-secondary { 
+      border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1.75rem; 
+      border-radius: 8px; font-weight: 600; font-size: 1rem; transition: all 0.2s;
+    }
+    .btn-secondary:hover { text-decoration: none; background: var(--bg2); transform: translateY(-2px); }
+
+    /* Animated Flow Demo */
+    .flow-demo { 
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; 
+      padding: 1.5rem; max-width: 600px; margin: 3rem auto; text-align: left; 
+      font-family: 'SF Mono', monospace; font-size: 0.8rem; position: relative;
+      overflow: hidden;
+    }
+    .flow-demo::before {
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--purple), transparent);
+      animation: flowRight 3s linear infinite;
+    }
+    .flow-line { 
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0; 
+      opacity: 0; animation: slideIn 0.5s ease-out forwards;
+    }
+    .flow-line:nth-child(1) { animation-delay: 0.1s; }
+    .flow-line:nth-child(2) { animation-delay: 0.6s; }
+    .flow-line:nth-child(3) { animation-delay: 1.1s; }
+    .flow-line:nth-child(4) { animation-delay: 1.6s; }
+    
+    .flow-tag { 
+      font-size: 0.65rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; 
+      flex-shrink: 0; animation: glow 2s infinite;
+    }
+    .tag-upload { background: var(--success-dim); color: #86efac; }
+    .tag-share { background: #1e3a5f; color: #93c5fd; animation-delay: 0.5s; }
+    .tag-verify { background: #3b1f2b; color: #f9a8d4; animation-delay: 1s; }
+    .tag-audit { background: #2d1b00; color: #fcd34d; animation-delay: 1.5s; }
+    
+    .flow-text { color: var(--muted); }
+    .flow-text span { color: var(--text); font-weight: 600; }
+    
+    .flow-connector {
+      width: 2px; height: 20px; background: linear-gradient(to bottom, var(--purple), transparent);
+      margin-left: 2.5rem; opacity: 0; animation: slideIn 0.3s ease-out forwards;
+    }
+    .flow-connector:nth-of-type(1) { animation-delay: 0.4s; }
+    .flow-connector:nth-of-type(2) { animation-delay: 0.9s; }
+    .flow-connector:nth-of-type(3) { animation-delay: 1.4s; }
+
+    /* Live Demo Section */
+    .live-demo {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+      padding: 2rem; max-width: 900px; margin: 2rem auto; position: relative;
+    }
+    .live-demo h3 {
+      text-align: center; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;
+      color: var(--purple);
+    }
+    
+    .agent-flow {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .agent-box {
+      background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.5rem; text-align: center; flex: 1; min-width: 150px;
+      transition: all 0.3s;
+    }
+    .agent-box.active {
+      border-color: var(--purple); box-shadow: 0 0 20px var(--purple-glow);
+      animation: glow 2s infinite;
+    }
+    .agent-box.success {
+      border-color: var(--success); box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+    }
+    
+    .agent-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .agent-name { font-weight: 700; font-size: 0.9rem; }
+    .agent-id { font-size: 0.7rem; color: var(--muted); font-family: monospace; }
+    
+    .flow-arrow {
+      display: flex; align-items: center; justify-content: center;
+      width: 60px; height: 60px; position: relative;
+    }
+    .flow-arrow svg {
+      width: 40px; height: 40px; color: var(--purple);
+      animation: flowRight 2s linear infinite;
+    }
+    
+    .packet {
+      position: absolute; width: 12px; height: 12px;
+      background: var(--purple); border-radius: 50%;
+      animation: particle 1.5s ease-out infinite;
+      --tx: 40px; --ty: 0;
+    }
+
+    /* Status indicators */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+      background: var(--bg); border: 1px solid var(--border);
+      margin-top: 0.5rem;
+    }
+    .status-badge::before {
+      content: "";
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    section { max-width: 960px; margin: 0 auto; padding: 4rem 2rem; }
+    section h2 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 1rem; }
+    section .lead { font-size: 1.1rem; color: var(--muted); margin-bottom: 3rem; max-width: 600px; }
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    .code-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1rem 0; }
+    .code-block .cb-header { background: var(--bg3); padding: 0.75rem 1.25rem; font-size: 0.75rem; color: var(--muted); font-family: monospace; border-bottom: 1px solid var(--border); }
+    .code-block pre { padding: 1.25rem; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.7; color: var(--code); overflow-x: auto; }
+    .code-block .comment { color: #555; }
+    .code-block .highlight { color: var(--success); }
+
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .feature-card { 
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; 
+      padding: 1.25rem; transition: all 0.2s;
+    }
+    .feature-card:hover { transform: translateY(-2px); border-color: var(--purple-dim); }
+    .feature-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .feature-card p { font-size: 0.8rem; color: var(--muted); }
+
+    .api-section { margin-bottom: 2.5rem; }
+    .api-section h3 { font-size: 1rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .endpoint { 
+      display: flex; align-items: flex-start; gap: 1rem; background: var(--bg2); 
+      border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; 
+      margin-bottom: 0.75rem; transition: all 0.2s;
+    }
+    .endpoint:hover { border-color: var(--purple-dim); }
+    .method { font-family: monospace; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; flex-shrink: 0; }
+    .method.post { background: var(--success-dim); color: #86efac; }
+    .method.get { background: #1e3a5f; color: #93c5fd; }
+    .endpoint-info { flex: 1; }
+    .endpoint-path { font-family: monospace; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .endpoint-desc { font-size: 0.825rem; color: var(--muted); }
+
+    .live-dot { display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; margin-right: 0.5rem; animation: pulse 2s infinite; vertical-align: middle; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; font-size: 0.825rem; color: #555; }
+
+    @media (max-width: 600px) {
+      .agent-flow { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Bus</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#demo">Demo</a>
+    <a href="#api">API</a>
+    <a href="https://github.com/cgallic/agent-sentinel">GitHub</a>
+  </div>
+  <a href="#quickstart" class="nav-cta">Get started</a>
+</nav>
+
+<div class="hero">
+  <div class="badge">Agent Infrastructure</div>
+  <h1>Dropbox for<br><span class="accent">AI agents.</span></h1>
+  <p>Bus gives every file exchange between agents a verified sender, explicit recipient, signed manifest, time-bound access, and immutable audit trail.</p>
+  <div class="hero-actions">
+    <a href="#quickstart" class="btn-primary">Start for free</a>
+    <a href="#api" class="btn-secondary">View API docs</a>
+  </div>
+</div>
+
+<!-- Animated Flow Demo -->
+<div class="flow-demo">
+  <div class="flow-line"><div class="flow-tag tag-upload">UPLOAD</div><div class="flow-text"><span>kai-cmo</span> uploads lead-report.csv → file_id returned</div></div>
+  <div class="flow-connector"></div>
+  <div class="flow-line"><div class="flow-tag tag-share">SHARE</div><div class="flow-text">Shared to <span>snappedai-mdi</span> · expires 1h · read+download</div></div>
+  <div class="flow-connector"></div>
+  <div class="flow-line"><div class="flow-tag tag-verify">VERIFY</div><div class="flow-text">Manifest signed · hash verified · sender confirmed</div></div>
+  <div class="flow-connector"></div>
+  <div class="flow-line"><div class="flow-tag tag-audit">AUDIT</div><div class="flow-text">All actions logged · immutable · queryable</div></div>
+</div>
+
+<!-- Live Agent Flow Visualization -->
+<section id="demo">
+  <h2>See it in action</h2>
+  <p class="lead">Two agents. Two servers. One seamless file transfer.</p>
+  
+  <div class="live-demo">
+    <h3>🚌 Live Cross-Server Transfer</h3>
+    <div class="agent-flow">
+      <div class="agent-box" id="agentA">
+        <div class="agent-icon">🤖</div>
+        <div class="agent-name">SnappedAI</div>
+        <div class="agent-id">agt_e711...</div>
+        <span class="status-badge">Online</span>
+      </div>
+      
+      <div class="flow-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        <div class="packet"></div>
+      </div>
+      
+      <div class="agent-box" id="busNode">
+        <div class="agent-icon">🚌</div>
+        <div class="agent-name">Bus</div>
+        <div class="agent-id">bus.meetkai.xyz</div>
+        <span class="status-badge">Routing</span>
+      </div>
+      
+      <div class="flow-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        <div class="packet" style="animation-delay: 0.5s;"></div>
+      </div>
+      
+      <div class="agent-box" id="agentB">
+        <div class="agent-icon">🤖</div>
+        <div class="agent-name">Kai-CMO</div>
+        <div class="agent-id">agt_fc37...</div>
+        <span class="status-badge">Online</span>
+      </div>
+    </div>
+    
+    <div class="code-block" style="margin-top: 2rem;">
+      <div class="cb-header">Transfer Log</div>
+      <pre id="transferLog"><span class="comment">// Click "Simulate Transfer" to see the flow</span></pre>
+    </div>
+    
+    <div style="text-align: center; margin-top: 1.5rem;">
+      <button class="btn-primary" onclick="simulateTransfer()">▶ Simulate Transfer</button>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="features">
+  <h2>What you get</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>🪪 Per-agent identity</h4>
+      <p>Every agent has its own API key and agent_id. Every action is attributed. No shared credentials.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📋 Signed manifests</h4>
+      <p>Every file handoff generates a manifest: sender, recipient, hash, expiry, signature. Verifiable and tamper-evident.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🔐 SHA-256 content hash</h4>
+      <p>Every file is hashed on upload. Hash is in the manifest. Recipients can verify integrity before processing.</p>
+    </div>
+    <div class="feature-card">
+      <h4>⏱ Time-bound grants</h4>
+      <p>Set expiry on any share. Access automatically denied after expiry. No manual cleanup needed.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🚫 Instant revocation</h4>
+      <p>Revoke a grant. Next access attempt fails immediately. No delays, no caching, no grace period.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🎟 Single-use tokens</h4>
+      <p>Download tokens are single-use and expire in 5 minutes. Can't be intercepted and replayed.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📜 Immutable audit log</h4>
+      <p>Append-only log of every action. Queryable by agent, file, or action type. Export for compliance.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🔌 MCP native</h4>
+      <p>Full MCP server included. Connect any Claude or Cursor instance with one config line.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="quickstart">
+  <h2>Quick start</h2>
+  <p class="lead">Register, upload, share, verify — under 5 minutes.</p>
+
+  <div class="code-block">
+    <div class="cb-header">Register Agent A</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "agent-a"}'
+
+<span class="comment">→ {"agent_id": "agt_abc", "api_key": "fbus_..."}</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Agent A uploads a file</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/files.put \
+  -H "Authorization: Bearer fbus_..." \
+  -F "file=@data.csv"
+
+<span class="comment">→ {"file_id": "file_xyz", "content_hash": "sha256:abc...", "manifest_id": "mfst_123"}</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Agent A shares to Agent B (1 hour expiry)</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/files/file_xyz/share \
+  -H "Authorization: Bearer fbus_..." \
+  -H "Content-Type: application/json" \
+  -d '{"recipient_id": "agt_def", "expires_in_hours": 1}'
+
+<span class="comment">→ {"grant_id": "grnt_abc", "manifest_id": "mfst_456", "expires_at": ...}</span></pre>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="api">
+  <h2>API reference</h2>
+  <p class="lead">Base URL: <code style="color:var(--purple)">https://bus.meetkai.xyz</code></p>
+
+  <div class="api-section">
+    <h3>Files</h3>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files.put</div>
+        <div class="endpoint-desc">Upload a file. Multipart form upload. Returns file_id, content_hash, manifest_id. Max 100MB.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id/share</div>
+        <div class="endpoint-desc">Share a file to another agent. Body: recipient_id, permissions[], expires_in_hours.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><span class="live-dot"></span>API live at bus.meetkai.xyz · v0.1.0 · Built with SnappedAI + Kai-CMO</p>
+  <p style="margin-top:0.5rem"><a href="/health">Health</a> · <a href="https://github.com/cgallic/agent-sentinel">GitHub</a></p>
+</footer>
+
+<script>
+  function simulateTransfer() {
+    const log = document.getElementById('transferLog');
+    const agentA = document.getElementById('agentA');
+    const busNode = document.getElementById('busNode');
+    const agentB = document.getElementById('agentB');
+    
+    // Reset
+    log.innerHTML = '<span class="comment">// Starting transfer simulation...</span>';
+    [agentA, busNode, agentB].forEach(el => {
+      el.classList.remove('active', 'success');
+    });
+    
+    // Step 1: Agent A uploads
+    setTimeout(() => {
+      agentA.classList.add('active');
+      log.innerHTML += '\n<span class="highlight">[13:35:00]</span> SnappedAI → POST /files.put';
+      log.innerHTML += '\n<span class="comment">← file_94fe66dda4ad4354ac1c created</span>';
+    }, 500);
+    
+    // Step 2: Share to Bus
+    setTimeout(() => {
+      agentA.classList.remove('active');
+      agentA.classList.add('success');
+      busNode.classList.add('active');
+      log.innerHTML += '\n\n<span class="highlight">[13:35:01]</span> SnappedAI → POST /files/.../share';
+      log.innerHTML += '\n<span class="comment">← grant shared to agt_fc3701409ce440d3</span>';
+    }, 1500);
+    
+    // Step 3: Bus routes
+    setTimeout(() => {
+      busNode.classList.remove('active');
+      busNode.classList.add('success');
+      agentB.classList.add('active');
+      log.innerHTML += '\n\n<span class="highlight">[13:35:02]</span> Kai-CMO → POST /download-token';
+      log.innerHTML += '\n<span class="comment">← token issued (expires 5 min)</span>';
+    }, 2500);
+    
+    // Step 4: Complete
+    setTimeout(() => {
+      agentB.classList.remove('active');
+      agentB.classList.add('success');
+      log.innerHTML += '\n\n<span class="highlight">[13:35:03]</span> Kai-CMO → GET /content?token=...';
+      log.innerHTML += '\n<span class="comment">← File downloaded (44 bytes)</span>';
+      log.innerHTML += '\n\n<span style="color: #22c55e;">✓ Transfer complete — 3 seconds, 2 servers, verified</span>';
+    }, 3500);
+  }
+  
+  // Auto-play once on load
+  window.addEventListener('load', () => {
+    setTimeout(simulateTransfer, 1000);
+  });
+</script>
+
+</body>
+</html>
