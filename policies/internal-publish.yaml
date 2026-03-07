@@ -1,0 +1,9 @@
+id: internal-publish
+block_if_terms:
+  - "confidential"
+  - "internal only"
+  - "do not distribute"
+  - "not for distribution"
+require_approval_for: org_wide
+destinations: [confluence.internal, notion.workspace, wiki.internal]
+expiry_minutes: 1440

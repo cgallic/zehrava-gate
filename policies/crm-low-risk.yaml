@@ -1,0 +1,7 @@
+id: crm-low-risk
+allowed_types: [csv, json]
+destinations: [salesforce.import, hubspot.contacts, hubspot.deals]
+auto_approve_under: 100
+require_approval_over: 100
+block_if_pii: false
+expiry_minutes: 60

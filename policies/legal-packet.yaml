@@ -1,0 +1,5 @@
+id: legal-packet
+require_approval: always
+allowed_recipients: named_list
+delivery: one_time_only
+expiry_minutes: 120

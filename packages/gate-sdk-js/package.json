@@ -1,0 +1,9 @@
+{
+  "name": "@zehrava/gate",
+  "version": "0.1.0",
+  "description": "Zehrava Gate SDK — safe commit layer for AI agents",
+  "main": "src/index.js",
+  "keywords": ["ai", "agents", "approval", "governance", "commit"],
+  "license": "MIT",
+  "dependencies": {}
+}

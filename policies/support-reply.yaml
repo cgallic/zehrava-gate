@@ -1,0 +1,9 @@
+id: support-reply
+allowed_types: [text, json]
+destinations: [zendesk.reply, intercom.reply, freshdesk.reply]
+auto_approve_under: 1
+block_if_terms:
+  - "refund guaranteed"
+  - "legal action"
+  - "sue"
+expiry_minutes: 30

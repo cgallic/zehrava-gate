@@ -1,0 +1,5 @@
+id: finance-high-risk
+require_approval: always
+destinations: [netsuite.payout, stripe.payout, quickbooks.batch, finance.payout]
+expiry_minutes: 30
+delivery: one_time_only
