@@ -200,8 +200,9 @@
 
 <div class="hero">
   <div class="badge">Agent Infrastructure</div>
-  <h1>Dropbox for<br><span class="accent">AI agents.</span></h1>
-  <p>Bus gives every file exchange between agents a verified sender, explicit recipient, signed manifest, time-bound access, and immutable audit trail.</p>
+  <h1>Secure file handoff<br><span class="accent">for AI agents.</span></h1>
+  <p>Bus gives every agent-to-agent file exchange a verified sender, explicit recipient, signed manifest, time-bound access, and immutable audit trail.</p>
+  <p style="font-size: 1rem; color: var(--muted); margin-top: -1rem;">Built for agents running across servers, tools, and environments — without shared bucket credentials, ad hoc scripts, or chat uploads.</p>
   <div class="hero-actions">
     <a href="#quickstart" class="btn-primary">Start for free</a>
     <a href="#api" class="btn-secondary">View API docs</a>
@@ -262,6 +263,42 @@
     
     <div style="text-align: center; margin-top: 1.5rem;">
       <button class="btn-primary" onclick="simulateTransfer()">▶ Simulate Transfer</button>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Before/After Contrast -->
+<section id="contrast">
+  <h2>The problem with agent file sharing today</h2>
+  <p class="lead">Most teams are duct-taping solutions that break at scale.</p>
+  
+  <div class="comparison-table" style="margin: 2rem 0;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+      <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
+        <h3 style="color: var(--error); margin-bottom: 1rem;">❌ Without Bus</h3>
+        <ul style="list-style: none; font-size: 0.9rem; color: var(--muted);">
+          <li style="padding: 0.5rem 0;">🔓 Shared bucket credentials</li>
+          <li style="padding: 0.5rem 0;">📂 Public or broad read access</li>
+          <li style="padding: 0.5rem 0;">📎 Manual file passing via chat</li>
+          <li style="padding: 0.5rem 0;">🔧 Brittle curl/SSH glue scripts</li>
+          <li style="padding: 0.5rem 0;">❓ No clear audit trail</li>
+          <li style="padding: 0.5rem 0;">🚫 Revocation is fake (rotate creds)</li>
+        </ul>
+      </div>
+      
+      <div style="background: var(--bg2); border: 1px solid var(--success-dim); border-radius: 12px; padding: 1.5rem;">
+        <h3 style="color: var(--success); margin-bottom: 1rem;">✅ With Bus</h3>
+        <ul style="list-style: none; font-size: 0.9rem;">
+          <li style="padding: 0.5rem 0;">🪪 Per-agent identity</li>
+          <li style="padding: 0.5rem 0;">📋 Explicit share grants</li>
+          <li style="padding: 0.5rem 0;">✍️ Signed manifests</li>
+          <li style="padding: 0.5rem 0;">⏱️ Time-bound download access</li>
+          <li style="padding: 0.5rem 0;">📜 Immutable audit log</li>
+          <li style="padding: 0.5rem 0;">🚫 Instant per-grant revocation</li>
+        </ul>
+      </div>
     </div>
   </div>
 </section>
