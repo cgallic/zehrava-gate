@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bus — Secure File Exchange for AI Agents</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1;
+      --purple-dim: #3730a3;
+      --bg: #0a0a0a;
+      --bg2: #111;
+      --bg3: #1a1a1a;
+      --border: #222;
+      --text: #f0f0f0;
+      --muted: #888;
+      --code: #6366f1;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.95); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-logo { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .nav-links { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--muted); }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--purple); color: #fff; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; }
+    .nav-cta:hover { text-decoration: none; opacity: 0.9; }
+
+    .hero { text-align: center; padding: 5rem 2rem 4rem; max-width: 800px; margin: 0 auto; }
+    .badge { display: inline-block; font-size: 0.75rem; background: #1a1a2e; color: var(--purple); border: 1px solid var(--purple-dim); padding: 0.25rem 0.75rem; border-radius: 999px; margin-bottom: 2rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .hero h1 { font-size: clamp(2.5rem, 7vw, 5rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.5rem; }
+    .hero h1 .accent { color: var(--purple); }
+    .hero p { font-size: 1.25rem; color: var(--muted); max-width: 560px; margin: 0 auto 2.5rem; }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { background: var(--purple); color: #fff; padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 700; font-size: 1rem; }
+    .btn-secondary { border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600; font-size: 1rem; }
+    .btn-primary:hover, .btn-secondary:hover { text-decoration: none; opacity: 0.85; }
+
+    .flow-demo { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 500px; margin: 3rem auto; text-align: left; font-family: 'SF Mono', monospace; font-size: 0.8rem; }
+    .flow-line { display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; }
+    .flow-tag { font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; flex-shrink: 0; }
+    .tag-upload { background: #14532d; color: #86efac; }
+    .tag-share { background: #1e3a5f; color: #93c5fd; }
+    .tag-verify { background: #3b1f2b; color: #f9a8d4; }
+    .tag-audit { background: #2d1b00; color: #fcd34d; }
+    .flow-text { color: var(--muted); }
+    .flow-text span { color: var(--text); }
+
+    section { max-width: 960px; margin: 0 auto; padding: 4rem 2rem; }
+    section h2 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 1rem; }
+    section .lead { font-size: 1.1rem; color: var(--muted); margin-bottom: 3rem; max-width: 600px; }
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    .why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .why-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .why-card .icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .why-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .why-card p { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+    .why-card .bad { font-size: 0.8rem; color: #888; font-family: monospace; margin-top: 0.75rem; padding: 0.5rem; background: var(--bg3); border-radius: 6px; border-left: 2px solid #555; }
+
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .feature-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .feature-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .feature-card p { font-size: 0.8rem; color: var(--muted); }
+
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step { display: flex; gap: 2rem; position: relative; padding-bottom: 2.5rem; }
+    .step:last-child { padding-bottom: 0; }
+    .step-num { flex-shrink: 0; width: 40px; height: 40px; background: var(--bg2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; color: var(--purple); }
+    .step-line { position: absolute; left: 19px; top: 40px; bottom: 0; width: 2px; background: var(--border); }
+    .step:last-child .step-line { display: none; }
+    .step-content h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .step-content p { font-size: 0.9rem; color: var(--muted); max-width: 520px; }
+
+    .code-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1rem 0; }
+    .code-block .cb-header { background: var(--bg3); padding: 0.75rem 1.25rem; font-size: 0.75rem; color: var(--muted); font-family: monospace; border-bottom: 1px solid var(--border); }
+    .code-block pre { padding: 1.25rem; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.82rem; line-height: 1.7; color: var(--code); overflow-x: auto; }
+    .code-block .comment { color: #555; }
+
+    .api-section { margin-bottom: 2.5rem; }
+    .api-section h3 { font-size: 1rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .endpoint { display: flex; align-items: flex-start; gap: 1rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .method { font-family: monospace; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; flex-shrink: 0; }
+    .method.post { background: #14532d; color: #86efac; }
+    .method.get { background: #1e3a5f; color: #93c5fd; }
+    .endpoint-info { flex: 1; }
+    .endpoint-path { font-family: monospace; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .endpoint-desc { font-size: 0.825rem; color: var(--muted); }
+
+    .mcp-block { background: var(--bg2); border: 1px solid var(--purple-dim); border-radius: 12px; padding: 1.5rem; margin: 2rem 0; }
+    .mcp-block h3 { font-size: 1rem; font-weight: 700; color: var(--purple); margin-bottom: 1rem; }
+    .mcp-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .mcp-tool { background: var(--bg3); border: 1px solid var(--border); padding: 0.4rem 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: var(--purple); }
+
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
+    .price-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem; }
+    .price-card.featured { border-color: var(--purple); }
+    .price-card .plan { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.75rem; }
+    .price-card .price { font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .price-card .price-note { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .price-card ul { list-style: none; }
+    .price-card li { font-size: 0.875rem; color: var(--muted); padding: 0.3rem 0; }
+    .price-card li::before { content: "✓ "; color: var(--purple); font-weight: 700; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; font-size: 0.825rem; color: #555; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; margin-right: 0.5rem; animation: pulse 2s infinite; vertical-align: middle; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* === FILE TRANSFER ANIMATION === */
+    .transfer-demo {
+      max-width: 680px;
+      margin: 3rem auto;
+      padding: 2rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .transfer-demo h3 {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 2rem;
+    }
+    .transfer-track {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: relative;
+    }
+    .agent-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      text-align: center;
+      flex-shrink: 0;
+      width: 140px;
+      position: relative;
+    }
+    .agent-box.sender { border-color: #3730a3; }
+    .agent-box.receiver { border-color: #14532d; }
+    .agent-box .agent-emoji { font-size: 1.75rem; display: block; margin-bottom: 0.3rem; }
+    .agent-box .agent-name { font-size: 0.75rem; font-weight: 700; color: var(--text); }
+    .agent-box .agent-server { font-size: 0.65rem; color: var(--muted); font-family: monospace; }
+    .transfer-middle {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      position: relative;
+      min-height: 80px;
+      justify-content: center;
+    }
+    .bus-box {
+      background: #1a1a2e;
+      border: 1px solid #3730a3;
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.7rem;
+      color: var(--purple);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.25rem;
+    }
+    .transfer-rail {
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      position: relative;
+      overflow: visible;
+    }
+    .file-packet {
+      position: absolute;
+      top: -7px;
+      left: 0;
+      width: 16px;
+      height: 16px;
+      background: var(--purple);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      animation: travel 2.8s ease-in-out infinite;
+    }
+    .file-packet::after { content: "📄"; font-size: 0.65rem; }
+    @keyframes travel {
+      0% { left: 0; opacity: 0; transform: scale(0.8); }
+      10% { opacity: 1; transform: scale(1); }
+      45% { left: calc(50% - 8px); transform: scale(1.1); }
+      55% { left: calc(50% - 8px); transform: scale(1.1); }
+      90% { opacity: 1; }
+      100% { left: calc(100% - 16px); opacity: 0; transform: scale(0.8); }
+    }
+    .step-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 2rem;
+      gap: 0.5rem;
+    }
+    .step-label {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      padding: 0.5rem;
+      background: var(--bg3);
+      border-radius: 6px;
+      line-height: 1.4;
+    }
+    .step-label .sl-num {
+      display: block;
+      font-size: 0.65rem;
+      color: var(--purple);
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+    .step-label .sl-text { color: var(--text); font-weight: 600; display: block; }
+    .step-label .sl-detail { color: var(--muted); font-size: 0.65rem; }
+
+    /* receipt strip */
+    .receipt-strip {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .receipt-chip {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      font-family: monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      animation: fadeChip 2.8s ease-in-out infinite;
+    }
+    .receipt-chip span { color: #22c55e; }
+    .receipt-chip:nth-child(2) { animation-delay: 0.7s; }
+    .receipt-chip:nth-child(3) { animation-delay: 1.4s; }
+    .receipt-chip:nth-child(4) { animation-delay: 2.1s; }
+    @keyframes fadeChip {
+      0%, 15% { opacity: 0.3; }
+      30%, 85% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🚌 Bus</div>
+  <div class="nav-links">
+    <a href="#why">Why</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#quickstart">Quick start</a>
+    <a href="#api">API</a>
+    <a href="#mcp">MCP</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <a href="#quickstart" class="nav-cta">Get started</a>
+</nav>
+
+<div class="hero">
+  <div class="badge">Agent Infrastructure</div>
+  <h1>Dropbox for<br><span class="accent">AI agents.</span></h1>
+  <p>Bus gives every file exchange between agents a verified sender, explicit recipient, signed manifest, time-bound access, and immutable audit trail.</p>
+  <div class="hero-actions">
+    <a href="#quickstart" class="btn-primary">Start for free</a>
+    <a href="#api" class="btn-secondary">View API docs</a>
+  </div>
+</div>
+
+<div class="transfer-demo">
+  <h3>Live file transfer · 77.42.43.0 → bus.meetkai.xyz → 89.167.60.171</h3>
+  <div class="transfer-track">
+    <div class="agent-box sender">
+      <span class="agent-emoji">🤖</span>
+      <div class="agent-name">SnappedAI</div>
+      <div class="agent-server">77.42.43.0</div>
+    </div>
+    <div class="transfer-middle">
+      <div class="bus-box">🚌 Bus</div>
+      <div class="transfer-rail">
+        <div class="file-packet"></div>
+      </div>
+    </div>
+    <div class="agent-box receiver">
+      <span class="agent-emoji">☕</span>
+      <div class="agent-name">Kai-CMO</div>
+      <div class="agent-server">89.167.60.171</div>
+    </div>
+  </div>
+  <div class="step-labels">
+    <div class="step-label">
+      <span class="sl-num">1</span>
+      <span class="sl-text">Upload</span>
+      <span class="sl-detail">POST /files.put</span>
+    </div>
+    <div class="step-label">
+      <span class="sl-num">2</span>
+      <span class="sl-text">Hash + Sign</span>
+      <span class="sl-detail">SHA-256 manifest</span>
+    </div>
+    <div class="step-label">
+      <span class="sl-num">3</span>
+      <span class="sl-text">Grant</span>
+      <span class="sl-detail">1h expiry</span>
+    </div>
+    <div class="step-label">
+      <span class="sl-num">4</span>
+      <span class="sl-text">Token</span>
+      <span class="sl-detail">Single-use · 5min</span>
+    </div>
+    <div class="step-label">
+      <span class="sl-num">5</span>
+      <span class="sl-text">Download</span>
+      <span class="sl-detail">Verified ✓</span>
+    </div>
+  </div>
+  <div class="receipt-strip">
+    <div class="receipt-chip">file_id: <span>file_94fe66dd...</span></div>
+    <div class="receipt-chip">grant: <span>grnt_066fe0bd...</span></div>
+    <div class="receipt-chip">hash: <span>sha256:2e39...</span></div>
+    <div class="receipt-chip">contents: <span>✓ verified</span></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<section id="why">
+  <h2>Why Bus exists</h2>
+  <p class="lead">Agents on different servers need to share files. Right now everyone is doing it wrong.</p>
+  <div class="why-grid">
+    <div class="why-card">
+      <div class="icon">🔓</div>
+      <h3>SSH and shared folders</h3>
+      <p>Works until it doesn't. No access control. No audit trail. One misconfigured key and everything is exposed.</p>
+      <div class="bad">scp agent1@host:/tmp/output.csv agent2@host:/tmp/</div>
+    </div>
+    <div class="why-card">
+      <div class="icon">🪣</div>
+      <h3>Direct S3 access</h3>
+      <p>Every agent gets broad bucket access. No per-agent identity. No revocation. "Public read" is the easy answer — and it is the wrong one.</p>
+      <div class="bad">s3://my-bucket/shared/ — full access to everyone</div>
+    </div>
+    <div class="why-card">
+      <div class="icon">💬</div>
+      <h3>Slack and Discord uploads</h3>
+      <p>Files get pasted into chat. Disappear after 90 days. No audit. No verification. Not how infrastructure should work.</p>
+      <div class="bad">here's the file [attachment]</div>
+    </div>
+    <div class="why-card">
+      <div class="icon">🔧</div>
+      <h3>Custom scripts</h3>
+      <p>One-off handoff code for every new workflow. No policy layer. No access control. Works until someone changes something.</p>
+      <div class="bad">curl -X POST https://other-agent/ingest -d @file.csv</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="how-it-works">
+  <h2>How Bus works</h2>
+  <p class="lead">Every file gets an identity. Every handoff gets a manifest. Every access gets logged.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-line"></div>
+      <div class="step-content">
+        <h3>Register each agent</h3>
+        <p>Each agent gets a unique identity and an API key. All file actions are attributed to that agent. Identity is the foundation — nothing works without it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-line"></div>
+      <div class="step-content">
+        <h3>Upload a file</h3>
+        <p>POST the file. Bus stores it, computes the content hash, creates a signed manifest, and returns a file_id. That file_id is your handle for all future operations.</p>
+        <div class="code-block">
+          <div class="cb-header">Upload</div>
+          <pre>curl -X POST https://bus.meetkai.xyz/files.put \
+  -H "Authorization: Bearer $API_KEY" \
+  -F "file=@report.csv"
+
+<span class="comment">→ {"file_id": "file_abc123", "content_hash": "sha256:...", "manifest_id": "mfst_xyz"}</span></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-line"></div>
+      <div class="step-content">
+        <h3>Share to another agent</h3>
+        <p>Grant access by agent ID. Set permissions (read, download, reshare). Set expiry. Bus creates a signed manifest linking sender, recipient, file hash, and expiry time.</p>
+        <div class="code-block">
+          <div class="cb-header">Share with 1-hour expiry</div>
+          <pre>curl -X POST https://bus.meetkai.xyz/files/file_abc123/share \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"recipient_id": "snappedai", "expires_in_hours": 1}'
+
+<span class="comment">→ {"grant_id": "grnt_xyz", "manifest_id": "mfst_abc", "expires_at": ...}</span></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-line"></div>
+      <div class="step-content">
+        <h3>Recipient gets a download token</h3>
+        <p>The recipient requests a short-lived download token. Token is single-use. Expires in 5 minutes by default. Can't be shared or replayed.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-line"></div>
+      <div class="step-content">
+        <h3>Revoke access instantly</h3>
+        <p>Any future access attempt against a revoked grant is denied immediately. No eventual consistency. No cache expiry to wait for. Revoke means revoke.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-line"></div>
+      <div class="step-content">
+        <h3>Audit everything</h3>
+        <p>Every action — upload, share, access grant, download, revoke — is written to an immutable audit log. Queryable by actor, target, action, or time range.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="features">
+  <h2>What you get</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>🪪 Per-agent identity</h4>
+      <p>Every agent has its own API key and agent_id. Every action is attributed. No shared credentials.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📋 Signed manifests</h4>
+      <p>Every file handoff generates a manifest: sender, recipient, hash, expiry, signature. Verifiable and tamper-evident.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🔐 SHA-256 content hash</h4>
+      <p>Every file is hashed on upload. Hash is in the manifest. Recipients can verify integrity before processing.</p>
+    </div>
+    <div class="feature-card">
+      <h4>⏱ Time-bound grants</h4>
+      <p>Set expiry on any share. Access automatically denied after expiry. No manual cleanup needed.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🚫 Instant revocation</h4>
+      <p>Revoke a grant. Next access attempt fails immediately. No delays, no caching, no grace period.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🎟 Single-use tokens</h4>
+      <p>Download tokens are single-use and expire in 5 minutes. Can't be intercepted and replayed.</p>
+    </div>
+    <div class="feature-card">
+      <h4>📜 Immutable audit log</h4>
+      <p>Append-only log of every action. Queryable by agent, file, or action type. Export for compliance.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🔌 MCP native</h4>
+      <p>Full MCP server included. Connect any Claude or Cursor instance with one config line.</p>
+    </div>
+    <div class="feature-card">
+      <h4>🏗 REST API + Python SDK</h4>
+      <p>Clean REST API for any language. Python SDK ships with the server. JS SDK coming.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="quickstart">
+  <h2>Quick start</h2>
+  <p class="lead">Register, upload, share, verify — under 5 minutes.</p>
+
+  <div class="code-block">
+    <div class="cb-header">Register Agent A</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "agent-a"}'
+
+<span class="comment">→ {"agent_id": "agt_abc", "api_key": "fbus_..."}</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Register Agent B (the recipient)</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "agent-b"}'
+
+<span class="comment">→ {"agent_id": "agt_def", "api_key": "fbus_..."}</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Agent A uploads a file</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/files.put \
+  -H "Authorization: Bearer fbus_..." \
+  -F "file=@data.csv"
+
+<span class="comment">→ {"file_id": "file_xyz", "content_hash": "sha256:abc...", "manifest_id": "mfst_123"}</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Agent A shares to Agent B (1 hour expiry)</div>
+    <pre>curl -X POST https://bus.meetkai.xyz/files/file_xyz/share \
+  -H "Authorization: Bearer fbus_..." \
+  -H "Content-Type: application/json" \
+  -d '{"recipient_id": "agt_def", "expires_in_hours": 1}'
+
+<span class="comment">→ {"grant_id": "grnt_abc", "manifest_id": "mfst_456", "expires_at": ...}</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Agent B gets a download token and downloads</div>
+    <pre><span class="comment"># Get token</span>
+TOKEN=$(curl -s -X POST https://bus.meetkai.xyz/files/file_xyz/download-token \
+  -H "Authorization: Bearer fbus_...agent_b_key..." | jq -r .token)
+
+<span class="comment"># Download</span>
+curl "https://bus.meetkai.xyz/files/file_xyz/content?token=$TOKEN" -o data.csv</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Verify the manifest</div>
+    <pre>curl https://bus.meetkai.xyz/files/file_xyz/manifest \
+  -H "Authorization: Bearer fbus_..."
+
+<span class="comment">→ {"manifest": {"sender_id": "agt_abc", "content_hash": "sha256:abc...", "signature": "...", ...}}</span></pre>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="api">
+  <h2>API reference</h2>
+  <p class="lead">Base URL: <code style="color:var(--purple)">https://bus.meetkai.xyz</code></p>
+
+  <div class="api-section">
+    <h3>Agents</h3>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/agents/register</div>
+        <div class="endpoint-desc">Register a new agent. Returns agent_id and api_key. Store the key — shown once.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/agents/:agent_id</div>
+        <div class="endpoint-desc">Get agent details. API key not returned after registration.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-section">
+    <h3>Files</h3>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files.put</div>
+        <div class="endpoint-desc">Upload a file. Multipart form upload. Returns file_id, content_hash, manifest_id. Max 100MB.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id</div>
+        <div class="endpoint-desc">Get file metadata. Owner or grant holder only. Returns hash, size, mime type, uploader.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id/download-token</div>
+        <div class="endpoint-desc">Issue a single-use download token. Expires in 5 min by default. Configurable via ttl_ms.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id/content?token=...</div>
+        <div class="endpoint-desc">Download file content using a token. No auth header needed — token is the credential.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-section">
+    <h3>Shares</h3>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id/share</div>
+        <div class="endpoint-desc">Share a file to another agent. Body: recipient_id, permissions[], expires_in_ms. Returns grant_id + manifest.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/shares/:grant_id/revoke</div>
+        <div class="endpoint-desc">Revoke access immediately. All future requests against this grant return 403.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id/shares</div>
+        <div class="endpoint-desc">List all grants for a file. Owner only.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-section">
+    <h3>Manifests</h3>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/files/:file_id/manifest</div>
+        <div class="endpoint-desc">Get the manifest for a file. Contains sender, hash, signature, expiry.</div>
+      </div>
+    </div>
+    <div class="endpoint">
+      <div class="method post">POST</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/manifest/verify</div>
+        <div class="endpoint-desc">Verify a manifest signature. Returns {valid, signature_valid, expired}.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-section">
+    <h3>Audit</h3>
+    <div class="endpoint">
+      <div class="method get">GET</div>
+      <div class="endpoint-info">
+        <div class="endpoint-path">/audit</div>
+        <div class="endpoint-desc">Query the audit log. Filter by actor_id, target_id, action. Returns events in reverse chronological order.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="mcp">
+  <h2>MCP integration</h2>
+  <p class="lead">Connect Bus to any Claude or Cursor instance in one config block. Agents get native file transfer tools.</p>
+
+  <div class="mcp-block">
+    <h3>Available MCP tools</h3>
+    <div class="mcp-tools">
+      <div class="mcp-tool">filebus_put</div>
+      <div class="mcp-tool">filebus_get</div>
+      <div class="mcp-tool">filebus_share</div>
+      <div class="mcp-tool">filebus_revoke</div>
+      <div class="mcp-tool">filebus_download</div>
+      <div class="mcp-tool">filebus_audit_search</div>
+      <div class="mcp-tool">filebus_manifest_verify</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">claude_desktop_config.json</div>
+    <pre>{
+  "mcpServers": {
+    "bus": {
+      "command": "node",
+      "args": ["/path/to/agent-sentinel/mcp/file-bus-mcp/src/index.js"],
+      "env": {
+        "FILE_BUS_ENDPOINT": "https://bus.meetkai.xyz",
+        "FILE_BUS_API_KEY": "fbus_your_key_here"
+      }
+    }
+  }
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">Claude can now transfer files between agents natively</div>
+    <pre><span class="comment"># Claude calls filebus_put to upload a generated report</span>
+<span class="comment"># Then filebus_share to send it to another agent</span>
+<span class="comment"># The receiving agent calls filebus_download to retrieve it</span>
+<span class="comment"># All logged, signed, and auditable</span></pre>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="pricing">
+  <h2>Pricing</h2>
+  <p class="lead">Free to start. Scales with your agent stack.</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="plan">Starter</div>
+      <div class="price">Free</div>
+      <div class="price-note">No card needed</div>
+      <ul>
+        <li>3 agents</li>
+        <li>1GB storage</li>
+        <li>100 file operations/mo</li>
+        <li>7-day audit retention</li>
+        <li>MCP server access</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="plan">Growth</div>
+      <div class="price">$49<span style="font-size:1rem;font-weight:400">/mo</span></div>
+      <div class="price-note">For real agent pipelines</div>
+      <ul>
+        <li>25 agents</li>
+        <li>50GB storage</li>
+        <li>10,000 operations/mo</li>
+        <li>90-day audit retention</li>
+        <li>Canary monitoring included</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <div class="plan">Scale</div>
+      <div class="price">$199<span style="font-size:1rem;font-weight:400">/mo</span></div>
+      <div class="price-note">For agencies and platforms</div>
+      <ul>
+        <li>Unlimited agents</li>
+        <li>500GB storage</li>
+        <li>Unlimited operations</li>
+        <li>Unlimited audit retention</li>
+        <li>Self-host option</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><span class="live-dot"></span>API live at bus.meetkai.xyz · v0.1.0 · Built with SnappedAI + Kai-CMO</p>
+  <p style="margin-top:0.5rem"><a href="/health">Health</a> · <a href="https://canary.meetkai.xyz">Canary Agent Monitoring</a> · <a href="https://github.com/cgallic/agent-sentinel">GitHub</a></p>
+</footer>
+
+</body>
+</html>
