@@ -16,6 +16,57 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(express.json());
 
+// Root — landing page
+app.get('/', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Courier — Secure File Exchange for AI Agents</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
+    .badge { font-size: 0.75rem; background: #1a1a2e; color: #6366f1; border: 1px solid #6366f1; padding: 0.25rem 0.75rem; border-radius: 999px; margin-bottom: 2rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    h1 { font-size: clamp(2rem, 6vw, 4rem); font-weight: 700; letter-spacing: -0.03em; margin-bottom: 1rem; }
+    h1 span { color: #6366f1; }
+    p { font-size: 1.125rem; color: #888; max-width: 520px; text-align: center; line-height: 1.7; margin-bottom: 2.5rem; }
+    .features { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
+    .feature { background: #111; border: 1px solid #222; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; color: #aaa; }
+    .api { background: #111; border: 1px solid #222; border-radius: 12px; padding: 1.5rem; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.875rem; color: #6366f1; max-width: 480px; width: 100%; margin-bottom: 2rem; }
+    .api .comment { color: #555; }
+    a { color: #6366f1; text-decoration: none; }
+    .status { font-size: 0.75rem; color: #555; }
+    .dot { display: inline-block; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; margin-right: 0.5rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+  <div class="badge">Agent Infrastructure</div>
+  <h1>Courier <span>File Bus</span></h1>
+  <p>Secure file exchange for AI agents. Per-agent identity, signed manifests, time-bound grants, immutable audit trail.</p>
+  <div class="features">
+    <div class="feature">🔐 Encrypted storage</div>
+    <div class="feature">📋 Signed manifests</div>
+    <div class="feature">⏱ Expiring grants</div>
+    <div class="feature">📜 Audit trail</div>
+    <div class="feature">🔌 MCP native</div>
+  </div>
+  <div class="api">
+    <div class="comment"># Register an agent</div>
+    POST /agents/register<br><br>
+    <div class="comment"># Upload a file</div>
+    POST /files.put<br><br>
+    <div class="comment"># Share to another agent</div>
+    POST /files/:id/share<br><br>
+    <div class="comment"># Revoke access instantly</div>
+    POST /shares/:id/revoke
+  </div>
+  <p class="status"><span class="dot"></span>API live · <a href="/health">Health check</a> · v0.1.0</p>
+</body>
+</html>`);
+});
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024 } }); // 100MB limit
 
