@@ -886,7 +886,7 @@ gate.<span class="fn">register_webhook</span>(
   "firedAt":    "2026-03-08T11:30:00.000Z"
 }</span></pre>
     <div class="callout callout-info">
-      <p><strong>Webhooks are in-memory.</strong> If the Gate server restarts before the webhook fires, the registration is lost. Persistent webhook storage is on the roadmap. For now, use webhooks for short-lived intents.</p>
+      <p><strong>Webhooks are persisted to SQLite.</strong> Registrations survive server restarts. Each webhook fires exactly once — Gate marks it <code>fired=1</code> with a timestamp after delivery. Re-registering after a webhook fires creates a new pending registration.</p>
     </div>
 
     <!-- ── DASHBOARD ── -->
