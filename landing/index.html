@@ -572,7 +572,7 @@
     <span>require_approval_over: 100 — finance-high-risk: require_approval: always</span>
     <span>audit: immutable · append-only · every state transition logged · queryable by intent ID</span>
     <span>intent.status = "blocked" — reason_code: destination_not_allowed ✗</span>
-    <span>gate.verify({ intentId: p.intentId }) → intent → policy_checked → approved → execution_requested → execution_succeeded</span>
+    <span>gate.verify({ intentId: p.intentId }) → proposed → policy_checked → approved → execution_requested → execution_succeeded</span>
     <span>execution_token: 15min TTL · runner_exec: worker runs in your VPC · credentials never leave</span>
     <span>on_behalf_of: "agt_orchestrator_abc" · sensitivity_tags: ["pii", "financial"]</span>
     <span>// No agent write reaches production without an authorized execution order</span>
