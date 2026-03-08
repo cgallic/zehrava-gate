@@ -81,6 +81,42 @@ app.use('/v1', approvalsRouter);
 app.use('/v1', deliveryRouter);
 app.use('/v1/audit', auditRouter);
 
+// ── PUBLIC READ-ONLY FEED ─────────────────────────────────────────
+function scrubPii(text) {
+  if (!text) return '';
+  text = text.replace(/[a-zA-Z0-9._%+\-]+@([a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g, '****@$1');
+  text = text.replace(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g, '***-***-****');
+  return text;
+}
+
+function scrubProposal(p) {
+  return {
+    id: p.id,
+    agent: p.agent_name || 'agent',
+    destination: p.destination,
+    policy: p.policy_id,
+    status: p.status,
+    record_count: p.record_count || null,
+    block_reason: p.block_reason ? scrubPii(p.block_reason) : null,
+    created_at: p.created_at,
+    payload_hint: p.payload_path
+      ? (p.payload_path.startsWith('{') ? '[email payload]' : p.payload_path.split('/').pop().split('?')[0])
+      : null
+  };
+}
+
+app.get('/v1/public/feed', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const rows = db.prepare(`
+    SELECT p.*, a.name as agent_name
+    FROM proposals p
+    LEFT JOIN agents a ON p.sender_agent_id = a.id
+    ORDER BY p.created_at DESC
+    LIMIT ?
+  `).all(limit);
+  res.json({ proposals: rows.map(scrubProposal), count: rows.length });
+});
+
 // 404
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', path: req.path });
@@ -92,3 +128,50 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+// ── PUBLIC READ-ONLY FEED ─────────────────────────────────────────
+const db2 = require('./lib/db');
+
+function scrubPii(text) {
+  if (!text) return '';
+  // Email addresses → ****@domain.com
+  text = text.replace(/[a-zA-Z0-9._%+\-]+@([a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g, '****@$1');
+  // Phone numbers → ***-***-XXXX
+  text = text.replace(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}/g, '***-***-****');
+  // Names before emails or after Hi/Hey
+  return text;
+}
+
+function scrubProposal(p) {
+  return {
+    id: p.id,
+    agent: p.agent_name || 'agent',
+    destination: p.destination,
+    policy: p.policy_id,
+    status: p.status,
+    record_count: p.record_count,
+    block_reason: p.block_reason,
+    created_at: p.created_at,
+    // Scrub payload — show type only, not content
+    payload_hint: p.payload_path
+      ? (p.payload_path.startsWith('{') ? '[email payload]' : p.payload_path.split('/').pop())
+      : null
+  };
+}
+
+app.get('/v1/public/feed', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const proposals = db2.prepare(`
+    SELECT p.*, a.name as agent_name
+    FROM proposals p
+    LEFT JOIN agents a ON p.sender_agent_id = a.id
+    ORDER BY p.created_at DESC
+    LIMIT ?
+  `).all(limit);
+
+  res.json({
+    proposals: proposals.map(scrubProposal),
+    count: proposals.length,
+    note: 'Read-only public feed. PII scrubbed. Approvals are private.'
+  });
+});
