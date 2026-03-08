@@ -147,7 +147,6 @@
     }
   
     /* === SITE NAV (identical across all pages) === */
-    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
     .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
     .nav-brand span { color: #6366f1; }
     .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
@@ -156,7 +155,6 @@
     .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
     .nav-cta:hover { opacity: 0.9; }
     @media(max-width: 768px) {
-      .site-nav { padding: 1rem; }
       .nav-links { gap: 0.875rem; font-size: 0.8rem; }
       .nav-links a:not(.nav-cta) { display: none; }
       .nav-links .nav-cta { display: inline-block; }
@@ -225,17 +223,42 @@
 </head>
 <body>
 
-<nav class="site-nav">
-  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+<nav aria-label="Site navigation">
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#dbg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="dbg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
   <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/demo">Live Demo</a>
+    <a href="/docs">Docs</a>
+    <a href="/dashboard" class="active">Dashboard</a>
     <a href="/blog">Blog</a>
-    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
-    <a href="/demo">Demo</a>
-    <a href="/dashboard">Dashboard</a>
-    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
-    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/">Home</a>
+  <a href="/demo">Live Demo</a>
+  <a href="/docs">Docs</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/blog">Blog</a>
+  <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  <a href="/demo" class="m-cta">Get started free</a>
+</div>
 
 <div class="api-key-box">
   <span class="api-key-label">Demo API key</span>
@@ -355,17 +378,17 @@ function shortId(id) {
   return id ? `<code>${id.slice(0, 16)}…</code>` : '—';
 }
 
-async function loadProposals() {
-  const url = currentTab ? `/proposals?status=${currentTab}&limit=100` : '/proposals?limit=100';
+async function loadProposals() /* loadIntents */ {
+  const url = currentTab ? `/intents?status=${currentTab}&limit=100` : '/intents?limit=100';
   const data = await api('GET', url);
-  const proposals = data.proposals || [];
+  const proposals = data.intents || data.proposals || [];
 
   // Update counts (fetch all tabs in background)
   updateCounts();
 
   const container = document.getElementById('tableContainer');
   if (!proposals.length) {
-    container.innerHTML = `<div class="empty-state"><h3>No ${currentTab || ''} proposals</h3><p style="margin-top:.5rem;font-size:.85rem">Proposals will appear here when agents submit them.</p><p style="margin-top:1rem"><a href="/demo">Run a demo scenario →</a></p></div>`;
+    container.innerHTML = `<div class="empty-state"><h3>No ${currentTab || ''} intents</h3><p style="margin-top:.5rem;font-size:.85rem">Intents will appear here when agents submit them.</p><p style="margin-top:1rem"><a href="/demo">Run a demo scenario →</a></p></div>`;
     return;
   }
 
@@ -447,7 +470,7 @@ async function loadProposals() {
 }
 
 async function loadAudit(proposalId) {
-  const data = await api('GET', `/audit/${proposalId}`);
+  const data = await api('GET', `/intents/${proposalId}/audit`);
   const el = document.getElementById(`audit-events-${proposalId}`);
   if (!el) return;
   if (!data.events || !data.events.length) {
@@ -533,7 +556,7 @@ async function approve(proposalId, e) {
   const btn = e ? e.target : null;
   if (btn) btn.textContent = '…';
   try {
-    const res = await api('POST', '/approve', { proposalId });
+    const res = await api('POST', `/intents/${proposalId}/approve`, {});
     if (res.status === 'approved') {
       showToast(`✓ Approved — delivery token issued`, 'success');
     } else {
@@ -560,7 +583,7 @@ function closeModal() {
 async function confirmReject() {
   const reason = document.getElementById('rejectReason').value || 'Rejected from dashboard';
   try {
-    await api('POST', '/reject', { proposalId: pendingRejectId, reason });
+    await api('POST', `/intents/${pendingRejectId}/reject`, { reason });
     showToast('Proposal rejected', 'error');
   } catch (err) {
     showToast('Failed to reject', 'error');
@@ -573,8 +596,8 @@ async function updateCounts() {
   const statuses = ['pending_approval', 'approved', 'delivered', 'blocked'];
   for (const s of statuses) {
     try {
-      const data = await api('GET', `/proposals?status=${s}&limit=100`);
-      const count = (data.proposals || []).length;
+      const data = await api('GET', `/intents?status=${s}&limit=100`);
+      const count = (data.intents || data.proposals || []).length;
       const el = document.getElementById(`count-${s.replace('pending_approval','pending')}`);
       if (el) {
         el.textContent = count;
