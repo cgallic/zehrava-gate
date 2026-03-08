@@ -571,8 +571,8 @@
         <span class="hero-badge-dot"></span>
         Agent Infrastructure · MIT License
       </div>
-      <h1 class="hero-h1">THE SAFE<br>COMMIT LAYER<br><span class="accent">FOR AI AGENTS.</span></h1>
-      <p class="hero-sub">Agents write to production and nobody knows who approved it, whether it ran twice, or where the audit trail is. Gate is the commit checkpoint. One queue. Every agent. Every framework.</p>
+      <h1 class="hero-h1">AGENTS THINK.<br>GATE DECIDES<br><span class="accent">WHEN THEY ACT.</span></h1>
+      <p class="hero-sub">Gate is the runtime control plane for AI agent actions. Agents submit intent. Gate evaluates policy, scores risk, and governs execution. Every action logged forever.</p>
       <div class="hero-actions">
         <a href="/demo" class="btn-primary">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" aria-hidden="true"><path d="M2.5 1.5l9 5-9 5z"/></svg>
@@ -595,28 +595,27 @@
             <div class="ht-dot ht-dot-y"></div>
             <div class="ht-dot ht-dot-g"></div>
           </div>
-          <span class="ht-title">gate.propose() → policy → approve → deliver</span>
+          <span class="ht-title">intent → policy → risk → execute → ledger</span>
         </div>
         <div class="ht-body">
-          <div class="ht-line cmd">gate propose --policy=crm-low-risk</div>
+          <div class="ht-line cmd">POST /v1/intents  ← agent submits</div>
           <div class="ht-sep"></div>
-          <div class="ht-line ok">✓ sender: kai-crm-agent (verified)</div>
-          <div class="ht-line ok">✓ destination: salesforce.import (allowed)</div>
-          <div class="ht-line warn">⚠ record_count: 847 → threshold exceeded</div>
-          <div class="ht-line info">→ status: PENDING_APPROVAL</div>
-          <div class="ht-line dim">&nbsp;&nbsp;proposal_id: prp_K9x2mF4j8qR</div>
+          <div class="ht-line ok">✓ agent: crm-sync-agent (registered)</div>
+          <div class="ht-line ok">✓ destination: salesforce.import</div>
+          <div class="ht-line warn">⚠ risk: 0.74 high · 847 records · pii</div>
+          <div class="ht-line info">→ PENDING_APPROVAL · int_A1b2C3d4E5f6</div>
           <div class="ht-sep"></div>
-          <div class="ht-line cmd">gate approve prp_K9x2mF4j8qR</div>
-          <div class="ht-line ok">✓ approved by: ops@acme.com</div>
-          <div class="ht-line info">→ one-time delivery link issued</div>
-          <div class="ht-line dim">&nbsp;&nbsp;expires: 60 min · second req → 410</div>
+          <div class="ht-line cmd">POST /v1/intents/:id/approve</div>
+          <div class="ht-line ok">✓ approved_by: ops@acme.com</div>
+          <div class="ht-line cmd">POST /v1/intents/:id/execute</div>
+          <div class="ht-line info">→ runner_exec · token: exe_… (15 min)</div>
           <div class="ht-sep"></div>
-          <div class="ht-line ok">✓ audit logged · immutable · done.</div>
+          <div class="ht-line ok">✓ succeeded · audit sealed · done.</div>
         </div>
         <div class="ht-footer">
-          <div class="ht-stat green">847 records</div>
-          <div class="ht-stat amber">human reviewed</div>
-          <div class="ht-stat purple">one-time delivery</div>
+          <div class="ht-stat green">risk scored</div>
+          <div class="ht-stat amber">human approved</div>
+          <div class="ht-stat purple">execution governed</div>
         </div>
       </div>
     </div>
@@ -631,16 +630,16 @@
       <div class="stat-label">Agent frameworks supported</div>
     </div>
     <div class="stat-item reveal" style="transition-delay:.08s">
-      <div class="stat-val">4</div>
-      <div class="stat-label">Core API methods</div>
+      <div class="stat-val">3</div>
+      <div class="stat-label">Execution modes: gate, runner, pull</div>
     </div>
     <div class="stat-item reveal" style="transition-delay:.16s">
-      <div class="stat-val">1×</div>
-      <div class="stat-label">One-time signed delivery</div>
+      <div class="stat-val">0×</div>
+      <div class="stat-label">LLMs at eval time — pure YAML</div>
     </div>
     <div class="stat-item reveal" style="transition-delay:.24s">
       <div class="stat-val">∞</div>
-      <div class="stat-label">Immutable audit retention</div>
+      <div class="stat-label">Immutable action ledger</div>
     </div>
   </div>
 </div>
@@ -650,8 +649,8 @@
 <!-- PROBLEM -->
 <section class="section" id="problem">
   <div class="section-label reveal">The problem</div>
-  <h2 class="section-h2 reveal">Approval logic ends up scattered.<br>None of it becomes infrastructure.</h2>
-  <p class="section-lead reveal">Agent frameworks help you build workflows. They don't give you a shared commit checkpoint. Teams end up with Slack approval bots, ad-hoc middleware, and fragile guardrails. None of it is centralized. None of it spans frameworks.</p>
+  <h2 class="section-h2 reveal">Agents are writing to production.<br>Nobody governs what they execute.</h2>
+  <p class="section-lead reveal">Frameworks help you build agent workflows. None of them give you a control plane for what the agent actually does in the real world. Writes go out unchecked, unapproved, unlogged. Gate is the missing infrastructure layer.</p>
 
   <div class="problem-grid">
     <div class="problem-card reveal">
@@ -768,8 +767,8 @@
 <!-- CROSS-FRAMEWORK -->
 <section class="section">
   <div class="section-label reveal">One queue. Every framework.</div>
-  <h2 class="section-h2 reveal">Marketing ships CrewAI.<br>Engineering ships LangGraph.<br>Your CTO has no idea what's writing to prod.</h2>
-  <p class="section-lead reveal">Every framework ships its own half-baked HITL. None of it is enforced. None of it is centralized. Gate sits outside every framework and governs all of them.</p>
+  <h2 class="section-h2 reveal">Every framework ships its own<br>half-baked approval widget.<br>None of it is a control plane.</h2>
+  <p class="section-lead reveal">LangGraph has HITL. CrewAI has callbacks. AutoGen has code review. None of it gives you a shared runtime governance layer. Gate sits outside every framework and governs all of them.</p>
 
   <div class="fw-row reveal">
     <span class="fw-pill">CrewAI</span>
@@ -832,35 +831,35 @@
 <!-- HOW IT WORKS -->
 <section class="section" id="how-it-works">
   <div class="section-label reveal">How it works</div>
-  <h2 class="section-h2 reveal">Five steps. No exceptions.</h2>
-  <p class="section-lead reveal">Every agent output goes through the same flow — regardless of which team built it or which framework it runs on.</p>
+  <h2 class="section-h2 reveal">Intent in. Governed execution out.<br>Full ledger always.</h2>
+  <p class="section-lead reveal">Agents submit intent. Gate decides whether it executes, when, and how. Every step is logged. The agent never touches the destination directly.</p>
 
   <div class="flow-track">
     <div class="flow-step reveal">
       <div class="flow-num" aria-label="Step 1">1</div>
       <div class="flow-line" aria-hidden="true"></div>
       <div class="flow-body">
-        <h3>Agent proposes an output</h3>
-        <p>Agent calls <code>gate.propose()</code> with payload, destination, and policy ID. Gate verifies the sender against the agent registry. Unknown agents are rejected immediately.</p>
-        <span class="flow-tag tag-audit">Identity verified</span>
+        <h3>Agent submits intent</h3>
+        <p>Agent calls <code>gate.propose()</code> — or <code>POST /v1/intents</code> — with destination, policy, and payload. Intent is registered with a unique ID. Unknown agents are rejected. Duplicate intents (idempotency key match) are blocked.</p>
+        <span class="flow-tag tag-audit">Intent registered</span>
       </div>
     </div>
     <div class="flow-step reveal" style="transition-delay:.08s">
       <div class="flow-num" aria-label="Step 2">2</div>
       <div class="flow-line" aria-hidden="true"></div>
       <div class="flow-body">
-        <h3>Gate evaluates policy</h3>
-        <p>Payload is classified. Destination is checked against the allowlist. Policy rules fire — schema validation, PII detection, record count thresholds, sensitivity tags.</p>
-        <span class="flow-tag tag-block">Blocked if policy fails</span>
+        <h3>Policy engine + risk scoring</h3>
+        <p>Gate evaluates the policy deterministically — no LLM, same input always same output. Risk score calculated from destination, record count, financial value, sensitivity tags. Policy decision stored immutably.</p>
+        <span class="flow-tag tag-block">Blocked · scored · decided</span>
       </div>
     </div>
     <div class="flow-step reveal" style="transition-delay:.16s">
       <div class="flow-num" aria-label="Step 3">3</div>
       <div class="flow-line" aria-hidden="true"></div>
       <div class="flow-body">
-        <h3>Block, auto-approve, or queue for human review</h3>
-        <p>Low-risk proposals auto-approve. High-risk proposals enter the approval queue — Slack hook, email, or dashboard. Humans approve or reject with full context.</p>
-        <span class="flow-tag tag-pending">Pending approval</span>
+        <h3>Approve, block, or hold</h3>
+        <p>Low-risk auto-approves by policy. High-risk enters the approval queue — reviewers see risk score, estimated records, sensitivity tags, destination. Approve or reject with one click. Full context, no guessing.</p>
+        <span class="flow-tag tag-pending">Held for review</span>
         <span class="flow-tag tag-ok" style="margin-left:.5rem">Auto-approved</span>
       </div>
     </div>
@@ -868,17 +867,17 @@
       <div class="flow-num" aria-label="Step 4">4</div>
       <div class="flow-line" aria-hidden="true"></div>
       <div class="flow-body">
-        <h3>One-time signed delivery</h3>
-        <p>Approved proposals get a signed one-time delivery link or webhook. One destination. Expires. Second request returns 410. The payload cannot be redirected or reused.</p>
-        <span class="flow-tag tag-ok">Delivered once</span>
+        <h3>Execution issued</h3>
+        <p>Gate issues a signed execution order with a one-time token (15 min TTL). In <strong>runner_exec</strong> mode a trusted worker inside your VPC fetches it and executes — credentials never leave your environment. Token expires. Replay blocked.</p>
+        <span class="flow-tag tag-ok">Token-gated execution</span>
       </div>
     </div>
     <div class="flow-step reveal" style="transition-delay:.32s">
       <div class="flow-num" aria-label="Step 5">5</div>
       <div class="flow-body">
-        <h3>Immutable audit trail</h3>
-        <p>Every event is logged — proposal, policy check, approval decision, delivery, expiry. Queryable by proposal ID. Not deletable. Not editable. The paper trail your compliance team will ask for.</p>
-        <span class="flow-tag tag-audit">Full audit logged</span>
+        <h3>Action ledger sealed</h3>
+        <p>Every state transition is logged — intent_proposed, policy_checked, approval_granted, execution_scheduled, execution_succeeded. Queryable by intent ID. Not deletable. The record of everything your agents have ever done.</p>
+        <span class="flow-tag tag-audit">Ledger sealed</span>
       </div>
     </div>
   </div>
@@ -889,8 +888,8 @@
 <!-- API -->
 <section class="section" id="api">
   <div class="section-label reveal">API</div>
-  <h2 class="section-h2 reveal">Four methods.<br>That's the whole surface area.</h2>
-  <p class="section-lead reveal">If you need more than this to govern agent writes, you're building the wrong thing.</p>
+  <h2 class="section-h2 reveal">Submit intent. Get a decision.<br>Execute when authorized.</h2>
+  <p class="section-lead reveal">Three steps every agent write goes through. The surface area is intentionally small. Complexity lives in the policy file, not the API.</p>
 
   <div class="code-block reveal">
     <div class="cb-header">
@@ -1272,64 +1271,78 @@ npx zehrava-gate --port 4000</pre>
     <details class="faq-item">
       <summary class="faq-q">Does Gate have the same context drift problem as the agent?</summary>
       <div class="faq-a">
-        <p>No. Gate doesn't reason. There's no LLM at evaluation time — just a YAML policy file evaluated deterministically. Same input always produces the same output. Your agent's context can drift across 128k tokens; Gate's evaluation is stateless and identical on call one and call ten thousand. The policy was written by a human when they were thinking clearly. Gate enforces it mechanically, forever.</p>
+        <p>No. Gate has no context window. Policy evaluation is pure YAML — deterministic, stateless, identical on call one and call ten thousand. Your agent's reasoning can drift across 128k tokens of session state. Gate's evaluation doesn't. The policy was written by a human when they were thinking clearly. Gate enforces it mechanically forever.</p>
+        <p style="margin-top:.75rem">This is the core architectural bet: move trust from the runtime (LLM reasoning) to the policy layer (YAML). The policy can be read, audited, and version-controlled. Agent reasoning can't.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">The agent still has to make a tool call to use Gate. Can't it skip that?</summary>
+      <summary class="faq-q">The agent still calls Gate voluntarily. Can't it skip the call?</summary>
       <div class="faq-a">
-        <p>Yes — and we're honest about it. Gate is middleware, not an OS-level intercept. A fully rogue agent that intentionally bypasses the SDK call is out of scope for Gate's current architecture. What Gate protects against is the 99% case: agents trying to do the right thing with bad data, stale state, or instructions that violate your policy. That's the real threat surface in production today.</p>
-        <p style="margin-top:.75rem">The reverse proxy architecture — where Gate sits between the agent and its output destinations at the network level, with no SDK call required — is on the roadmap. Until then, Gate is a convention + enforcement layer for teams that want structured safety, not adversarial protection.</p>
+        <p>Yes — and we say so plainly. Gate is middleware, not a kernel-level intercept. An agent that intentionally skips the SDK call bypasses Gate entirely. We're not going to pretend otherwise.</p>
+        <p style="margin-top:.75rem">What Gate protects against is the 99% case: agents trying to do the right thing with bad data, stale state, or instructions that violate policy. That's the real threat surface in production. Fully rogue agents that intentionally subvert your infrastructure are a different problem category — one that requires network-level enforcement.</p>
+        <p style="margin-top:.75rem">The reverse proxy architecture — Gate as a network layer between agents and destination systems, no SDK call required — is on the roadmap. Until then, Gate is a convention-plus-enforcement layer for teams building responsible systems, not adversarial protection.</p>
       </div>
     </details>
 
     <details class="faq-item">
       <summary class="faq-q">Can an agent craft a payload that bypasses the term scan?</summary>
       <div class="faq-a">
-        <p>Simple obfuscation is blocked — Gate normalizes text before scanning: strips punctuation, collapses whitespace, maps leet substitutions (r3fund → refund, refund-guaranteed → refund guaranteed). A determined adversarial agent using synonyms or paraphrasing can still get around it. We document this clearly: Gate's term scan stops accidental violations and basic evasion. It's not designed to stop a maximally adversarial agent — that's a different product category.</p>
-        <p style="margin-top:.75rem">For high-risk destinations, pair term scanning with <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code> — every write gets human eyes regardless of term matching.</p>
+        <p>Simple obfuscation is blocked. Gate normalizes before scanning: strips punctuation, collapses whitespace, maps leet substitutions (r3fund → refund, refund-guaranteed → refund guaranteed). A determined adversarial agent using synonyms or paraphrasing can still get through. We're clear about that.</p>
+        <p style="margin-top:.75rem">Gate's term scan stops accidental violations and basic evasion. It is not designed to stop a maximally adversarial agent — that's a semantic understanding problem, not a string matching problem.</p>
+        <p style="margin-top:.75rem">For high-risk destinations: pair term scanning with <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code>. Every write gets human eyes regardless of what the scan found.</p>
       </div>
     </details>
 
     <details class="faq-item">
       <summary class="faq-q">What if Gate goes down? Does the agent fail open?</summary>
       <div class="faq-a">
-        <p>Gate itself doesn't decide — your agent code does, based on how it handles the failed HTTP call. Our recommendation (and the only safe default): fail closed. If Gate is unreachable, treat it as a block. The SDK wrapper should throw and halt the write, not proceed silently. We document this as a required implementation pattern, not optional.</p>
+        <p>Gate doesn't decide — your code does, based on how it handles a failed HTTP call. The only safe default: fail closed. If Gate is unreachable, treat it as a block. Throw and halt the write. Do not proceed silently.</p>
+        <p style="margin-top:.75rem">We document this as a required implementation pattern, not optional guidance. An SDK that fails open when Gate is unreachable has defeated the point of Gate. The fail-closed pattern has to be wired in at integration time, not assumed.</p>
       </div>
     </details>
 
     <details class="faq-item">
       <summary class="faq-q">Can a human approver be fooled by what the agent writes in the proposal?</summary>
       <div class="faq-a">
-        <p>Technically yes — the agent controls the payload sent to Gate, and a capable agent could describe a destructive action in benign terms. Gate doesn't independently summarize or verify the agent's description of its own payload. This is the same trust problem as any human-in-the-loop system. Mitigations: show the raw payload to reviewers (not just the description), set short expiry windows so stale approvals can't be reused, and use <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code> for high-risk destinations so a human always makes the call.</p>
+        <p>Yes — the agent controls the payload and the description. A capable agent could describe a destructive action in benign terms. Gate doesn't independently verify the agent's description of its own intent.</p>
+        <p style="margin-top:.75rem">The V2 dashboard mitigates this: approvers now see the risk score, estimated record count, financial value, and sensitivity tags alongside the payload — not just a free-text description. Surface area for deception is smaller, but not zero.</p>
+        <p style="margin-top:.75rem">For high-risk approvals: show the raw payload to reviewers, not just the description. Use short expiry windows. Require multiple approvers for critical destinations.</p>
       </div>
     </details>
 
     <details class="faq-item">
       <summary class="faq-q">What about multi-agent pipelines? Who's accountable?</summary>
       <div class="faq-a">
-        <p>The audit trail logs whichever agent called Gate. If Agent B calls Gate after receiving instructions from Agent A, only Agent B appears in the audit. Agent A is invisible in the current schema. The <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">on_behalf_of</code> field for nested agent accountability is on the near-term roadmap. For now: wire Gate at the orchestrator level, not just the leaf agent, so the audit captures the decision-making layer.</p>
+        <p>The audit trail logs whichever agent made the Gate call. If a leaf agent calls Gate after receiving instructions from an orchestrator, only the leaf agent appears by default. The orchestrator's role is invisible unless you wire it in.</p>
+        <p style="margin-top:.75rem">Use <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">on_behalf_of</code> to pass the orchestrating agent's ID — the audit will record both. Best practice: wire Gate at the orchestrator level, not just at the leaves. If the decision-making layer calls Gate before dispatching sub-agents, the accountability chain is complete.</p>
       </div>
     </details>
 
     <details class="faq-item">
       <summary class="faq-q">What does Gate not protect against?</summary>
       <div class="faq-a">
-        <p>Rogue agents that intentionally skip the SDK call. Adversarial prompts that manipulate the agent into crafting policy-compliant payloads that are still harmful in context. Destinations outside Gate's policy allowlist that the agent accesses through other means. Gate is a safety layer for teams building responsible agents — not a security boundary against actively malicious runtime behavior.</p>
+        <p>Four things, clearly stated:</p>
+        <ul style="margin-top:.75rem;color:var(--muted2)">
+          <li style="margin-bottom:.5rem"><strong style="color:var(--text)">Rogue agents that skip the SDK call.</strong> Gate is middleware. An agent that doesn't call Gate isn't governed by Gate.</li>
+          <li style="margin-bottom:.5rem"><strong style="color:var(--text)">Adversarial prompt injection.</strong> An attacker who manipulates the agent into crafting policy-compliant payloads that are still harmful in context. Gate evaluates the payload, not the intent behind it.</li>
+          <li style="margin-bottom:.5rem"><strong style="color:var(--text)">Destinations outside Gate's policy scope.</strong> If the agent accesses a system not in the policy allowlist through other means, Gate isn't in that path.</li>
+          <li><strong style="color:var(--text)">Compliance-grade immutability.</strong> The audit log is append-only and server-side. It is not cryptographically signed. Someone with direct DB access could tamper with it. Cryptographic signing is on the roadmap.</li>
+        </ul>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Is the audit trail tamper-proof?</summary>
+      <summary class="faq-q">Why deterministic YAML instead of an LLM guardrail?</summary>
       <div class="faq-a">
-        <p>The audit log is written server-side by Gate — agents have no API route to write or modify it. It's append-only in practice. For most production use cases that's sufficient. It is not cryptographically signed, so someone with direct database access could tamper with it. If your use case requires compliance-grade immutability (SOC 2, legal audit, regulated industries), audit export to an external immutable log store is the right answer — that integration is on the roadmap.</p>
+        <p>LLM guardrails reason about intent. Gate enforces rules. They're solving different problems.</p>
+        <p style="margin-top:.75rem">An LLM guardrail can catch nuanced harmful content that a string rule would miss. It can also hallucinate, be jailbroken, produce different outputs for identical inputs, and cost money per evaluation. None of that is acceptable in an enforcement layer.</p>
+        <p style="margin-top:.75rem">Gate's job is to be boring: same input, same output, every time, fast, cheap, auditable. YAML policy files can be read by engineers and compliance teams alike. They can be version-controlled, diff'd, rolled back. You know exactly what they do. That's the point.</p>
       </div>
     </details>
 
   </div>
 </section>
-
 
 <!-- EMAIL CAPTURE -->
 <section class="section" style="padding-bottom:1rem">
