@@ -138,7 +138,7 @@
 
   <ol>
     <li><strong>Propose.</strong> The agent calls <code>gate.propose()</code> with its intended action. The action is described, not executed. It includes what, where, and how many.</li>
-    <li><strong>Policy check.</strong> The gate evaluates the proposal against rules. Is the destination allowed? Is the volume within approved limits? Is this action type permitted for this agent?</li>
+    <li><strong>Policy check.</strong> Gate evaluates the intent against rules. Is the destination allowed? Is the volume within approved limits? Is this action type permitted for this agent?</li>
     <li><strong>Approval.</strong> If policy passes, the action is approved. Automated for low-risk operations. Human-in-the-loop for anything above a defined threshold.</li>
     <li><strong>Execute.</strong> <code>gate.execute()</code> issues a signed execution order. Worker runs inside your VPC. Retries don't re-execute — token is one-time.</li>
   </ol>
@@ -196,7 +196,9 @@ def send_campaign(agent_output):
 
     # Step 3: Execute — exactly once
     # gate.execute() uses a one-time token; retries are safe
-    result = gate.execute(proposal.token, executor=lambda: [
+    order = gate.execute(intent_id=p["intentId"])  # signed execution order
+    result = run_import(order,  # worker uses order["execution_token"]
+        records=[
         mailer.send(to=email, subject=subject, body=body)
         for email in emails
     ])

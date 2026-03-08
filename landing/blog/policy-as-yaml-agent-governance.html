@@ -124,7 +124,7 @@
 
   <h2>Policy-as-YAML: The Pattern</h2>
 
-  <p>Policy-as-YAML treats approval rules as data, not code. You define what's allowed — data types, destinations, thresholds, expiry — in a YAML file. Every agent loads that file at runtime. The policy evaluates the proposal before any human sees it.</p>
+  <p>Policy-as-YAML treats approval rules as data, not code. You define what's allowed — data types, destinations, thresholds, expiry — in a YAML file. Every agent loads that file at runtime. The policy evaluates the intent before any human sees it.</p>
 
   <p>Four properties make this work:</p>
 
@@ -150,7 +150,7 @@ allowed_types: [csv, json]
 destinations: [salesforce.import, hubspot.contacts]
 auto_approve_under: 100        # rows under 100 approve instantly
 require_approval_over: 100     # rows at or above 100 queue for review
-expiry_minutes: 60             # proposal expires if not actioned in 1 hour
+expiry_minutes: 60             # intent expires if not actioned in 1 hour
 # execution: runner_exec (worker runs in your VPC) (worker runs in your VPC, 15min token TTL)</code></pre>
 
   <p>This is the baseline. Small CRM syncs clear automatically. A 50-row contact upload at 2am doesn't wake anyone up. A 10,000-row export does.</p>
@@ -216,7 +216,7 @@ const result = await gate.propose({
 if (result.status === 'approved') {
   await syncToSalesforce(result.payload);
 } else if (result.status === 'pending') {
-  console.log(`Proposal ${result.id} queued for review`);
+  console.log(`Intent ${result.intentId} queued for review`);
 } else {
   console.error(`Blocked: ${result.reason}`);
 }</code></pre>

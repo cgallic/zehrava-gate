@@ -147,7 +147,7 @@ destinations: [blog.publish]
 require_approval: always
 expiry_minutes: 1440
 notes: "All blog content must be reviewed before publishing to zehrava.com/blog"</code></pre>
-  <p>The key: <code>require_approval: always</code>. The agent can propose. It cannot deliver without a human in the loop. <code>gate.propose()</code> creates the proposal and returns an ID. <code>gate.execute()</code> only executes after an approver signs off — and it's one-time. Once it fires, the proposal closes.</p>
+  <p>The key: <code>require_approval: always</code>. The agent can propose. It cannot deliver without a human in the loop. <code>gate.propose()</code> submits the intent. <code>gate.execute()</code> issues the execution order after a human approves — one-time token. Once it fires, the intent closes.</p>
 
   <hr>
 
@@ -159,16 +159,16 @@ int_4a3b5e  │ Why AI Agents Need a Commit Checkpoint    ⏳ Pending
 int_3d1186  │ 847 Records, No Audit Trail               ⏳ Pending
 int_478ac5  │ Policy-as-YAML: Agent Governance          ⏳ Pending
 ──────────────────────────────────────────────────────────────</code></pre>
-  <p>Each proposal had the full HTML payload, target keyword, internal links, and destination path. We read all three. Approved. Published. Total review time: about ten minutes across three posts. That's the cost of the human checkpoint.</p>
+  <p>Each intent had the full HTML payload, target keyword, internal links, and destination path. We read all three. Approved. Published. Total review time: about ten minutes across three posts. That's the cost of the human checkpoint.</p>
 
   <hr>
 
   <h2>Same System, Any Write Type</h2>
-  <p>Gate doesn't know these were blog posts. It doesn't have a blog mode. The same dashboard where we approved these proposals is where we approve Salesforce record imports, support email drafts, and finance exports. The payload is different every time. The pipeline is identical:</p>
+  <p>Gate doesn't know these were blog posts. It doesn't have a blog mode. The same dashboard where we approved these intents is where we approve Salesforce record imports, support email drafts, and finance exports. The payload is different every time. The pipeline is identical:</p>
   <ol>
     <li>Agent calls <code>gate.propose()</code></li>
     <li>Policy evaluates destination and payload</li>
-    <li>Proposal lands in the queue</li>
+    <li>Intent lands in the queue</li>
     <li>Human reviews and approves</li>
     <li><code>gate.execute()</code> fires — once</li>
   </ol>
