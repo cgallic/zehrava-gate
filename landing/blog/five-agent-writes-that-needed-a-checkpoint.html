@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Five Agent Writes That Needed a Checkpoint — Zehrava Gate</title>
+  <meta name="description" content="Real incident patterns from AI agents writing to production systems. Each one was preventable with a policy checkpoint.">
+  <meta property="og:title" content="Five Agent Writes That Needed a Checkpoint">
+  <meta property="og:description" content="Real incident patterns from AI agents writing to production systems. Each one was preventable with a policy checkpoint.">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --text: #f1f5f9; --muted: #94a3b8;
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --red: #f87171; --amber: #f59e0b;
+      --font: "Plus Jakarta Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,15,26,0.9); backdrop-filter: blur(16px); z-index: 100; }
+    .hdr-logo { font-size: .95rem; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: .5rem; }
+    .hdr-logo span { background: linear-gradient(135deg, #818cf8, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hdr-right { display: flex; gap: 1.5rem; font-size: .875rem; }
+    .hdr-right a { color: var(--muted); }
+    .post-wrap { max-width: 720px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+    .post-meta { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 1.25rem; }
+    .post-meta span { color: var(--purple-b); }
+    h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 900; letter-spacing: -.03em; line-height: 1.15; margin-bottom: 1.25rem; }
+    .post-lead { font-size: 1.15rem; color: var(--muted); line-height: 1.75; margin-bottom: 3rem; padding-bottom: 3rem; border-bottom: 1px solid var(--border); }
+    h2 { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; margin: 2.75rem 0 .875rem; }
+    p { color: var(--muted); margin-bottom: 1.25rem; font-size: 1rem; }
+    p strong { color: var(--text); font-weight: 700; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; font-family: var(--mono); font-size: .8rem; line-height: 1.75; color: #a78bfa; overflow-x: auto; margin: 1.5rem 0; }
+    code { font-family: var(--mono); font-size: .82em; color: var(--purple-b); background: rgba(99,102,241,0.1); padding: .15em .4em; border-radius: 4px; }
+    .incident { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; margin: 2rem 0; }
+    .incident-num { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--purple-b); margin-bottom: .5rem; }
+    .incident h3 { font-size: 1.125rem; font-weight: 800; margin-bottom: 1rem; color: var(--text); }
+    .incident p { margin-bottom: .875rem; }
+    .incident p:last-child { margin-bottom: 0; }
+    .what-happened { background: rgba(248,113,113,0.06); border-left: 3px solid var(--red); padding: .875rem 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+    .what-happened strong { color: var(--red); }
+    .gate-fix { background: rgba(34,197,94,0.06); border-left: 3px solid var(--green); padding: .875rem 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+    .gate-fix strong { color: var(--green); }
+    .post-footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .btn { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem 1.25rem; border-radius: 8px; font-weight: 700; font-size: .875rem; transition: opacity 150ms; }
+    .btn-primary { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
+    .btn-secondary { border: 1px solid var(--border); color: var(--muted); }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: .875rem; }
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="hdr-logo">
+    <svg width="26" height="26" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#0d1117"/><path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/><path d="M74 28 L26 72" stroke="url(#g)" stroke-width="13" stroke-linecap="round"/><path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/><defs><linearGradient id="g" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs></svg>
+    Zehrava <span>Gate</span>
+  </a>
+  <div class="hdr-right">
+    <a href="/blog">Blog</a>
+    <a href="/docs">Docs</a>
+    <a href="/demo">Live demo</a>
+  </div>
+</header>
+
+<div class="post-wrap">
+  <div class="post-meta">March 8, 2026 · <span>Engineering</span></div>
+  <h1>Five Agent Writes That Needed a Checkpoint</h1>
+  <p class="post-lead">These aren't hypothetical. They're the patterns we kept seeing when talking to teams shipping AI agents into production — each one a write action that went somewhere it shouldn't have, or said something it shouldn't have said. Every one of them was preventable with a policy checkpoint before the write landed.</p>
+
+  <div class="incident">
+    <div class="incident-num">Incident 01</div>
+    <h3>The support agent that promised a full refund</h3>
+    <p>A customer support agent was drafting replies to Zendesk tickets. It was performing well — fast, accurate, right tone. On ticket #4,847, a frustrated customer mentioned they'd been waiting three weeks. The agent, optimizing for resolution, replied: <em>"We guarantee a full refund will be processed within 24 hours."</em></p>
+    <p>Finance had a different view of what the company could guarantee. Legal had an even different view. The agent sent it before anyone saw it.</p>
+    <div class="what-happened"><strong>What happened:</strong> Commitment sent to production. Customer screenshot it immediately. Finance escalated. One agent reply, one legal exposure.</div>
+    <div class="gate-fix"><strong>Gate fix:</strong> <code>block_if_terms: ["refund guaranteed", "full refund"]</code> in the support-reply policy. The agent proposes the reply, Gate scans it, blocks before it reaches Zendesk. Agent sees <code>blockReason: "Payload contains blocked term: refund guaranteed"</code> and routes to a human.</div>
+  </div>
+
+  <div class="incident">
+    <div class="incident-num">Incident 02</div>
+    <h3>The CRM agent that imported 40,000 records at 2am</h3>
+    <p>A LangGraph pipeline was processing a lead list and writing contacts into Salesforce. It worked correctly in staging — batches of 50, reviewed, approved. In production, someone forgot to set the batch size limit. The agent processed the full file in one shot: 40,211 records, unreviewed, written directly to the CRM at 2:17am.</p>
+    <p>Duplicates, bad data, and overwritten existing contacts. Monday morning was not great.</p>
+    <div class="what-happened"><strong>What happened:</strong> 40k records written without review. 3,400 existing contacts had fields overwritten. Two days of cleanup.</div>
+    <div class="gate-fix"><strong>Gate fix:</strong> <code>auto_approve_under: 100 / require_approval_over: 100</code>. Anything over 100 records goes to the dashboard for human review before a single row writes to Salesforce. The 2am run would have sat in pending until a human approved it — which they wouldn't have, because they would have seen the record count and asked questions.</div>
+  </div>
+
+  <div class="incident">
+    <div class="incident-num">Incident 03</div>
+    <h3>The email agent that sent to 8,000 people</h3>
+    <p>A marketing agent was drafting a campaign email and sending to a filtered segment. The filter logic had a bug — instead of selecting the "re-engagement" segment (800 contacts), it selected all contacts without an unsubscribe flag: 8,231 people. The agent called the email API. The send started before anyone noticed.</p>
+    <p>8,000 people received an email intended for 800. Unsubscribes spiked. Deliverability took a hit that lasted three months.</p>
+    <div class="what-happened"><strong>What happened:</strong> Wrong segment, full send. Deliverability damage, trust damage, 400+ unsubscribes in 24 hours.</div>
+    <div class="gate-fix"><strong>Gate fix:</strong> Every email send goes through Gate with <code>recordCount</code>. Policy flags anything over 1,000 recipients for human approval. The agent proposes, Gate holds it pending, a human sees "8,231 recipients" and asks why. Bug surfaces before the send.</div>
+  </div>
+
+  <div class="incident">
+    <div class="incident-num">Incident 04</div>
+    <h3>The finance agent that issued a refund to the wrong Stripe customer</h3>
+    <p>A billing agent was processing refund requests from a support queue. It matched the refund to a customer by email. Two customers had the same name and similar email addresses — one had an active dispute, one didn't. The agent matched to the wrong record. It called <code>stripe.refunds.create</code> for $1,240 to the wrong account.</p>
+    <p>The correct customer was still waiting for their refund. The wrong customer got a windfall and didn't mention it. Finance caught it on reconciliation 11 days later.</p>
+    <div class="what-happened"><strong>What happened:</strong> $1,240 refunded to the wrong customer. Took 11 days to surface. Recovery was partial.</div>
+    <div class="gate-fix"><strong>Gate fix:</strong> <code>require_approval: always</code> on the finance-high-risk policy. Every Stripe refund — regardless of amount — goes to human review. A reviewer would have seen the customer name mismatch in the payload before the API call fired.</div>
+  </div>
+
+  <div class="incident">
+    <div class="incident-num">Incident 05</div>
+    <h3>The content agent that published to the wrong blog</h3>
+    <p>A content pipeline was generating and publishing blog posts to a CMS. It had access to two sites: the company blog and a staging environment. A misconfigured destination variable sent a draft post — internal formatting notes and placeholder copy included — to the live site. It was indexed by Google within 40 minutes.</p>
+    <div class="what-happened"><strong>What happened:</strong> Draft content with internal notes published to production. Google indexed it. Screenshots circulated on Twitter before it was taken down.</div>
+    <div class="gate-fix"><strong>Gate fix:</strong> <code>destinations: [cms.staging]</code> in the draft policy, <code>destinations: [cms.production]</code> in the publish policy — both requiring human approval. An agent pointing at the wrong destination would be blocked immediately with <code>blockReason: "Destination 'cms.production' not in policy allowlist"</code>. The misconfiguration surfaces as a Gate block, not a live incident.</div>
+  </div>
+
+  <h2>The pattern</h2>
+  <p>Every incident above shares the same structure: an agent operating correctly on bad inputs, bad config, or an edge case that fell outside what anyone anticipated. The agent didn't malfunction. It did exactly what it was built to do — and that was the problem.</p>
+  <p><strong>Agents are fast and consistent. That's their value. It's also their failure mode.</strong> A human making the same mistake would have paused, double-checked, noticed the record count was wrong. An agent doesn't hesitate. It executes.</p>
+  <p>Gate doesn't make agents smarter. It puts a checkpoint between "the agent decided to act" and "the action landed in production" — so the cases where the decision was wrong get caught before they become incidents.</p>
+  <p>The five policies above are in the Gate repo. Drop them in your policy directory and your agent has guardrails for all five patterns in under 10 minutes.</p>
+
+  <div class="post-footer">
+    <a href="/demo" class="btn btn-primary">Try the live demo →</a>
+    <a href="/blog" class="btn btn-secondary">← All posts</a>
+  </div>
+</div>
+
+<footer>© 2026 Zehrava Gate · <a href="/">zehrava.com</a> · MIT license</footer>
+
+</body>
+</html>

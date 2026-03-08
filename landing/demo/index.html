@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zehrava Gate — Live Demo</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --purple-dim: #3730a3; --green: #22c55e;
+      --red: #ef4444; --amber: #f59e0b;
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --green-dark: #16a34a; --red: #f87171; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8;
+      --font: "Plus Jakarta Sans", -apple-system, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", monospace;
+    }
+    html { overflow-x: hidden; }
+    body { overflow-x: hidden; font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--purple); text-decoration: none; }
+
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.07); position: sticky; top: 0; background: rgba(10,15,26,0.85); backdrop-filter: blur(8px); z-index: 100; }
+    .hdr-logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+    .hdr-logo span { color: var(--purple); }
+    .hdr-right { display: flex; gap: 1.5rem; font-size: 0.875rem; align-items: center; }
+    .hdr-right a { color: var(--muted2); }
+    .live-badge { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.3); padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .hero { text-align: center; padding: 3rem 2rem 2rem; }
+    .hero h1 { font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.75rem; }
+    .hero h1 span { color: var(--purple); }
+    .hero p { color: var(--muted2); font-size: 1rem; max-width: 500px; margin: 0 auto; }
+
+    /* SCENARIO TABS */
+    .scenario-tabs { display: flex; justify-content: center; gap: 0.75rem; padding: 1.5rem 2rem 0; flex-wrap: wrap; }
+    .stab { padding: 0.5rem 1.25rem; border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; background: var(--bg2); color: var(--muted2); transition: all 0.15s; }
+    .stab:hover { border-color: var(--purple-dim); color: var(--text); }
+    .stab.active { background: rgba(99,102,241,0.12); border-color: var(--purple); color: var(--text); }
+
+    /* SPLIT SCREEN */
+    .demo-area { max-width: 1100px; margin: 1.5rem auto; padding: 0 1.5rem 3rem; }
+    .demo-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    @media(max-width: 700px) { .demo-split { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
+    .panel-header { background: rgba(255,255,255,0.02); padding: 0.65rem 1rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .panel-title { font-size: 0.72rem; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 0.5rem; }
+    .panel-dots { display: flex; gap: 5px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f57; }
+    .dot-y { background: #febc2e; }
+    .dot-g { background: #28c840; }
+
+    .code-area { padding: 1.25rem; font-family: var(--mono); font-size: 0.78rem; line-height: 1.8; min-height: 280px; color: #a78bfa; overflow-x: auto; white-space: pre; }
+    .code-area .cm { color: #555; font-style: italic; }
+    .code-area .k  { color: #e879f9; }
+    .code-area .s  { color: #86efac; }
+    .code-area .n  { color: #fbbf24; }
+    .code-area .fn { color: #60a5fa; }
+    .code-area .v  { color: #f0f0f0; }
+
+    .output-area { padding: 1.25rem; min-height: 280px; display: flex; flex-direction: column; gap: 1rem; }
+    .output-placeholder { color: var(--muted2); font-size: 0.875rem; margin: auto; text-align: center; opacity: 0.5; }
+
+    /* STATUS RESULT */
+    .result-block { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.78rem; }
+    .result-line { display: flex; gap: 0.5rem; padding: 0.2rem 0; }
+    .rl-key { color: var(--muted2); min-width: 120px; }
+    .rl-val-pending { color: var(--amber); font-weight: 700; }
+    .rl-val-approved { color: var(--green); font-weight: 700; }
+    .rl-val-blocked  { color: var(--red); font-weight: 700; }
+    .rl-val          { color: var(--text); }
+
+    /* STATUS BADGE BIG */
+    .status-big { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 6px; }
+    .status-big.pending  { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+    .status-big.approved { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+    .status-big.blocked  { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+    .status-big .dot-anim { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* APPROVE BUTTON */
+    .approve-btn { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.35); padding: 0.6rem 1.25rem; border-radius: 7px; font-size: 0.875rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem; transition: all 0.15s; }
+    .approve-btn:hover { background: rgba(34,197,94,0.2); }
+    .approve-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* AUDIT TRAIL */
+    .audit-block { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.75rem 1rem; }
+    .audit-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); margin-bottom: 0.5rem; }
+    .audit-event { display: flex; gap: 0.75rem; font-size: 0.75rem; padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .audit-event:last-child { border-bottom: none; }
+    .ae-type { color: var(--purple); font-family: monospace; min-width: 140px; }
+    .ae-actor { color: var(--muted2); }
+
+    /* RUN BUTTON */
+    .run-btn { background: var(--purple); color: #fff; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 0.5rem; margin: 0 auto 1.5rem; transition: opacity 0.15s; }
+    .run-btn:hover { opacity: 0.9; }
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* SCENARIO DESC */
+    .scenario-desc { text-align: center; color: var(--muted2); font-size: 0.875rem; max-width: 580px; margin: 0 auto 1.5rem; padding: 0 1rem; line-height: 1.6; }
+
+    /* CURSOR */
+    .cursor { display: inline-block; width: 2px; height: 1em; background: var(--purple); margin-left: 1px; animation: blink 0.8s steps(1) infinite; vertical-align: middle; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .link-row { text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--muted2); }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    /* MOBILE MENU */
+    .menu-btn { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 6px; border-radius: 8px; transition: background 150ms ease-out; }
+    .menu-btn:hover { background: rgba(255,255,255,0.06); }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: var(--text); border-radius: 2px; transition: all 200ms ease-out; transform-origin: center; }
+    .menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .menu-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+    .mobile-menu { display: none; position: fixed; inset: 0; top: 57px; z-index: 99; background: rgba(10,15,26,0.97); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 2rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.07); flex-direction: column; gap: 0; overflow-y: auto; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 1.125rem; font-weight: 600; color: var(--text); padding: 1rem 0; border-bottom: 1px solid rgba(255,255,255,0.07); display: block; transition: color 150ms ease-out; text-decoration: none; }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu a:hover { color: #818cf8; }
+    .mobile-menu .m-cta { margin-top: 1.5rem; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 1rem; text-align: center; border-bottom: none !important; }
+    @media (max-width: 768px) {
+      .menu-btn { display: flex; }
+      .hdr-right .btn-primary, .hdr-right .btn-secondary { display: none; }
+      .site-nav { padding: .875rem 1.25rem; }
+      .hero { padding: 3rem 1.25rem 2rem !important; }
+      .hero h1 { font-size: 1.75rem; }
+      .hero p { font-size: .95rem; }
+      .run-btn { width: 100%; justify-content: center; }
+      .scenario-tabs { padding: 1.25rem 1rem 0; gap: .5rem; }
+      .scenario-tab { font-size: .78rem; padding: .5rem .875rem; }
+      .demo-container { padding: 0 1rem 2rem; }
+      .demo-split { grid-template-columns: 1fr; }
+      .panel { border-radius: 10px; }
+      pre, .pre { font-size: .7rem !important; padding: .875rem !important; overflow-x: auto; }
+      .output-area { min-height: 180px; padding: 1rem; }
+      .result-line { font-size: .75rem; }
+      .result-badge, .status-big { font-size: .75rem; }
+    }
+
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>The <span>live</span> demo.</h1>
+  <p>These run against the real Gate API. No mocks. No canned responses. Watch the approval queue at <a href="/dashboard">/dashboard</a> update in real time.</p>
+</div>
+
+<div class="scenario-tabs">
+  <div class="stab active" onclick="setScenario('crm')">CRM Bulk Update</div>
+  <div class="stab" onclick="setScenario('finance')">Finance Payout</div>
+  <div class="stab" onclick="setScenario('support-safe')">Support Reply — Safe</div>
+  <div class="stab" onclick="setScenario('support-risky')">Support Reply — Blocked</div>
+</div>
+
+<div class="demo-area">
+  <div class="scenario-desc" id="scenarioDesc">Agent enriches 847 leads and proposes a Salesforce CRM import. Record count exceeds the auto-approve threshold — Gate holds it for human review.</div>
+
+  <button class="run-btn" id="runBtn" onclick="runScenario()">▶ Run Scenario</button>
+
+  <div class="demo-split">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+        <div class="panel-title">Agent code</div>
+        <div></div>
+      </div>
+      <div class="code-area" id="codeArea"><span class="cm">// Select a scenario and click Run</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+        <div class="panel-title">Gate response <span id="responseBadge" style="margin-left:.5rem"></span></div>
+        <div></div>
+      </div>
+      <div class="output-area" id="outputArea">
+        <div class="output-placeholder">Response will appear here</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="link-row" id="dashLink" style="display:none">
+    Proposal is in the approval queue → <a href="/dashboard">Open Dashboard →</a>
+  </div>
+</div>
+
+<script>
+const API_KEY = 'gate_sk_1e03e5dd975da4edde747eb5a3de95a22fb0d70e346eb0af';
+let currentScenario = 'crm';
+let running = false;
+let currentProposalId = null;
+
+const SCENARIOS = {
+  crm: {
+    desc: 'Agent enriches 847 leads and proposes a Salesforce CRM import. Record count exceeds the auto-approve threshold (100) — Gate holds it for human review.',
+    code: [
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '',
+      '<span class="cm">// Agent has finished enriching leads...</span>',
+      '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
+      '',
+      '<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({',
+      '  <span class="v">payload</span>:      <span class="s">"leads_q1_2026.csv"</span>,',
+      '  <span class="v">destination</span>:  <span class="s">"salesforce.import"</span>,',
+      '  <span class="v">policy</span>:       <span class="s">"crm-low-risk"</span>,',
+      '  <span class="v">recordCount</span>:  <span class="n">847</span>',
+      '})',
+      '',
+      '<span class="cm">// 847 > 100 → pending_approval</span>',
+      '<span class="fn">console</span>.<span class="fn">log</span>(p.status)',
+    ].join('\n'),
+    propose: {
+      payload: 'leads_q1_2026.csv',
+      destination: 'salesforce.import',
+      policy: 'crm-low-risk',
+      recordCount: 847
+    },
+    expectedStatus: 'pending_approval',
+    showApprove: true
+  },
+  finance: {
+    desc: 'Agent generates a payout batch and proposes delivery to an unrecognized destination. Gate blocks it immediately — destination is not in the policy allowlist. Nothing moves.',
+    code: [
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '',
+      '<span class="cm">// Agent proposes payout to an unrecognized system...</span>',
+      '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
+      '',
+      '<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({',
+      '  <span class="v">payload</span>:     <span class="s">"payout_march_2026.csv"</span>,',
+      '  <span class="v">destination</span>: <span class="s">"unknown.payments"</span>,',
+      '  <span class="v">policy</span>:      <span class="s">"finance-high-risk"</span>',
+      '})',
+      '',
+      '<span class="cm">// "unknown.payments" not in allowlist → blocked</span>',
+      '<span class="fn">console</span>.<span class="fn">log</span>(p.status)     <span class="cm">// "blocked"</span>',
+      '<span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// destination not in policy</span>',
+    ].join('\n'),
+    propose: {
+      payload: 'payout_march_2026.csv',
+      destination: 'unknown.payments',
+      policy: 'finance-high-risk'
+    },
+    expectedStatus: 'blocked',
+    showApprove: false
+  },
+  'support-safe': {
+    desc: 'Agent drafts a routine customer support reply. No blocked terms, single message — policy auto-approves it instantly. Delivered once. Logged.',
+    code: [
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '',
+      '<span class="cm">// Agent drafts a support reply...</span>',
+      '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
+      '',
+      '<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({',
+      '  <span class="v">payload</span>:     <span class="s">"Hi! I\'ve escalated your ticket."</span>,',
+      '  <span class="v">destination</span>: <span class="s">"zendesk.reply"</span>,',
+      '  <span class="v">policy</span>:      <span class="s">"support-reply"</span>,',
+      '  <span class="v">recordCount</span>: <span class="n">1</span>',
+      '})',
+      '',
+      '<span class="cm">// recordCount: 1 ≤ 1, no blocked terms → approved</span>',
+      '<span class="fn">console</span>.<span class="fn">log</span>(p.status)  <span class="cm">// "approved"</span>',
+    ].join('\n'),
+    propose: {
+      payload: "Hi! I've escalated your ticket to our team. We'll follow up within 24 hours.",
+      destination: 'zendesk.reply',
+      policy: 'support-reply',
+      recordCount: 1
+    },
+    expectedStatus: 'approved',
+    showApprove: false
+  },
+  'support-risky': {
+    desc: 'Same agent, different draft — this reply contains "refund guaranteed". Policy scans the payload and blocks it before it ever reaches Zendesk. Agent sees the block reason.',
+    code: [
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '',
+      '<span class="cm">// Agent drafts a reply with a risky commitment...</span>',
+      '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
+      '',
+      '<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({',
+      '  <span class="v">payload</span>:     <span class="s">"Refund guaranteed — we will process it within 24 hours."</span>,',
+      '  <span class="v">destination</span>: <span class="s">"zendesk.reply"</span>,',
+      '  <span class="v">policy</span>:      <span class="s">"support-reply"</span>,',
+      '  <span class="v">recordCount</span>: <span class="n">1</span>',
+      '})',
+      '',
+      '<span class="cm">// "refund guaranteed" → term scan → blocked</span>',
+      '<span class="fn">console</span>.<span class="fn">log</span>(p.status)     <span class="cm">// "blocked"</span>',
+      '<span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// contains blocked term</span>',
+    ].join('\n'),
+    propose: {
+      payload: 'Refund guaranteed — we will process it within 24 hours.',
+      destination: 'zendesk.reply',
+      policy: 'support-reply',
+      recordCount: 1
+    },
+    expectedStatus: 'blocked',
+    showApprove: false
+  }
+};
+
+function setScenario(key) {
+  currentScenario = key;
+  currentProposalId = null;
+  document.querySelectorAll('.stab').forEach((t, i) => {
+    t.classList.toggle('active', ['crm','finance','support-safe','support-risky'][i] === key);
+  });
+  const s = SCENARIOS[key];
+  document.getElementById('scenarioDesc').textContent = s.desc;
+  document.getElementById('codeArea').innerHTML = '<span class="cm">// Click Run to execute</span>';
+  document.getElementById('outputArea').innerHTML = '<div class="output-placeholder">Response will appear here</div>';
+  document.getElementById('responseBadge').innerHTML = '';
+  document.getElementById('dashLink').style.display = 'none';
+  const btn = document.getElementById('runBtn');
+  btn.disabled = false;
+  btn.textContent = '▶ Run Scenario';
+}
+
+async function typeCode(code) {
+  const el = document.getElementById('codeArea');
+  el.innerHTML = '';
+  const lines = code.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const span = document.createElement('span');
+    // parse HTML tags in the line
+    span.innerHTML = line;
+    el.appendChild(span);
+    if (i < lines.length - 1) el.appendChild(document.createTextNode('\n'));
+    await new Promise(r => setTimeout(r, 40));
+  }
+  el.innerHTML += '<span class="cursor"></span>';
+}
+
+function statusBadge(status) {
+  const map = { pending_approval: 'pending', approved: 'approved', blocked: 'blocked' };
+  const cls = map[status] || '';
+  const icons = { pending_approval: '⏳', approved: '✓', blocked: '✗' };
+  return `<span class="status-big ${cls}"><span class="dot-anim"></span>${icons[status] || ''} ${status}</span>`;
+}
+
+async function runScenario() {
+  if (running) return;
+  running = true;
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  document.getElementById('dashLink').style.display = 'none';
+  document.getElementById('responseBadge').innerHTML = '';
+
+  const s = SCENARIOS[currentScenario];
+
+  // Type the code
+  await typeCode(s.code);
+  await new Promise(r => setTimeout(r, 400));
+
+  // Show loading in output
+  const out = document.getElementById('outputArea');
+  out.innerHTML = '<div class="output-placeholder">Calling Gate API…</div>';
+
+  try {
+    const res = await fetch('/v1/propose', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(s.propose)
+    });
+    const data = await res.json();
+
+    currentProposalId = data.proposalId;
+
+    // Update badge
+    document.getElementById('responseBadge').innerHTML = statusBadge(data.status);
+
+    // Build result display
+    const valClass = { pending_approval: 'rl-val-pending', approved: 'rl-val-approved', blocked: 'rl-val-blocked' }[data.status] || 'rl-val';
+
+    let html = `<div class="result-block">
+      <div class="result-line"><span class="rl-key">proposalId</span><span class="rl-val" style="font-size:.75rem">${data.proposalId}</span></div>
+      <div class="result-line"><span class="rl-key">status</span><span class="${valClass}">"${data.status}"</span></div>
+      ${data.blockReason ? `<div class="result-line"><span class="rl-key">blockReason</span><span class="rl-val" style="color:var(--red)">"${data.blockReason}"</span></div>` : ''}
+      ${data.expiresAt ? `<div class="result-line"><span class="rl-key">expiresAt</span><span class="rl-val">"${data.expiresAt}"</span></div>` : ''}
+    </div>`;
+
+    // Approve button for pending
+    if (data.status === 'pending_approval' && s.showApprove) {
+      html += `<button class="approve-btn" id="approveBtn" onclick="approveCurrent()">✓ Approve this proposal</button>`;
+    }
+
+    // Fetch and show audit trail
+    await new Promise(r => setTimeout(r, 300));
+    const auditRes = await fetch(`/v1/audit/${data.proposalId}`, {
+      headers: { 'Authorization': `Bearer ${API_KEY}` }
+    });
+    const auditData = await auditRes.json();
+
+    if (auditData.events && auditData.events.length) {
+      html += `<div class="audit-block">
+        <div class="audit-label">Audit trail</div>
+        ${auditData.events.map(e => `
+          <div class="audit-event">
+            <span class="ae-type">${e.event_type}</span>
+            <span class="ae-actor">${e.actor}</span>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    out.innerHTML = html;
+
+    if (data.status === 'pending_approval') {
+      document.getElementById('dashLink').style.display = 'block';
+    }
+
+    btn.textContent = '▶ Run Again';
+    btn.disabled = false;
+
+  } catch (err) {
+    out.innerHTML = `<div style="color:var(--red);font-size:.875rem;padding:.5rem">Error: ${err.message}<br><small style="color:var(--muted)">Is the Gate server running?</small></div>`;
+    btn.textContent = '▶ Run Scenario';
+    btn.disabled = false;
+  }
+
+  running = false;
+}
+
+async function approveCurrent() {
+  if (!currentProposalId) return;
+  const btn = document.getElementById('approveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Approving…'; }
+
+  const res = await fetch('/v1/approve', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ proposalId: currentProposalId })
+  });
+  const data = await res.json();
+
+  if (data.status === 'approved') {
+    document.getElementById('responseBadge').innerHTML = statusBadge('approved');
+    if (btn) {
+      btn.textContent = '✓ Approved — delivery token issued';
+      btn.style.background = 'rgba(34,197,94,0.2)';
+    }
+    // Refresh audit trail
+    const auditRes = await fetch(`/v1/audit/${currentProposalId}`, {
+      headers: { 'Authorization': `Bearer ${API_KEY}` }
+    });
+    const auditData = await auditRes.json();
+    const existing = document.querySelector('.audit-block');
+    if (existing && auditData.events) {
+      existing.innerHTML = `<div class="audit-label">Audit trail (updated)</div>` +
+        auditData.events.map(e => `<div class="audit-event"><span class="ae-type">${e.event_type}</span><span class="ae-actor">${e.actor}</span></div>`).join('');
+    }
+  }
+}
+
+  const _mb = document.getElementById('_menuBtn'), _mm = document.getElementById('_mobileMenu')
+  if (_mb && _mm) {
+    const _tog = o => { _mb.classList.toggle('open', o); _mm.classList.toggle('open', o); _mb.setAttribute('aria-expanded', o); document.body.style.overflow = o ? 'hidden' : '' }
+    _mb.addEventListener('click', () => _tog(!_mm.classList.contains('open')))
+    _mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => _tog(false)))
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') _tog(false) })
+  }
+
+</script>
+</body>
+</html>

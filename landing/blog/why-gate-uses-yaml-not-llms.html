@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Why Gate Uses YAML Instead of LLMs — Zehrava Gate</title>
+  <meta name="description" content="The obvious design choice for an AI agent safety layer would be another AI. Here's why we went the other way.">
+  <meta property="og:title" content="Why Gate Uses YAML Instead of LLMs">
+  <meta property="og:description" content="The obvious design choice for an AI agent safety layer would be another AI. Here's why we went the other way.">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --text: #f1f5f9; --muted: #94a3b8;
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e;
+      --font: "Plus Jakarta Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,15,26,0.9); backdrop-filter: blur(16px); z-index: 100; }
+    .hdr-logo { font-size: 1rem; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: .5rem; }
+    .hdr-logo span { background: linear-gradient(135deg, #818cf8, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hdr-right { display: flex; gap: 1.5rem; font-size: .875rem; }
+    .hdr-right a { color: var(--muted); }
+
+    .post-wrap { max-width: 720px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+    .post-meta { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; margin-bottom: 1.25rem; }
+    .post-meta span { color: var(--purple-b); }
+    h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 900; letter-spacing: -.03em; line-height: 1.15; margin-bottom: 1.25rem; }
+    .post-lead { font-size: 1.15rem; color: var(--muted); line-height: 1.75; margin-bottom: 3rem; padding-bottom: 3rem; border-bottom: 1px solid var(--border); }
+
+    h2 { font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; margin: 2.5rem 0 .875rem; }
+    p { color: var(--muted); margin-bottom: 1.25rem; font-size: 1rem; }
+    p strong { color: var(--text); font-weight: 700; }
+
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; font-family: var(--mono); font-size: .82rem; line-height: 1.75; color: #a78bfa; overflow-x: auto; margin: 1.5rem 0; }
+    code { font-family: var(--mono); font-size: .85em; color: var(--purple-b); background: rgba(99,102,241,0.1); padding: .15em .4em; border-radius: 4px; }
+    pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+
+    .callout { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 2rem 0; }
+    .callout p { margin: 0; color: var(--text); }
+
+    .post-footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .btn { display: inline-flex; align-items: center; gap: .5rem; padding: .65rem 1.25rem; border-radius: 8px; font-weight: 700; font-size: .875rem; transition: opacity 150ms ease-out; }
+    .btn-primary { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
+    .btn-secondary { border: 1px solid var(--border); color: var(--muted); }
+    .btn:hover { opacity: .85; text-decoration: none; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: .875rem; }
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="hdr-logo">
+    <svg width="26" height="26" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#0d1117"/><path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/><path d="M74 28 L26 72" stroke="url(#g)" stroke-width="13" stroke-linecap="round"/><path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/><defs><linearGradient id="g" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs></svg>
+    Zehrava <span>Gate</span>
+  </a>
+  <div class="hdr-right">
+    <a href="/blog">Blog</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/demo">Live demo</a>
+  </div>
+</header>
+
+<div class="post-wrap">
+  <div class="post-meta">March 8, 2026 · <span>Engineering</span></div>
+  <h1>Why Gate Uses YAML Instead of LLMs</h1>
+  <p class="post-lead">The obvious design choice for an AI agent safety layer would be another AI. An LLM that reviews proposed actions, checks them against intent, flags anomalies. Smarter, more flexible, context-aware. We went the other way — and it wasn't a close call.</p>
+
+  <h2>The problem with using an LLM as your safety layer</h2>
+  <p>Your agent operates over a context window. Instructions, tool outputs, user requests, prior results — all of it accumulates. At 128k tokens, your agent has processed more text than most humans read in a week. And somewhere in that context, something drifted. A misinterpreted instruction. A hallucinated tool output. A user request that conflicts with something from 80k tokens ago.</p>
+  <p><strong>The agent is still confident. That's the problem.</strong> LLMs don't have a confidence alarm that fires when their context gets noisy. They produce outputs that look exactly the same whether they're correct or badly wrong.</p>
+  <p>Now imagine your safety layer is also an LLM. It has its own context window. Its own drift. Its own hallucination surface. You've added a second probabilistic system to review a first probabilistic system and declared the result "safe."</p>
+  <p>You haven't added safety. You've added complexity and a second point of failure.</p>
+
+  <h2>Determinism is the property you actually want</h2>
+  <p>What you want from a safety layer is a guarantee: given the same input, it produces the same output. Every time. Forever. That's determinism — and it's the one property LLMs fundamentally cannot provide.</p>
+  <p>Gate's evaluation is stateless. No context window. No prior conversation. No accumulated state that can drift. A proposal comes in, Gate checks it against a YAML policy, and returns a result. The policy was written by a human when they were thinking clearly, not by an LLM at inference time under token pressure.</p>
+
+  <pre><code>id: support-reply
+destinations: [zendesk.reply, intercom.reply]
+block_if_terms:
+  - "refund guaranteed"
+  - "legal action"
+require_approval: false
+auto_approve_under: 1
+expiry_minutes: 30</code></pre>
+
+  <p>This rule doesn't hallucinate. It doesn't forget it was written three days ago. It doesn't get confused by what happened 80k tokens back in the agent's session. It evaluates <code>payloadContent.includes("refund guaranteed")</code> and returns <code>blocked</code> or it doesn't. Same answer every time.</p>
+
+  <h2>Flexibility is a trade-off, not a free upgrade</h2>
+  <p>The obvious objection: YAML is rigid. An LLM could catch nuanced violations that term matching misses — synonyms, paraphrasing, context-dependent harm.</p>
+  <p>True. It could also catch things that aren't violations, fail to catch things that are, and behave differently on Tuesday than it did on Monday for reasons you can't audit. <strong>Flexibility and determinism are in tension.</strong> For a safety layer, we'd rather have a system that's predictably correct about the things it covers than one that's unpredictably flexible about everything.</p>
+  <p>If your policy needs to block "refund guaranteed," write that. If it needs to block synonyms, write those too. The policy is code. It's reviewable, versionable, and testable. An LLM's reasoning is none of those things.</p>
+
+  <div class="callout">
+    <p><strong>The honest trade-off:</strong> Gate's term scan stops accidental violations and basic obfuscation. It doesn't stop a maximally adversarial agent using creative synonyms. For high-risk destinations, pair term scanning with <code>require_approval: always</code> — human review covers the long tail that rules can't anticipate.</p>
+  </div>
+
+  <h2>What about the things YAML can't express?</h2>
+  <p>Some decisions genuinely require judgment — semantic understanding, context, edge cases that no finite rule set anticipated. Gate handles this with a human approval step, not another AI layer. If the policy can't auto-approve, the proposal goes to a human reviewer in the dashboard.</p>
+  <p>This is a deliberate architectural choice. When the system doesn't know, it asks a person. Not a smarter model. A person — with full context, full accountability, and the ability to say "this is fine" or "this is not fine" in ways that get written to the audit trail permanently.</p>
+
+  <h2>Auditability follows from determinism</h2>
+  <p>When Gate blocks a proposal, the reason is a string: <code>"Payload contains blocked term: refund guaranteed"</code>. When it approves one automatically, the reason is traceable to a specific policy rule. When it requires human approval, the approver's name is in the audit trail.</p>
+  <p>Try getting that from an LLM reviewer. "Why did you approve this?" — "Based on my assessment of the semantic content and contextual appropriateness..." — is not an audit trail. It's a post-hoc rationalization.</p>
+  <p><strong>You can't audit a vibe. You can audit a rule.</strong></p>
+
+  <h2>The category this defines</h2>
+  <p>There's a spectrum of AI safety approaches: full autonomy on one end, full human review on the other. Most teams live somewhere in the middle — some things are fine to auto-approve, some things need eyes, and some things should never happen regardless.</p>
+  <p>Gate is infrastructure for that middle ground. It's not trying to be smarter than your agent. It's trying to be the one thing in your pipeline that <em>doesn't</em> reason — so that when something goes wrong, you know exactly where to look and exactly what happened.</p>
+  <p>YAML policies aren't a limitation. They're the point.</p>
+
+  <div class="post-footer">
+    <a href="/demo" class="btn btn-primary">Try the live demo →</a>
+    <a href="/blog" class="btn btn-secondary">← All posts</a>
+  </div>
+</div>
+
+<footer>
+  © 2026 Zehrava Gate · <a href="/">zehrava.com</a> · MIT license
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>847 Records Overwritten, No Audit Trail: The AI Agent Production Incident — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="An AI agent production incident overwrote 847 CRM records with partial data and left no trace. Learn how to prevent AI agent mistakes like this with a commit checkpoint pattern.">
+  <meta property="og:title" content="847 Records Overwritten, No Audit Trail: The AI Agent Production Incident">
+  <meta property="og:description" content="An AI agent production incident overwrote 847 CRM records with partial data and left no trace. Learn how to prevent AI agent mistakes like this with a commit checkpoint pattern.">
+  <meta property="og:url" content="https://zehrava.com/blog/847-records-no-audit-trail">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.4rem; color: #d0d0d0; }
+    code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e0e0e0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 600px) { header { padding: 1rem; } .hdr-links { gap: 1rem; font-size: 0.8rem; } main { padding: 2rem 1rem 3rem; } }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+<main>
+  <div class="post-meta">
+    <span class="tag">Engineering</span>
+    <span>March 8, 2026</span>
+    <span>4 min read</span>
+  </div>
+
+  <h1>847 Records Overwritten, No Audit Trail: An AI Agent Production Incident</h1>
+
+  <p><strong>This is the ai agent production incident pattern no one talks about until it happens to them.</strong> Monday morning. The sales team opens Salesforce. Account names are wrong. Phone numbers are truncated. A field called <code>lead_score</code> — the one the whole pipeline depends on — is blank across hundreds of accounts. To prevent AI agent mistakes like this, you need a checkpoint layer the enrichment agent never had.</p>
+
+  <p>The enrichment agent ran Friday night. It had a job: pull company data from an external API, fill in missing fields. It did the job. All 847 records. The API returned partial data. The agent wrote it anyway, no questions asked, overwriting clean values with garbage.</p>
+
+  <p><strong>No approval step. No diff. No rollback. No audit trail.</strong></p>
+
+  <p>That was the incident. The fix took three days. Some data was unrecoverable.</p>
+
+  <hr />
+
+  <h2>Why This Keeps Happening</h2>
+
+  <p>AI agents are write-capable. That's the point. You give them tools — CRM updates, email sends, webhook calls, database mutations — and they use them. The problem isn't that they use write tools. The problem is there's nothing between "agent decides to write" and "write executes."</p>
+
+  <p>In every other engineering context, writes have checkpoints. Migrations have review. Deploys have CI gates. Code has pull requests. But when an AI agent writes to production, there's often nothing. Just: agent runs, data changes, done.</p>
+
+  <p>What's missing is a commit layer — a point where proposed writes are visible, policy-checked, and either approved or blocked before they touch anything real.</p>
+
+  <p>This is the gap that causes <strong>ai agent production incidents</strong> at companies that think they're moving fast. They are. They're also flying blind.</p>
+
+  <p>The architecture behind that commit layer — what it is, how it works — is covered in detail in <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html">Why AI Agents Need an AI Agent Commit Checkpoint</a>. The short version: every write needs a propose → approve → deliver cycle before it touches production.</p>
+
+  <hr />
+
+  <h2>Three Incident Patterns (and What Stops Them)</h2>
+
+  <h3>1. The CRM Overwrite</h3>
+
+  <p>An enrichment agent is told to fill missing data fields. The upstream API is flaky — returns partial payloads. The agent doesn't know the difference between "no data" and "bad data." It writes what it gets.</p>
+
+  <p><strong>847 records. Partial data. Overwrites clean values. No warning.</strong></p>
+
+  <p>The fix is a bulk write threshold. If an agent proposes touching more than N records in a single pass, stop and ask. That's it. The agent isn't wrong — it's doing what you told it to do. You just never told it when to pause.</p>
+
+  <pre><code>gates:
+  - name: crm-enrichment-guard
+    trigger: write
+    resource: crm.contacts
+    policies:
+      - require_approval_over: 100</code></pre>
+
+  <p>With this policy active, the agent proposes 847 writes. Gate intercepts. A human sees the diff before anything touches the database. Friday night, nothing bad happens.</p>
+
+  <hr />
+
+  <h3>2. The Duplicate Call</h3>
+
+  <p>A lead comes in. The agent fires a webhook to trigger an outbound call. The API times out. The agent retries — standard behavior. The webhook fires again. The customer's phone rings twice in 30 seconds.</p>
+
+  <p><strong>Same lead. Two calls. Different reps. Customer is confused and annoyed.</strong></p>
+
+  <p>The agent didn't malfunction. Retry logic is correct. But no one told the system that this specific action — triggering an outbound call for this specific lead — already happened.</p>
+
+  <pre><code>gates:
+  - name: outbound-call-dedup
+    trigger: webhook
+    resource: leads.outbound_call
+    policies:
+      - block_duplicate_proposals:
+          window_seconds: 300
+          key: lead_id</code></pre>
+
+  <p>The policy hashes the proposal by <code>lead_id</code>. A second call trigger for the same lead within 5 minutes gets blocked. The customer gets one call. The retry logic keeps working. Everyone's fine.</p>
+
+  <hr />
+
+  <h3>3. The Template That Wasn't Ready</h3>
+
+  <p>A campaign agent assembles an email batch. The template has a variable: <code>{{customer_name}}</code>. Somewhere in the pipeline, the variable substitution fails — wrong key, encoding issue, doesn't matter. The agent sends anyway.</p>
+
+  <p><strong>Hundreds of customers get "Hello {{customer_name}}" in their inbox.</strong></p>
+
+  <p>The agent had no way to know the template was broken. There was no check between "build the email" and "send the email."</p>
+
+  <pre><code>gates:
+  - name: email-template-guard
+    trigger: send
+    resource: email.batch
+    policies:
+      - require_approval_if_template_error:
+          patterns:
+            - "{{*}}"
+            - "{%*%}"</code></pre>
+
+  <p>Gate scans the rendered output before delivery. Finds an unresolved template token. Holds the batch. Someone gets a Slack notification instead of customers getting embarrassing email.</p>
+
+  <hr />
+
+  <h2>The Structural Fix</h2>
+
+  <p>These aren't three separate bugs. They're the same architectural gap — agents that can write to production without a checkpoint.</p>
+
+  <p>The pattern that fixes all three:</p>
+
+  <pre><code>Agent proposes → Policy evaluates → Human approves (if needed) → Gate delivers</code></pre>
+
+  <p>The agent still has full write access. Nothing changes about what it can do. What changes is that every proposed write is a proposal first — not an execution. The policy layer runs instantly. Most writes pass through without interruption. The ones that don't get caught before they matter.</p>
+
+  <p>This is what Zehrava Gate does. It sits between your agents and your production systems as a commit checkpoint. Agents propose. Policies run. Writes either clear automatically or go to a review queue. Everything that happens is logged — proposal, policy result, approval or rejection, delivery timestamp.</p>
+
+  <p>That's the audit trail that was missing on Friday night when 847 records got overwritten. For teams managing multiple agents with different risk profiles, <a href="/blog/policy-as-yaml-agent-governance.html">Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams</a> covers how to define those rules once and share them everywhere.</p>
+
+  <hr />
+
+  <h2>Getting Started</h2>
+
+  <p>Gate works with any agent framework. It doesn't care what's calling it — LangChain, CrewAI, AutoGen, a custom Python script. It intercepts at the write layer, not the agent layer.</p>
+
+  <p>A basic configuration looks like this:</p>
+
+  <pre><code>gate:
+  endpoint: https://api.zehrava.com/v1/propose
+  api_key: ${ZEHRAVA_API_KEY}
+  default_policy: require_approval_over: 50
+
+resources:
+  crm.contacts:
+    policies:
+      - require_approval_over: 100
+
+  email.batch:
+    policies:
+      - require_approval_if_template_error
+
+  leads.outbound_call:
+    policies:
+      - block_duplicate_proposals:
+          window_seconds: 300
+          key: lead_id</code></pre>
+
+  <p>The first time an agent proposes a bulk write, you see it before it runs. That's the whole idea.</p>
+
+  <p>You don't need to rewrite your agents. You need a layer between them and the systems they touch. <a href="https://zehrava.com">Gate</a> is that layer.</p>
+
+  <div class="cta-block">
+    <h3>Add a commit checkpoint to your agent stack.</h3>
+    <p>MIT license. Self-hostable. Framework-agnostic. Takes under an hour to wrap your first agent.</p>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
+  </div>
+
+  <div class="related">
+    <h3>More from Zehrava Gate</h3>
+    <div class="related-links">
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="related-link">→ Why AI Agents Need an AI Agent Commit Checkpoint</a>
+      <a href="/blog/policy-as-yaml-agent-governance.html" class="related-link">→ Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams</a>
+    </div>
+  </div>
+</main>
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+</body>
+</html>

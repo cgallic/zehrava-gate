@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs — Zehrava Gate</title>
+  <meta name="description" content="Complete reference for Zehrava Gate: policy fields, API endpoints, SDK usage, agent registration, and dashboard.">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text: #f1f5f9; --muted: #94a3b8; --muted2: #64748b;
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --red: #f87171; --amber: #f59e0b;
+      --font: "Plus Jakarta Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", monospace;
+      --sidebar-w: 260px;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      background: rgba(10,15,26,0.92); backdrop-filter: blur(16px);
+    }
+    .hdr-logo { font-size: .95rem; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: .5rem; }
+    .hdr-logo .gate { background: linear-gradient(135deg, #818cf8, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hdr-right { display: flex; gap: 1.5rem; font-size: .875rem; align-items: center; }
+    .hdr-right a { color: var(--muted); transition: color 150ms; }
+    .hdr-right a:hover { color: var(--text); text-decoration: none; }
+    .badge-docs { background: rgba(99,102,241,0.15); color: var(--purple-b); border: 1px solid rgba(99,102,241,0.3); padding: .15rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; padding-top: 57px; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      position: fixed; top: 57px; left: 0; bottom: 0;
+      overflow-y: auto; padding: 2rem 0 4rem;
+      border-right: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    .nav-group { margin-bottom: 2rem; padding: 0 1.25rem; }
+    .nav-group-label { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted2); margin-bottom: .75rem; }
+    .nav-link {
+      display: block; padding: .45rem .75rem; border-radius: 7px;
+      font-size: .875rem; font-weight: 500; color: var(--muted);
+      transition: all 150ms ease-out; margin-bottom: .125rem;
+      text-decoration: none;
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); text-decoration: none; }
+    .nav-link.active { color: var(--purple-b); background: rgba(99,102,241,0.1); font-weight: 700; }
+    .nav-link .tag { float: right; font-size: .65rem; font-weight: 700; text-transform: uppercase; padding: .1rem .4rem; border-radius: 4px; }
+    .tag-post { background: rgba(34,197,94,0.12); color: var(--green); }
+    .tag-get { background: rgba(99,102,241,0.12); color: var(--purple-b); }
+
+    /* ── CONTENT ── */
+    .content { margin-left: var(--sidebar-w); flex: 1; padding: 3.5rem 3rem 6rem; max-width: 860px; }
+
+    /* ── TYPOGRAPHY ── */
+    h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -.035em; line-height: 1.15; margin-bottom: 1rem; }
+    h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.025em; margin: 3.5rem 0 1rem; padding-top: 3.5rem; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 2rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.015em; margin: 2rem 0 .75rem; color: var(--text); }
+    p { color: var(--muted); margin-bottom: 1.125rem; font-size: .975rem; }
+    p strong { color: var(--text); font-weight: 700; }
+    ul, ol { color: var(--muted); padding-left: 1.5rem; margin-bottom: 1.125rem; }
+    li { font-size: .975rem; margin-bottom: .375rem; }
+    li strong { color: var(--text); }
+    .lead { font-size: 1.1rem; color: var(--muted); line-height: 1.75; margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border); }
+
+    /* ── CODE ── */
+    pre {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.25rem 1.5rem; font-family: var(--mono); font-size: .8rem;
+      line-height: 1.8; overflow-x: auto; margin: 1.25rem 0;
+      position: relative;
+    }
+    pre .cm { color: #475569; font-style: italic; }
+    pre .k  { color: #e879f9; }
+    pre .s  { color: #86efac; }
+    pre .n  { color: #fbbf24; }
+    pre .fn { color: #60a5fa; }
+    pre .v  { color: #f1f5f9; }
+    pre .key { color: #a78bfa; }
+    pre .val { color: #86efac; }
+    pre .com { color: #475569; font-style: italic; }
+    code { font-family: var(--mono); font-size: .82em; color: var(--purple-b); background: rgba(99,102,241,0.1); padding: .15em .4em; border-radius: 4px; }
+    pre code { background: none; padding: 0; color: #a78bfa; font-size: inherit; }
+
+    /* ── CALLOUTS ── */
+    .callout { border-radius: 10px; padding: 1rem 1.25rem; margin: 1.5rem 0; }
+    .callout p { margin: 0; font-size: .9rem; }
+    .callout-info { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); }
+    .callout-warn { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); }
+    .callout-warn p { color: #fbbf24; }
+    .callout-tip  { background: rgba(34,197,94,0.07); border: 1px solid rgba(34,197,94,0.2); }
+    .callout-tip p { color: #4ade80; }
+
+    /* ── FIELD TABLE ── */
+    .field-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: .875rem; }
+    .field-table th { text-align: left; padding: .625rem .875rem; border-bottom: 1px solid var(--border2); color: var(--muted2); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; background: rgba(255,255,255,0.02); }
+    .field-table td { padding: .75rem .875rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .field-table td:first-child { font-family: var(--mono); font-size: .8rem; color: var(--purple-b); width: 28%; font-weight: 600; }
+    .field-table td:nth-child(2) { width: 15%; color: var(--amber); font-family: var(--mono); font-size: .78rem; }
+    .field-table td:last-child { color: var(--muted); font-size: .875rem; line-height: 1.6; }
+    .field-table tr:last-child td { border-bottom: none; }
+    .req { color: var(--red); font-size: .7rem; font-weight: 700; vertical-align: super; }
+
+    /* ── HTTP METHOD BADGES ── */
+    .method { display: inline-block; font-family: var(--mono); font-size: .72rem; font-weight: 700; padding: .2rem .5rem; border-radius: 5px; margin-right: .5rem; text-transform: uppercase; vertical-align: middle; }
+    .method-post { background: rgba(34,197,94,0.12); color: var(--green); }
+    .method-get  { background: rgba(99,102,241,0.12); color: var(--purple-b); }
+
+    .endpoint-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1.25rem 0; }
+    .endpoint-path { font-family: var(--mono); font-size: .9rem; font-weight: 700; color: var(--text); }
+    .endpoint-desc { color: var(--muted); font-size: .875rem; margin-top: .5rem; }
+    .endpoint-block hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+
+    /* ── STEP FLOW ── */
+    .steps { display: flex; flex-direction: column; gap: 0; margin: 1.5rem 0; }
+    .step { display: flex; gap: 1rem; padding: 1.125rem 0; border-bottom: 1px solid var(--border); }
+    .step:last-child { border-bottom: none; }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; color: var(--purple-b); flex-shrink: 0; margin-top: 2px; }
+    .step-body h4 { font-size: .95rem; font-weight: 700; margin-bottom: .25rem; }
+    .step-body p { margin: 0; font-size: .875rem; }
+
+    /* ── STATUS BADGES ── */
+    .status { display: inline-flex; align-items: center; gap: .35rem; font-family: var(--mono); font-size: .78rem; font-weight: 700; padding: .2rem .6rem; border-radius: 5px; }
+    .status-approved { background: rgba(34,197,94,0.12); color: var(--green); }
+    .status-blocked  { background: rgba(248,113,113,0.12); color: var(--red); }
+    .status-pending  { background: rgba(245,158,11,0.12); color: var(--amber); }
+
+    html, body { overflow-x: hidden; }
+
+    /* ── MOBILE MENU BTN ── */
+    .mob-nav-btn {
+      display: none; align-items: center; gap: .5rem;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 8px; padding: .35rem .75rem; cursor: pointer;
+      font-size: .78rem; font-weight: 700; color: var(--purple-b);
+      font-family: var(--font); transition: background 150ms;
+    }
+    .mob-nav-btn:hover { background: rgba(99,102,241,0.2); }
+
+    /* ── MOBILE DRAWER ── */
+    .mob-drawer {
+      display: none; position: fixed; inset: 57px 0 0 0; z-index: 150;
+      background: rgba(10,15,26,0.97); backdrop-filter: blur(20px);
+      overflow-y: auto; padding: 1.5rem 1.25rem 4rem;
+      transform: translateX(-100%);
+      transition: transform 220ms ease-out;
+    }
+    .mob-drawer.open { transform: translateX(0); }
+    .mob-drawer .nav-group { margin-bottom: 1.75rem; padding: 0; }
+    .mob-drawer .nav-group-label { font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted2); margin-bottom: .625rem; }
+    .mob-drawer .nav-link {
+      display: block; padding: .75rem 0; border-bottom: 1px solid var(--border);
+      font-size: .95rem; font-weight: 500; color: var(--muted);
+      text-decoration: none; transition: color 150ms;
+    }
+    .mob-drawer .nav-link:last-child { border-bottom: none; }
+    .mob-drawer .nav-link:hover, .mob-drawer .nav-link.active { color: var(--purple-b); }
+    .mob-drawer .tag { float: right; font-size: .6rem; font-weight: 700; text-transform: uppercase; padding: .1rem .35rem; border-radius: 4px; }
+
+    /* ── FIELD TABLE SCROLL WRAPPER ── */
+    .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.25rem 0; border-radius: 8px; }
+    .table-scroll .field-table { margin: 0; min-width: 560px; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .mob-nav-btn { display: flex; }
+      .mob-drawer { display: block; }
+      .hdr-right { display: none; }
+      .content { margin-left: 0; padding: 1.75rem 1.125rem 5rem; }
+      h1 { font-size: 1.65rem; }
+      h2 { font-size: 1.2rem; padding-top: 2rem; margin: 2rem 0 .75rem; }
+      h3 { font-size: 1rem; }
+      .lead { font-size: .975rem; margin-bottom: 1.75rem; padding-bottom: 1.75rem; }
+      pre { font-size: .72rem; padding: 1rem; border-radius: 8px; }
+      .endpoint-block { padding: 1rem; }
+      .endpoint-path { font-size: .8rem; word-break: break-all; }
+      .callout { padding: .875rem 1rem; }
+      .steps { margin: 1rem 0; }
+      .step { gap: .75rem; padding: .875rem 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="hdr-logo">
+    <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#0d1117"/><path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/><path d="M74 28 L26 72" stroke="url(#dg)" stroke-width="13" stroke-linecap="round"/><path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/><defs><linearGradient id="dg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs></svg>
+    Zehrava <span class="gate">Gate</span>
+    <span class="badge-docs">Docs</span>
+  </a>
+  <div class="hdr-right">
+    <a href="/">Home</a>
+    <a href="/demo">Live demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+  <button class="mob-nav-btn" id="mobNavBtn" aria-label="Open docs navigation" aria-expanded="false">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    Sections
+  </button>
+</header>
+
+<div class="mob-drawer" id="mobDrawer" aria-label="Mobile docs navigation">
+  <div class="nav-group">
+    <div class="nav-group-label">Getting started</div>
+    <a href="#quickstart" class="nav-link">Quickstart</a>
+    <a href="#register-agent" class="nav-link">Register an agent</a>
+    <a href="#your-first-proposal" class="nav-link">First proposal</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Policies</div>
+    <a href="#policy-overview" class="nav-link">Overview</a>
+    <a href="#policy-fields" class="nav-link">All fields</a>
+    <a href="#policy-examples" class="nav-link">Examples</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">API reference</div>
+    <a href="#api-register" class="nav-link"><span class="tag tag-post">POST</span> Register agent</a>
+    <a href="#api-propose" class="nav-link"><span class="tag tag-post">POST</span> Propose</a>
+    <a href="#api-approve" class="nav-link"><span class="tag tag-post">POST</span> Approve</a>
+    <a href="#api-reject" class="nav-link"><span class="tag tag-post">POST</span> Reject</a>
+    <a href="#api-deliver" class="nav-link"><span class="tag tag-post">POST</span> Deliver</a>
+    <a href="#api-proposals" class="nav-link"><span class="tag tag-get">GET</span> Proposals</a>
+    <a href="#api-audit" class="nav-link"><span class="tag tag-get">GET</span> Audit trail</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">SDK</div>
+    <a href="#sdk-install" class="nav-link">JavaScript</a>
+    <a href="#sdk-python" class="nav-link">Python</a>
+    <a href="#sdk-methods" class="nav-link">Methods</a>
+    <a href="#webhooks" class="nav-link">Webhooks</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Concepts</div>
+    <a href="#dashboard" class="nav-link">Dashboard</a>
+    <a href="#audit-trail" class="nav-link">Audit trail</a>
+    <a href="#proposal-lifecycle" class="nav-link">Lifecycle</a>
+    <a href="#fail-closed" class="nav-link">Fail closed</a>
+    <a href="#multi-agent" class="nav-link">Multi-agent</a>
+  </div>
+  <a href="/" style="display:block;margin-top:1.5rem;color:var(--muted);font-size:.875rem">← Home</a>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" aria-label="Documentation navigation">
+    <div class="nav-group">
+      <div class="nav-group-label">Getting started</div>
+      <a href="#quickstart" class="nav-link active">Quickstart</a>
+      <a href="#register-agent" class="nav-link">Register an agent</a>
+      <a href="#your-first-proposal" class="nav-link">First proposal</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Policies</div>
+      <a href="#policy-overview" class="nav-link">Overview</a>
+      <a href="#policy-fields" class="nav-link">All fields</a>
+      <a href="#policy-examples" class="nav-link">Examples</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">API reference</div>
+      <a href="#api-register" class="nav-link"><span class="tag tag-post">POST</span> Register agent</a>
+      <a href="#api-propose" class="nav-link"><span class="tag tag-post">POST</span> Propose</a>
+      <a href="#api-approve" class="nav-link"><span class="tag tag-post">POST</span> Approve</a>
+      <a href="#api-reject" class="nav-link"><span class="tag tag-post">POST</span> Reject</a>
+      <a href="#api-deliver" class="nav-link"><span class="tag tag-post">POST</span> Deliver</a>
+      <a href="#api-proposals" class="nav-link"><span class="tag tag-get">GET</span> Proposals</a>
+      <a href="#api-audit" class="nav-link"><span class="tag tag-get">GET</span> Audit trail</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">SDK</div>
+      <a href="#sdk-install" class="nav-link">JavaScript</a>
+      <a href="#sdk-python" class="nav-link">Python</a>
+      <a href="#sdk-methods" class="nav-link">Methods</a>
+      <a href="#webhooks" class="nav-link">Webhooks</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Dashboard</div>
+      <a href="#dashboard" class="nav-link">Approval queue</a>
+      <a href="#audit-trail" class="nav-link">Audit trail</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Concepts</div>
+      <a href="#proposal-lifecycle" class="nav-link">Proposal lifecycle</a>
+      <a href="#fail-closed" class="nav-link">Fail closed</a>
+      <a href="#multi-agent" class="nav-link">Multi-agent</a>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <main class="content">
+    <div class="badge-docs" style="margin-bottom:1rem;display:inline-block">Reference</div>
+    <h1>Zehrava Gate Docs</h1>
+    <p class="lead">Gate sits between your AI agents and production systems. Every write — email sends, CRM imports, database updates, file publishes — goes through Gate before it lands. Policies are YAML. Evaluation is deterministic. Every decision is audited.</p>
+
+    <!-- ── QUICKSTART ── -->
+    <h2 id="quickstart">Quickstart</h2>
+    <p>Start the Gate server with <code>npx</code> — no install required for the server itself:</p>
+    <pre>npx zehrava-gate --port 4000</pre>
+    <p>Or install globally:</p>
+    <pre>npm install -g zehrava-gate
+zehrava-gate --port 4000</pre>
+    <p>Server options:</p>
+    <div class="table-scroll"><table class="field-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>--port</td><td>4000</td><td>HTTP port to listen on</td></tr>
+        <tr><td>--data-dir</td><td>./data</td><td>Directory for SQLite database and stored payloads</td></tr>
+        <tr><td>--policy-dir</td><td>./policies</td><td>Directory containing your YAML policy files</td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="callout callout-tip">
+      <p>✓ <strong>Self-hosting:</strong> Gate stores all data locally in SQLite. Nothing leaves your infrastructure. No cloud dependency, no API keys for the server itself.</p>
+    </div>
+
+    <!-- ── REGISTER AGENT ── -->
+    <h2 id="register-agent">Register an agent</h2>
+    <p>Before an agent can propose actions, it needs to be registered. Registration returns an API key — store this securely. It cannot be retrieved again.</p>
+    <pre>curl -X POST http://localhost:4000/v1/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-crm-agent", "riskTier": "standard"}'</pre>
+    <pre><span class="val">{
+  "agentId": "agt_a1b2c3d4e5f6",
+  "apiKey":  "gate_sk_••••••••••••••••••••",
+  "name":    "my-crm-agent",
+  "riskTier": "standard"
+}</span></pre>
+    <div class="callout callout-warn">
+      <p>⚠ <strong>Save the API key immediately.</strong> Gate stores only a hash — if you lose it, register a new agent.</p>
+    </div>
+    <p>The <code>riskTier</code> field is stored for auditing. Current values: <code>standard</code>, <code>elevated</code>, <code>restricted</code>. Future policy enforcement will gate actions by tier.</p>
+
+    <!-- ── FIRST PROPOSAL ── -->
+    <h2 id="your-first-proposal">Your first proposal</h2>
+    <p>Create a policy file first. Drop it in your <code>--policy-dir</code>:</p>
+    <pre><span class="com"># policies/support-reply.yaml</span>
+<span class="key">id</span>: <span class="val">support-reply</span>
+<span class="key">destinations</span>: <span class="val">[zendesk.reply, intercom.reply]</span>
+<span class="key">auto_approve_under</span>: <span class="val">1</span>
+<span class="key">block_if_terms</span>:
+  - <span class="val">"refund guaranteed"</span>
+  - <span class="val">"legal action"</span>
+<span class="key">expiry_minutes</span>: <span class="val">30</span></pre>
+    <p>Then propose an action from your agent:</p>
+    <pre><span class="k">const</span> { <span class="v">Gate</span> } = <span class="fn">require</span>(<span class="s">'zehrava-gate'</span>)
+<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint: <span class="s">'http://localhost:4000'</span>, apiKey: <span class="s">'gate_sk_...'</span> })
+
+<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({
+  payload:     <span class="s">'Thank you — your issue has been resolved.'</span>,
+  destination: <span class="s">'zendesk.reply'</span>,
+  policy:      <span class="s">'support-reply'</span>,
+  recordCount: <span class="n">1</span>
+})
+
+<span class="fn">console</span>.<span class="fn">log</span>(p.status) <span class="cm">// "approved" | "blocked" | "pending_approval"</span>
+<span class="fn">console</span>.<span class="fn">log</span>(p.proposalId)
+<span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// set if status === "blocked"</span></pre>
+    <p>Gate evaluates the policy immediately and returns one of three statuses:</p>
+    <ul>
+      <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to act.</li>
+      <li><span class="status status-blocked">blocked</span> — violated a policy rule. Do not proceed. Check <code>blockReason</code>.</li>
+      <li><span class="status status-pending">pending_approval</span> — within policy but requires human review. Poll or wait for webhook.</li>
+    </ul>
+
+    <!-- ── POLICY OVERVIEW ── -->
+    <h2 id="policy-overview">Policy overview</h2>
+    <p>Policies are YAML files stored in your <code>--policy-dir</code>. Gate loads them on startup and caches them. Each policy has an <code>id</code> that your agent references in the <code>propose</code> call.</p>
+    <p>Evaluation runs top-to-bottom through these checks — the first match wins:</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Policy exists?</h4>
+          <p>If the referenced policy ID has no YAML file, Gate returns <code>blocked</code> immediately.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Destination allowlist</h4>
+          <p>If <code>destinations</code> is set and the proposal's destination isn't in the list, Gate blocks it.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Payload type check</h4>
+          <p>If <code>allowed_types</code> is set and the payload's file extension isn't in the list, Gate blocks it.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Term scan</h4>
+          <p>If <code>block_if_terms</code> is set, Gate scans the payload content for each term. Matching is normalized — strips punctuation, collapses whitespace, maps leet substitutions. First match blocks the proposal.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h4>require_approval: always</h4>
+          <p>If set, every proposal goes to pending regardless of other rules.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h4>Record count thresholds</h4>
+          <p><code>auto_approve_under</code>: if recordCount ≤ threshold, approve automatically.<br><code>require_approval_over</code>: if recordCount &gt; threshold, send to pending.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <h4>Default</h4>
+          <p>If no rule matched, Gate returns <code>pending_approval</code>. Safe default — when in doubt, ask a human.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── POLICY FIELDS ── -->
+    <h2 id="policy-fields">All policy fields</h2>
+    <div class="table-scroll"><table class="field-table">
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>id <span class="req">*</span></td>
+          <td>string</td>
+          <td>Unique identifier. Must match the filename (without <code>.yaml</code>). Referenced in <code>propose</code> calls.</td>
+        </tr>
+        <tr>
+          <td>destinations</td>
+          <td>string[]</td>
+          <td>Allowlist of destination identifiers. Proposals to any other destination are blocked. Omit to allow any destination.</td>
+        </tr>
+        <tr>
+          <td>allowed_types</td>
+          <td>string[]</td>
+          <td>Allowlist of file extensions without dot (e.g. <code>[csv, json, txt]</code>). Only applies when payload is a file path.</td>
+        </tr>
+        <tr>
+          <td>block_if_terms</td>
+          <td>string[]</td>
+          <td>List of terms to scan the payload for. Matching is normalized — case-insensitive, punctuation-stripped, leet-decoded. First match blocks with reason: <code>"Payload contains blocked term: &lt;term&gt;"</code></td>
+        </tr>
+        <tr>
+          <td>require_approval</td>
+          <td>string</td>
+          <td>Set to <code>"always"</code> to require human approval on every proposal regardless of other rules. Recommended for high-risk destinations.</td>
+        </tr>
+        <tr>
+          <td>auto_approve_under</td>
+          <td>number</td>
+          <td>If <code>recordCount</code> is ≤ this value, the proposal is auto-approved. Useful for single-record operations that don't need review.</td>
+        </tr>
+        <tr>
+          <td>require_approval_over</td>
+          <td>number</td>
+          <td>If <code>recordCount</code> exceeds this value, the proposal goes to pending. Use alongside <code>auto_approve_under</code> to define a safe/unsafe threshold.</td>
+        </tr>
+        <tr>
+          <td>expiry_minutes</td>
+          <td>number</td>
+          <td>How long a pending proposal can wait for approval before it expires. Expired proposals cannot be approved. Default: 60.</td>
+        </tr>
+      </tbody>
+    </table></div></div>
+    <!-- ── POLICY EXAMPLES ── -->
+    <h2 id="policy-examples">Policy examples</h2>
+
+    <h3>Support reply — auto-approve safe messages, block sensitive terms</h3>
+    <pre><span class="key">id</span>: <span class="val">support-reply</span>
+<span class="key">destinations</span>: <span class="val">[zendesk.reply, intercom.reply, freshdesk.reply]</span>
+<span class="key">allowed_types</span>: <span class="val">[text, json]</span>
+<span class="key">block_if_terms</span>:
+  - <span class="val">"refund guaranteed"</span>
+  - <span class="val">"legal action"</span>
+  - <span class="val">"sue"</span>
+<span class="key">auto_approve_under</span>: <span class="val">1</span>   <span class="com"># single reply → auto-approve</span>
+<span class="key">expiry_minutes</span>: <span class="val">30</span></pre>
+
+    <h3>CRM import — auto-approve small batches, review large ones</h3>
+    <pre><span class="key">id</span>: <span class="val">crm-low-risk</span>
+<span class="key">destinations</span>: <span class="val">[salesforce.import, hubspot.contacts]</span>
+<span class="key">allowed_types</span>: <span class="val">[csv, json]</span>
+<span class="key">auto_approve_under</span>: <span class="val">100</span>        <span class="com"># ≤100 records → auto</span>
+<span class="key">require_approval_over</span>: <span class="val">100</span>     <span class="com"># >100 records → human review</span>
+<span class="key">expiry_minutes</span>: <span class="val">60</span></pre>
+
+    <h3>Finance — always require human approval</h3>
+    <pre><span class="key">id</span>: <span class="val">finance-high-risk</span>
+<span class="key">destinations</span>: <span class="val">[stripe.refund, quickbooks.journal, netsuite.payment]</span>
+<span class="key">require_approval</span>: <span class="val">always</span>
+<span class="key">expiry_minutes</span>: <span class="val">15</span>              <span class="com"># short window — stale approvals are dangerous</span></pre>
+
+    <h3>Internal blog publish — scoped destination, always approve</h3>
+    <pre><span class="key">id</span>: <span class="val">blog-publish</span>
+<span class="key">destinations</span>: <span class="val">[blog.publish, cms.publish]</span>
+<span class="key">require_approval</span>: <span class="val">always</span>
+<span class="key">expiry_minutes</span>: <span class="val">120</span></pre>
+
+    <!-- ── API REFERENCE ── -->
+    <h2 id="api-register">API — Register agent</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/agents/register</span></div>
+      <div class="endpoint-desc">Register a new agent and receive an API key. No authentication required — this is the bootstrap endpoint.</div>
+      <hr>
+      <p><strong>Request body</strong></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>name <span class="req">*</span></td><td>string</td><td>Human-readable agent name. Appears in audit logs and the dashboard.</td></tr>
+          <tr><td>riskTier</td><td>string</td><td><code>standard</code> | <code>elevated</code> | <code>restricted</code>. Default: <code>standard</code>.</td></tr>
+        </tbody>
+      </table></div></div>
+      <pre><span class="val">{
+  "agentId":  "agt_a1b2c3d4",
+  "apiKey":   "gate_sk_••••••••••••",
+  "name":     "my-agent",
+  "riskTier": "standard"
+}</span></pre>
+    </div>
+
+    <h2 id="api-propose">API — Propose</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/propose</span></div>
+      <div class="endpoint-desc">Submit an agent action for policy evaluation. Returns immediately with a status.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>destination <span class="req">*</span></td><td>string</td><td>Target system identifier (e.g. <code>zendesk.reply</code>). Must match your policy's <code>destinations</code> allowlist.</td></tr>
+          <tr><td>policy <span class="req">*</span></td><td>string</td><td>Policy ID to evaluate against (matches YAML filename without extension).</td></tr>
+          <tr><td>payload</td><td>string</td><td>The content being proposed. Text content, JSON string, or file path (detected by extension). Term scanning only applies to text content.</td></tr>
+          <tr><td>recordCount</td><td>number</td><td>Number of records in a batch operation. Used for threshold evaluation (<code>auto_approve_under</code>, <code>require_approval_over</code>).</td></tr>
+          <tr><td>expiresIn</td><td>string</td><td>Expiry duration: <code>30m</code>, <code>1h</code>, <code>2h</code>. Default: <code>1h</code>. Overrides policy <code>expiry_minutes</code>.</td></tr>
+          <tr><td>on_behalf_of</td><td>string</td><td>Agent ID of the orchestrating agent in multi-agent pipelines. Logged in the audit trail for accountability.</td></tr>
+          <tr><td>metadata</td><td>object</td><td>Arbitrary key/value pairs. Stored with the proposal and included in audit events.</td></tr>
+        </tbody>
+      </table></div></div>
+      <pre><span class="val">{
+  "proposalId": "prop_a1b2c3d4e5f6",
+  "status":     "approved",          </span><span class="com">// approved | blocked | pending_approval</span><span class="val">
+  "blockReason": null,               </span><span class="com">// set if blocked</span><span class="val">
+  "expiresAt":  "2026-03-08T12:00:00.000Z"
+}</span></pre>
+    </div>
+
+    <h2 id="api-approve">API — Approve</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/approve</span></div>
+      <div class="endpoint-desc">Approve a pending proposal. Returns a one-time delivery token.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>proposalId <span class="req">*</span></td><td>string</td><td>The proposal ID returned from <code>/v1/propose</code>.</td></tr>
+        </tbody>
+      </table></div></div>
+      <pre><span class="val">{ "status": "approved", "deliveryToken": "dlv_••••••••••••" }</span></pre>
+      <p style="margin-top:.75rem">Blocked proposals cannot be approved — the endpoint returns <code>409</code>.</p>
+    </div>
+
+    <h2 id="api-reject">API — Reject</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/reject</span></div>
+      <div class="endpoint-desc">Reject a pending proposal. Sets status to <code>blocked</code>.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>proposalId <span class="req">*</span></td><td>string</td><td>Proposal to reject.</td></tr>
+          <tr><td>reason</td><td>string</td><td>Rejection reason. Stored in audit trail.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <h2 id="api-deliver">API — Deliver</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/deliver</span></div>
+      <div class="endpoint-desc">Get a one-time download URL for an approved proposal's payload. The URL can only be used once — subsequent calls return <code>410 Gone</code>.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">{
+  "url":           "https://your-gate-server/v1/download/dlv_••••",
+  "deliveryToken": "dlv_••••••••••••",
+  "expiresAt":     "2026-03-08T12:00:00.000Z"
+}</span></pre>
+    </div>
+
+    <h2 id="api-proposals">API — List proposals</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/proposals?status=pending_approval&amp;limit=50</span></div>
+      <div class="endpoint-desc">List proposals with optional status filter. Used by the dashboard.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>status</td><td>string</td><td>Filter by: <code>pending_approval</code>, <code>approved</code>, <code>blocked</code>, <code>delivered</code>, <code>expired</code>. Omit for all.</td></tr>
+          <tr><td>limit</td><td>number</td><td>Max results. Default: 50.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <h2 id="api-audit">API — Audit trail</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/audit/:proposalId</span></div>
+      <div class="endpoint-desc">Full audit trail for a proposal — every event in order: proposed, policy_checked, approved/blocked, delivered, expired.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">[
+  { "eventType": "proposed",       "actor": "my-crm-agent", "createdAt": "..." },
+  { "eventType": "policy_checked", "actor": "system",       "metadata": { "result": "approved" } },
+  { "eventType": "auto_approved",  "actor": "system",       "createdAt": "..." },
+  { "eventType": "delivered",      "actor": "system",       "createdAt": "..." }
+]</span></pre>
+    </div>
+
+    <!-- ── SDK ── -->
+    <h2 id="sdk-install">SDK — Install</h2>
+    <pre>npm install zehrava-gate</pre>
+    <pre><span class="cm">// CommonJS</span>
+<span class="k">const</span> { <span class="v">Gate</span> } = <span class="fn">require</span>(<span class="s">'zehrava-gate'</span>)
+
+<span class="cm">// ESM</span>
+<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">'zehrava-gate'</span></pre>
+    <pre><span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({
+  endpoint: <span class="s">'http://localhost:4000'</span>,  <span class="cm">// your Gate server URL</span>
+  apiKey:   <span class="s">'gate_sk_•••••••••••••'</span>    <span class="cm">// from /v1/agents/register</span>
+})</pre>
+
+    <h2 id="sdk-methods">SDK — Methods</h2>
+    <h3>gate.propose(opts)</h3>
+    <p>Mirrors the <code>POST /v1/propose</code> endpoint. All fields from the API are supported.</p>
+    <pre><span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({
+  payload:      <span class="s">'./leads.csv'</span>,
+  destination:  <span class="s">'salesforce.import'</span>,
+  policy:       <span class="s">'crm-low-risk'</span>,
+  recordCount:  <span class="n">847</span>,
+  on_behalf_of: <span class="s">'agt_orchestrator_id'</span>,  <span class="cm">// optional</span>
+  expiresIn:    <span class="s">'2h'</span>                      <span class="cm">// optional</span>
+})
+<span class="cm">// p.proposalId, p.status, p.blockReason, p.expiresAt</span></pre>
+
+    <h3>gate.approve({ proposalId })</h3>
+    <pre><span class="k">await</span> gate.<span class="fn">approve</span>({ proposalId: p.proposalId })</pre>
+
+    <h3>gate.reject({ proposalId, reason })</h3>
+    <pre><span class="k">await</span> gate.<span class="fn">reject</span>({ proposalId: p.proposalId, reason: <span class="s">'Flagged for review'</span> })</pre>
+
+    <h3>gate.deliver({ proposalId })</h3>
+    <pre><span class="k">const</span> { <span class="v">url</span> } = <span class="k">await</span> gate.<span class="fn">deliver</span>({ proposalId: p.proposalId })
+<span class="cm">// url is a one-time download link — use it once, then it's gone</span></pre>
+
+    <h3>gate.verify({ proposalId })</h3>
+    <p>Fetch full proposal details including audit trail.</p>
+    <pre><span class="k">const</span> <span class="v">detail</span> = <span class="k">await</span> gate.<span class="fn">verify</span>({ proposalId: p.proposalId })
+<span class="cm">// detail.status, detail.auditTrail, detail.blockReason, ...</span></pre>
+
+
+    <h2 id="sdk-python">Python SDK</h2>
+    <p>Install the Python SDK — zero dependencies, works with Python 3.8+. Supports LangGraph, CrewAI, AutoGen, and any custom agent.</p>
+    <pre>pip install zehrava-gate</pre>
+    <pre><span class="k">from</span> <span class="v">zehrava_gate</span> <span class="k">import</span> <span class="v">Gate</span>, <span class="v">GateError</span>
+
+gate = <span class="fn">Gate</span>(
+    endpoint=<span class="s">"http://localhost:4000"</span>,
+    api_key=<span class="s">"gate_sk_..."</span>
+)
+
+p = gate.<span class="fn">propose</span>(
+    payload=<span class="s">"Thank you — your issue is resolved."</span>,
+    destination=<span class="s">"zendesk.reply"</span>,
+    policy=<span class="s">"support-reply"</span>,
+    record_count=<span class="n">1</span>
+)
+
+<span class="cm"># p["status"] → "approved" | "blocked" | "pending_approval"</span>
+<span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"blocked"</span>:
+    <span class="k">raise</span> <span class="fn">GateError</span>(p[<span class="s">"blockReason"</span>])</pre>
+
+    <h3>LangGraph integration</h3>
+    <pre><span class="k">from</span> <span class="v">langgraph.graph</span> <span class="k">import</span> <span class="v">StateGraph</span>
+<span class="k">from</span> <span class="v">zehrava_gate</span> <span class="k">import</span> <span class="v">Gate</span>, <span class="v">GateError</span>
+
+gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4000"</span>, api_key=<span class="s">"gate_sk_..."</span>)
+
+<span class="k">def</span> <span class="fn">send_crm_import</span>(state):
+    p = gate.<span class="fn">propose</span>(
+        payload=state[<span class="s">"csv_path"</span>],
+        destination=<span class="s">"salesforce.import"</span>,
+        policy=<span class="s">"crm-low-risk"</span>,
+        record_count=state[<span class="s">"record_count"</span>],
+        on_behalf_of=state.get(<span class="s">"orchestrator_id"</span>)
+    )
+    <span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"blocked"</span>:
+        <span class="k">return</span> {**state, <span class="s">"error"</span>: p[<span class="s">"blockReason"</span>]}
+    <span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"pending_approval"</span>:
+        <span class="k">return</span> {**state, <span class="s">"proposal_id"</span>: p[<span class="s">"proposalId"</span>], <span class="s">"waiting"</span>: <span class="k">True</span>}
+    <span class="k">return</span> {**state, <span class="s">"sent"</span>: <span class="k">True</span>}</pre>
+
+    <h2 id="webhooks">Webhooks</h2>
+    <p>Instead of polling for approval status, register a webhook URL. Gate fires a <code>POST</code> to your URL when the proposal is approved or rejected.</p>
+    <pre><span class="cm">// JavaScript</span>
+<span class="k">const</span> p = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
+
+<span class="k">await</span> gate.<span class="fn">registerWebhook</span>({   <span class="cm">// JS SDK — coming in next release</span>
+  proposalId: p.proposalId,
+  url: <span class="s">'https://your-app.com/gate-callback'</span>,
+  secret: <span class="s">'your-secret'</span>           <span class="cm">// sent as X-Gate-Secret header</span>
+})</pre>
+    <pre><span class="cm"># Python</span>
+gate.<span class="fn">register_webhook</span>(
+    proposal_id=p[<span class="s">"proposalId"</span>],
+    url=<span class="s">"https://your-app.com/gate-callback"</span>,
+    secret=<span class="s">"your-secret"</span>
+)</pre>
+    <p>Gate fires once — on the first approve or reject event. The webhook payload:</p>
+    <pre><span class="val">{
+  "proposalId": "prop_a1b2c3",
+  "event":      "approved",        </span><span class="com">// or "rejected"</span><span class="val">
+  "deliveryToken": "dlv_••••",     </span><span class="com">// only on approved</span><span class="val">
+  "approver":   "agent-name",
+  "firedAt":    "2026-03-08T11:30:00.000Z"
+}</span></pre>
+    <div class="callout callout-info">
+      <p><strong>Webhooks are in-memory.</strong> If the Gate server restarts before the webhook fires, the registration is lost. Persistent webhook storage is on the roadmap. For now, use webhooks for short-lived proposals.</p>
+    </div>
+
+    <!-- ── DASHBOARD ── -->
+    <h2 id="dashboard">Dashboard</h2>
+    <p>The dashboard at <code>/dashboard</code> on your Gate server shows every pending proposal. No code required to review and approve — it's the interface for humans in the loop.</p>
+    <p>For each proposal you can see:</p>
+    <ul>
+      <li>Agent name, destination, policy, record count</li>
+      <li>Time remaining before expiry</li>
+      <li>Payload hint (type + size — not full content by default)</li>
+      <li>Full audit trail of events so far</li>
+    </ul>
+    <p>Try it at <a href="/dashboard" target="_blank">zehrava.com/dashboard →</a></p>
+    <div class="callout callout-info">
+      <p><strong>Approval is one click.</strong> The reviewer doesn't need an API key or code access — just the dashboard URL. Gate handles the auth internally for dashboard actions.</p>
+    </div>
+
+    <h2 id="audit-trail">Audit trail</h2>
+    <p>Every proposal generates an immutable sequence of audit events, written server-side. Agents have no API route to write or modify audit events.</p>
+    <p>Event types in order:</p>
+    <ul>
+      <li><strong>proposed</strong> — agent submitted the proposal</li>
+      <li><strong>policy_checked</strong> — Gate evaluated the policy</li>
+      <li><strong>auto_approved</strong> — passed all rules within auto-approve threshold</li>
+      <li><strong>blocked</strong> — violated a policy rule (includes reason)</li>
+      <li><strong>approved</strong> — human approved in dashboard (includes approver name)</li>
+      <li><strong>rejected</strong> — human rejected (includes reason)</li>
+      <li><strong>delivery_url_issued</strong> — one-time download URL created</li>
+      <li><strong>delivered</strong> — payload downloaded (consumed)</li>
+      <li><strong>expired</strong> — proposal passed its expiry window</li>
+    </ul>
+
+    <!-- ── CONCEPTS ── -->
+    <h2 id="proposal-lifecycle">Proposal lifecycle</h2>
+    <pre>propose
+  ↓
+policy evaluation
+  ├── blocked        → terminal. Cannot be approved.
+  ├── approved       → delivery token issued. One-time download available.
+  └── pending        → waits in dashboard for human action
+                          ├── approved → delivery token issued
+                          ├── rejected → terminal (status: blocked)
+                          └── expired  → terminal. Cannot be approved.</pre>
+
+    <h2 id="fail-closed">Fail closed</h2>
+    <p><strong>If Gate is unreachable, your agent must halt — not proceed.</strong></p>
+    <p>Gate is middleware. If the HTTP call to <code>/v1/propose</code> fails with a network error, the safe behavior is to treat it as a block and not execute the write. Proceeding silently bypasses Gate entirely.</p>
+    <pre><span class="k">try</span> {
+  <span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
+  <span class="k">if</span> (p.status === <span class="s">'blocked'</span>) <span class="k">throw new</span> <span class="fn">Error</span>(p.blockReason)
+  <span class="k">if</span> (p.status === <span class="s">'pending_approval'</span>) <span class="k">return</span> <span class="cm">// wait — do not proceed</span>
+  <span class="cm">// status === 'approved' → safe to act</span>
+} <span class="k">catch</span> (err) {
+  <span class="cm">// Gate unreachable or returned error — fail closed</span>
+  <span class="fn">console</span>.<span class="fn">error</span>(<span class="s">'Gate check failed — halting write'</span>, err.message)
+  <span class="k">throw</span> err <span class="cm">// do NOT proceed</span>
+}</pre>
+
+    <h2 id="multi-agent">Multi-agent pipelines</h2>
+    <p>In pipelines where one agent orchestrates others, use <code>on_behalf_of</code> to record the full chain of accountability in the audit trail:</p>
+    <pre><span class="cm">// Leaf agent calling Gate on behalf of the orchestrator</span>
+<span class="k">await</span> gate.<span class="fn">propose</span>({
+  payload:      data,
+  destination:  <span class="s">'salesforce.import'</span>,
+  policy:       <span class="s">'crm-low-risk'</span>,
+  on_behalf_of: <span class="s">'agt_orchestrator_abc123'</span>
+})</pre>
+    <p>The audit trail will record both the calling agent and the orchestrating agent. Without <code>on_behalf_of</code>, only the leaf agent appears — making the orchestrator's role invisible in the audit.</p>
+    <div class="callout callout-tip">
+      <p>✓ <strong>Best practice:</strong> Wire Gate at the orchestrator level, not just leaf agents. If the orchestrator calls Gate before dispatching to sub-agents, the accountability chain is cleaner.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Scrollspy
+  const sections = document.querySelectorAll('h2[id], h3[id]')
+  const navLinks = document.querySelectorAll('.nav-link')
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'))
+        document.querySelectorAll(`.nav-link[href="#${e.target.id}"]`).forEach(l => l.classList.add('active'))
+      }
+    })
+  }, { rootMargin: '-20% 0px -75% 0px' })
+  sections.forEach(s => obs.observe(s))
+
+  // Mobile drawer
+  const btn = document.getElementById('mobNavBtn')
+  const drawer = document.getElementById('mobDrawer')
+  function toggleDrawer(open) {
+    drawer.classList.toggle('open', open)
+    btn.setAttribute('aria-expanded', open)
+    document.body.style.overflow = open ? 'hidden' : ''
+  }
+  btn.addEventListener('click', () => toggleDrawer(!drawer.classList.contains('open')))
+  drawer.querySelectorAll('a').forEach(a => a.addEventListener('click', () => toggleDrawer(false)))
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleDrawer(false) })
+</script>
+
+</body>
+</html>

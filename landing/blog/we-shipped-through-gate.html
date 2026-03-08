@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>We Shipped Our Blog Launch Through Gate — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="3 blog posts. 4 AI agents. 1 approval queue. Nothing went live until a human approved it. Here's exactly how the ai agent content publishing workflow worked.">
+  <meta property="og:title" content="We Shipped Our Blog Launch Through Gate. Here's What the Approval Queue Looked Like.">
+  <meta property="og:description" content="3 blog posts. 4 AI agents. 1 approval queue. Nothing went live until a human approved it.">
+  <meta property="og:url" content="https://zehrava.com/blog/we-shipped-through-gate">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    .tag-meta { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.5rem; color: #d0d0d0; }
+    code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.8rem; color: #e0e0e0; line-height: 1.7; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .proof-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--muted); margin: 1.5rem 0; }
+    .proof-badge .pid { font-family: monospace; color: var(--green); font-size: 0.85rem; }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); font-size: 1.1rem; }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.9rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 1rem; font-weight: 700; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; display: block; }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 600px) { header { padding: 1rem; } .hdr-links { gap: 1rem; font-size: 0.8rem; } main { padding: 2rem 1rem 3rem; } h1 { font-size: 1.6rem; } }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+<main>
+  <div class="post-meta">
+    <span class="tag">Engineering</span>
+    <span class="tag-meta">Meta</span>
+    <span>March 8, 2026</span>
+    <span>5 min read</span>
+  </div>
+
+  <h1>We Shipped Our Blog Launch Through Gate. Here's What the Approval Queue Looked Like.</h1>
+
+  <div class="proof-badge">
+    ✓ This post was proposal <span class="pid">prop_d4a2b9</span> · approved · delivered once · audit trail at /dashboard
+  </div>
+
+  <p>Three blog posts. Four AI agents. One approval queue. Zero posts went live until a human said so.</p>
+  <p>That's the short version. Here's what the AI agent content publishing workflow actually looked like when we ran our own content launch through Zehrava Gate.</p>
+
+  <hr>
+
+  <h2>What We Did</h2>
+  <p>We needed three SEO posts for the Gate launch. Rather than write them manually, we spun up four sub-agents simultaneously:</p>
+  <ul>
+    <li><strong>agent-seo:</strong> Pulled 115 keywords across 7 clusters — agent governance, AI commit checkpoint, policy-as-code, audit trail gaps, CRM agent writes, and two more. Saved the full map to a shared scratchpad file the other agents could reference.</li>
+    <li><strong>agent-blog1, agent-blog2, agent-blog3:</strong> Each took one post brief and wrote in parallel. No waiting. Total wall-clock time for three drafts: under four minutes.</li>
+  </ul>
+  <p>After the drafts landed, a fifth agent — agent-publisher — ran an SEO pass using the keyword map, built the styled HTML pages, and submitted all three to Gate using the <code>blog-publish</code> policy.</p>
+  <p>The posts:</p>
+  <ul>
+    <li><a href="/blog/why-ai-agents-need-a-commit-checkpoint.html">Why AI Agents Need a Commit Checkpoint</a></li>
+    <li><a href="/blog/847-records-no-audit-trail.html">847 Records, No Audit Trail: The AI Agent Write Problem</a></li>
+    <li><a href="/blog/policy-as-yaml-agent-governance.html">Policy-as-YAML: Agent Governance That Scales Across Teams</a></li>
+  </ul>
+  <p>None of them published automatically. They sat in the approval queue until we reviewed them.</p>
+
+  <hr>
+
+  <h2>The blog-publish Policy</h2>
+  <p>Gate is policy-driven. Every agent action goes through a policy that defines what's allowed, what requires approval, and what gets blocked. Here's the policy the publisher agent used:</p>
+<pre><code>id: blog-publish
+destinations: [blog.publish]
+require_approval: always
+expiry_minutes: 1440
+notes: "All blog content must be reviewed before publishing to zehrava.com/blog"</code></pre>
+  <p>The key: <code>require_approval: always</code>. The agent can propose. It cannot deliver without a human in the loop. <code>gate.propose()</code> creates the proposal and returns an ID. <code>gate.deliver()</code> only executes after an approver signs off — and it's one-time. Once it fires, the proposal closes.</p>
+
+  <hr>
+
+  <h2>What the Approval Queue Looked Like</h2>
+  <p>After the publisher agent finished, this is what was waiting in the <a href="https://zehrava.com/dashboard">Gate dashboard</a>:</p>
+<pre><code>Pending Approvals (3)
+──────────────────────────────────────────────────────────────
+prop_4a3b5e  │ Why AI Agents Need a Commit Checkpoint    ⏳ Pending
+prop_3d1186  │ 847 Records, No Audit Trail               ⏳ Pending
+prop_478ac5  │ Policy-as-YAML: Agent Governance          ⏳ Pending
+──────────────────────────────────────────────────────────────</code></pre>
+  <p>Each proposal had the full HTML payload, target keyword, internal links, and destination path. We read all three. Approved. Published. Total review time: about ten minutes across three posts. That's the cost of the human checkpoint.</p>
+
+  <hr>
+
+  <h2>Same System, Any Write Type</h2>
+  <p>Gate doesn't know these were blog posts. It doesn't have a blog mode. The same dashboard where we approved these proposals is where we approve Salesforce record imports, support email drafts, and finance exports. The payload is different every time. The pipeline is identical:</p>
+  <ol>
+    <li>Agent calls <code>gate.propose()</code></li>
+    <li>Policy evaluates destination and payload</li>
+    <li>Proposal lands in the queue</li>
+    <li>Human reviews and approves</li>
+    <li><code>gate.deliver()</code> fires — once</li>
+  </ol>
+  <p>A blog post going through Gate looks the same to the system as a Stripe refund request going through Gate. Same approval UX. Same audit log. Same policy enforcement. The AI agent content publishing workflow is one instance of a broader pattern.</p>
+  <p>That's what "framework-agnostic" means in practice. Gate sits between your agents and production, regardless of what your agents are doing.</p>
+
+  <hr>
+
+  <h2>Governance as Infrastructure</h2>
+  <p>Most teams bolt on approval flows after something goes wrong. An agent writes to the wrong CRM record. An email goes to the full list. A post publishes before it's ready. Then they add a check. The problem: every new agent action needs its own check. You end up with a patchwork of custom guards — each one fragile, none of them consistent.</p>
+  <p>Gate flips the model. Define policies once. Every agent action that matches a destination goes through the same checkpoint automatically. The agent doesn't need to know your approval requirements — it calls <code>gate.propose()</code>. Gate handles the rest.</p>
+  <p><strong>Governance becomes infrastructure.</strong> Not a feature you add. Not a wrapper you bolt on. The checkpoint is in the path, and everything passes through it.</p>
+
+  <hr>
+
+  <h2>This Post Also Went Through Gate</h2>
+  <p>This post — the one you're reading — was submitted as <code>prop_d4a2b9</code> before it went live. Same policy. Same queue. Same one-time deliver. We approved it. You're reading proof.</p>
+
+  <div class="cta-block">
+    <h3>Add a commit checkpoint to your agent stack.</h3>
+    <p>MIT license. Self-hostable. Framework-agnostic. Takes under an hour to wrap your first agent.</p>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
+  </div>
+
+  <div class="related">
+    <div class="related-label">The posts that went through Gate</div>
+    <div class="related-links">
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="related-link">Why AI Agents Need a Commit Checkpoint →</a>
+      <a href="/blog/847-records-no-audit-trail.html" class="related-link">847 Records Overwritten, No Audit Trail →</a>
+      <a href="/blog/policy-as-yaml-agent-governance.html" class="related-link">Policy-as-YAML: Agent Governance That Scales →</a>
+    </div>
+  </div>
+</main>
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+</body>
+</html>

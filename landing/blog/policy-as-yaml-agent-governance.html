@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Learn how to implement ai agent policy enforcement with Zehrava Gate. Define approval rules once in YAML, share them across every team, and version them alongside your code.">
+  <meta property="og:title" content="Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams">
+  <meta property="og:description" content="Learn how to implement ai agent policy enforcement with Zehrava Gate. Define approval rules once in YAML, share them across every team, and version them alongside your code.">
+  <meta property="og:url" content="https://zehrava.com/blog/policy-as-yaml-agent-governance">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.4rem; color: #d0d0d0; }
+    code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e0e0e0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 600px) { header { padding: 1rem; } .hdr-links { gap: 1rem; font-size: 0.8rem; } main { padding: 2rem 1rem 3rem; } }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+<main>
+  <div class="post-meta">
+    <span class="tag">Engineering</span>
+    <span>March 8, 2026</span>
+    <span>6 min read</span>
+  </div>
+
+  <h1>Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams</h1>
+
+  <h2>The Problem: AI Agent Policy Enforcement Is Broken Across Teams</h2>
+
+  <p>You have five agents. Each one touches production data. Each one has approval logic baked into its code. <strong>AI agent policy enforcement</strong> — the rules that determine what an agent is allowed to write, where, and how much — is scattered across every codebase instead of living in one place.</p>
+
+  <p>Agent A checks <code>if rows &gt; 500: require_approval()</code>. Agent B does the same check, but the threshold is 200. Agent C skips it entirely because someone was in a hurry. Agent D was written by a contractor who left.</p>
+
+  <p>Now your security team asks: "What are the rules for sending customer data to Salesforce?" You don't have an answer. The answer lives in four different codebases, three different languages, and no one agrees.</p>
+
+  <p>This is the real cost of embedding governance logic in application code. It works for one agent. It fails at three. By ten, you have compliance debt you can't audit.</p>
+
+  <p>The fix isn't more code review. It's separating policy from logic entirely. If you're still at the stage of understanding why agents need a write-path checkpoint at all, start with <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html">Why AI Agents Need an AI Agent Commit Checkpoint</a> — this post picks up where that one leaves off.</p>
+
+  <h2>Policy-as-YAML: The Pattern</h2>
+
+  <p>Policy-as-YAML treats approval rules as data, not code. You define what's allowed — data types, destinations, thresholds, expiry — in a YAML file. Every agent loads that file at runtime. The policy evaluates the proposal before any human sees it.</p>
+
+  <p>Four properties make this work:</p>
+
+  <ul>
+    <li><strong>Shareable.</strong> One file. Every team, every agent, every environment reads the same rules.</li>
+    <li><strong>Auditable.</strong> Git history shows who changed what, when, and why. Diff a policy the same way you diff code.</li>
+    <li><strong>Reviewable by non-engineers.</strong> Your compliance lead can read YAML. They cannot read TypeScript middleware.</li>
+    <li><strong>Versionable.</strong> Tag <code>finance-high-risk@v1.2</code> the same way you tag a library release. Pin agents to specific versions. Roll back without a deploy.</li>
+  </ul>
+
+  <p>Zehrava Gate implements this pattern natively. Policies are YAML files loaded at runtime, evaluated against every <code>gate.propose()</code> call before the proposal hits the approval queue.</p>
+
+  <h2>Three Real Policy Examples</h2>
+
+  <h3>1. CRM Low-Risk: Routine Data Sync</h3>
+
+  <pre><code># crm-low-risk.yaml
+# For agents syncing contact data to CRM tools.
+# Auto-approves small batches; escalates large ones.
+
+id: crm-low-risk
+allowed_types: [csv, json]
+destinations: [salesforce.import, hubspot.contacts]
+auto_approve_under: 100        # rows under 100 approve instantly
+require_approval_over: 100     # rows at or above 100 queue for review
+expiry_minutes: 60             # proposal expires if not actioned in 1 hour
+delivery: one_time             # payload delivered once; no retries without re-approval</code></pre>
+
+  <p>This is the baseline. Small CRM syncs clear automatically. A 50-row contact upload at 2am doesn't wake anyone up. A 10,000-row export does.</p>
+
+  <h3>2. Finance High-Risk: Zero Auto-Approval</h3>
+
+  <pre><code># finance-high-risk.yaml
+# For agents that touch payment data, invoices, or financial records.
+# Every proposal requires human sign-off. No exceptions.
+
+id: finance-high-risk
+allowed_types: [json]
+destinations: [quickbooks.journal, stripe.payout, internal.finance-db]
+auto_approve_under: 0          # 0 disables auto-approval entirely
+require_approval_over: 0       # every proposal goes to queue
+require_fields: [amount, currency, reason, requested_by]
+block_if_terms: [DELETE, TRUNCATE, DROP]  # SQL-like guards on payload text
+expiry_minutes: 30             # tighter window; stale finance ops are dangerous
+delivery: one_time</code></pre>
+
+  <p><code>require_fields</code> forces agents to include context. An approver sees amount, currency, reason, and who requested it — not a raw JSON blob. <code>block_if_terms</code> catches destructive operations before they reach the queue at all.</p>
+
+  <h3>3. Outbound Email: Content Gating</h3>
+
+  <pre><code># outbound-email.yaml
+# For agents that draft or send emails to external recipients.
+# Always requires approval; blocks known spam indicators.
+
+id: outbound-email
+allowed_types: [text, html]
+destinations: [sendgrid.transactional, postmark.send]
+auto_approve_under: 0
+require_approval_over: 0
+require_fields: [recipient, subject, body, sender]
+block_if_terms: [unsubscribe all, click here now, limited time offer]
+expiry_minutes: 120            # emails can wait longer; 2-hour review window
+delivery: one_time</code></pre>
+
+  <p>The <code>block_if_terms</code> list catches spam-pattern language before a human even sees the draft. Your compliance team maintains this list. They don't need to touch agent code to update it.</p>
+
+  <h2>How Gate Loads and Applies Policies</h2>
+
+  <p>Every proposal runs through the same pipeline. The agent calls <code>gate.propose()</code> with a <code>policy</code> parameter. Gate loads the named policy, evaluates the payload against it, and routes accordingly.</p>
+
+  <p><strong>TypeScript:</strong></p>
+
+  <pre><code>import { gate } from '@zehrava/gate';
+
+const result = await gate.propose({
+  policy: 'crm-low-risk',
+  payload: {
+    type: 'csv',
+    destination: 'salesforce.import',
+    rows: 47,
+    data: contactBatch,
+  },
+  context: {
+    agent: 'crm-sync-agent',
+    triggered_by: 'nightly-cron',
+  },
+});
+
+if (result.status === 'approved') {
+  await syncToSalesforce(result.payload);
+} else if (result.status === 'pending') {
+  console.log(`Proposal ${result.id} queued for review`);
+} else {
+  console.error(`Blocked: ${result.reason}`);
+}</code></pre>
+
+  <p><strong>Python:</strong></p>
+
+  <pre><code>from zehrava import gate
+
+result = gate.propose(
+    policy="finance-high-risk",
+    payload={
+        "type": "json",
+        "destination": "quickbooks.journal",
+        "amount": 4200.00,
+        "currency": "USD",
+        "reason": "Q1 contractor payment",
+        "requested_by": "finance-agent-v2",
+    },
+    context={
+        "agent": "finance-agent-v2",
+        "run_id": run_id,
+    }
+)
+
+if result["status"] == "approved":
+    post_to_quickbooks(result["payload"])
+elif result["status"] == "pending":
+    notify_team(f"Approval needed: {result['id']}")
+elif result["status"] == "blocked":
+    raise PolicyViolation(result["reason"])</code></pre>
+
+  <p>Gate returns one of three statuses: <code>approved</code>, <code>pending</code>, or <code>blocked</code>. Your agent code handles outcomes, not policy decisions. The policy makes the call.</p>
+
+  <p>Evaluation order:</p>
+
+  <ol>
+    <li>Load named policy from file or registry</li>
+    <li>Check <code>allowed_types</code> — reject if payload type not listed</li>
+    <li>Check <code>destinations</code> — reject if target not whitelisted</li>
+    <li>Check <code>block_if_terms</code> — block if any term found in payload</li>
+    <li>Check <code>require_fields</code> — block if required context missing</li>
+    <li>Compare row/size count to <code>auto_approve_under</code> threshold</li>
+    <li>Route: auto-approve, queue for review, or block</li>
+  </ol>
+
+  <p>No proposal reaches a human until it clears steps 1–5. Reviewers see clean, validated proposals — not raw agent output.</p>
+
+  <h2>Versioning Policies with Git</h2>
+
+  <p>Policies live in your repo. Treat them like infrastructure config.</p>
+
+  <pre><code>policies/
+  crm-low-risk.yaml
+  finance-high-risk.yaml
+  outbound-email.yaml
+  support-reply.yaml
+  blog-publish.yaml</code></pre>
+
+  <p>Every change goes through pull request. Your compliance lead reviews the diff. The commit message is the audit trail.</p>
+
+  <pre><code># Example git log for a policy change
+a3f2c1b feat(policy): lower finance-high-risk expiry from 60m to 30m
+         Requested by security team after Q4 audit.
+         Reviewed-by: legal@company.com
+
+d7e90aa fix(policy): add DELETE to finance-high-risk block_if_terms
+         Caught by pen test. Agents were generating DELETE statements.
+
+b12cc3f feat(policy): add outbound-email policy
+         New policy for email-sending agents going to prod.</code></pre>
+
+  <p>When an auditor asks "what were the approval rules for the finance agent in January?", you run <code>git log --follow policies/finance-high-risk.yaml</code>. Done.</p>
+
+  <p>Gate supports policy pinning. Reference a specific commit hash or tag in your agent config to lock a policy version across environments:</p>
+
+  <pre><code>gate.propose({
+  policy: 'finance-high-risk@v1.2.0',  // pinned to tagged release
+  ...
+})</code></pre>
+
+  <h2>Extending Policies: Custom Rules</h2>
+
+  <p>The built-in fields cover most cases. When they don't, Gate supports custom policy extensions.</p>
+
+  <p>Need to enforce data residency? Add a <code>require_region</code> field:</p>
+
+  <pre><code>id: eu-data-handling
+allowed_types: [json, csv]
+destinations: [eu-west-db, gdpr-compliant-crm]
+auto_approve_under: 0
+require_approval_over: 0
+require_fields: [data_region, gdpr_basis, retention_days]
+require_region: eu-west          # custom extension: Gate checks payload.data_region
+expiry_minutes: 60
+delivery: one_time</code></pre>
+
+  <p>Need to gate on dollar amount, not row count? Use <code>auto_approve_under_amount</code>:</p>
+
+  <pre><code>id: procurement-medium-risk
+allowed_types: [json]
+destinations: [procurement.api, netsuite.po]
+auto_approve_under_amount: 5000    # POs under $5k auto-approve
+require_approval_over_amount: 5000
+require_fields: [vendor, amount, currency, po_number]
+expiry_minutes: 480               # 8-hour window for procurement reviews
+delivery: one_time</code></pre>
+
+  <p>Extensions register in Gate's config, not in each agent. One registration, used everywhere.</p>
+
+  <p>For a real-world look at what happens when agents <em>don't</em> have this layer — and how fast things go wrong — read <a href="/blog/847-records-no-audit-trail.html">847 Records Overwritten, No Audit Trail: An AI Agent Production Incident</a>. The CRM overwrite case maps directly to the <code>crm-low-risk</code> policy above.</p>
+
+  <h2>Getting Started</h2>
+
+  <p>Gate ships with five built-in policies: <code>crm-low-risk</code>, <code>finance-high-risk</code>, <code>support-reply</code>, <code>outbound-email</code>, and <code>blog-publish</code>. Most teams start with one of these and customize from there.</p>
+
+  <p><strong>Install:</strong></p>
+
+  <pre><code># TypeScript
+npm install @zehrava/gate
+
+# Python
+pip install zehrava-gate</code></pre>
+
+  <p><strong>Initialize:</strong></p>
+
+  <pre><code>import { Gate } from '@zehrava/gate';
+
+const gate = new Gate({
+  apiKey: process.env.ZEHRAVA_API_KEY,
+  policyDir: './policies',   // local YAML files; or omit to use Gate's hosted registry
+});</code></pre>
+
+  <p><strong>Call your first proposal:</strong></p>
+
+  <pre><code>const result = await gate.propose({
+  policy: 'crm-low-risk',
+  payload: { type: 'csv', destination: 'salesforce.import', rows: 12 },
+});</code></pre>
+
+  <p>Twelve rows, CRM destination, auto-approved. No queue. No human. Policy said so.</p>
+
+  <p>For teams moving fast with multiple agents, the fastest path: pick the closest built-in policy, drop it in <code>./policies/</code>, adjust one threshold, commit. Your agents share a single source of truth from day one.</p>
+
+  <p>Full documentation and policy reference at <a href="https://zehrava.com">zehrava.com</a>.</p>
+
+  <div class="cta-block">
+    <h3>Add a commit checkpoint to your agent stack.</h3>
+    <p>MIT license. Self-hostable. Framework-agnostic. Takes under an hour to wrap your first agent.</p>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
+  </div>
+
+  <div class="related">
+    <h3>More from Zehrava Gate</h3>
+    <div class="related-links">
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="related-link">→ Why AI Agents Need an AI Agent Commit Checkpoint</a>
+      <a href="/blog/847-records-no-audit-trail.html" class="related-link">→ 847 Records Overwritten, No Audit Trail: An AI Agent Production Incident</a>
+    </div>
+  </div>
+</main>
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+</body>
+</html>

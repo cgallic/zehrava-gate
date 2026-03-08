@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Why AI Agents Need a Commit Checkpoint — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="An AI agent commit checkpoint sits between every agent decision and every production write. Without one, agents fire unchecked — 47,000 emails in 90 seconds. Learn the pattern that fixes this.">
+  <meta property="og:title" content="Why AI Agents Need a Commit Checkpoint">
+  <meta property="og:description" content="An AI agent commit checkpoint sits between every agent decision and every production write. Without one, agents fire unchecked — 47,000 emails in 90 seconds. Learn the pattern that fixes this.">
+  <meta property="og:url" content="https://zehrava.com/blog/why-ai-agents-need-a-commit-checkpoint">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.4rem; color: #d0d0d0; }
+    code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e0e0e0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 600px) { header { padding: 1rem; } .hdr-links { gap: 1rem; font-size: 0.8rem; } main { padding: 2rem 1rem 3rem; } }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+<main>
+  <div class="post-meta">
+    <span class="tag">Engineering</span>
+    <span>March 8, 2026</span>
+    <span>5 min read</span>
+  </div>
+
+  <h1>Why AI Agents Need an AI Agent Commit Checkpoint</h1>
+
+  <p><strong>An AI agent sent 47,000 emails in 90 seconds because nobody told it to stop.</strong> The agent had access to a SendGrid API key, a user list, and a goal. It hit all three. Without an <strong>ai agent commit checkpoint</strong> in place, there was nothing between the agent's decision and the production write. The incident cost the company its sender reputation and triggered GDPR complaints. The agent wasn't buggy — it did exactly what it was designed to do. The system had no checkpoint between intent and execution.</p>
+
+  <p>That gap — between what an agent decides and what it actually commits to a production system — is the problem. It has no standard name yet, which is part of why it keeps happening. Call it what it is: a missing <strong>commit checkpoint</strong>.</p>
+
+  <h2>What Happens When Agents Write Without an AI Agent Commit Checkpoint</h2>
+
+  <p>Most agentic systems are built action-first. An LLM decides to write a record, call an API, or update a database. The tool call executes immediately. There is no pause, no policy check, no human review step built into the architecture.</p>
+
+  <p>Three failure modes emerge reliably:</p>
+
+  <ul>
+    <li><strong>Duplicate writes.</strong> Agents retry on timeout. If the first write succeeded silently, the retry creates a duplicate. Your database now has two customer records, two charge attempts, two Slack notifications.</li>
+    <li><strong>Unauthorized destinations.</strong> The agent inferred a target from context. It was wrong — or it was right but that target was off-limits. No check existed to catch it.</li>
+    <li><strong>Unapproved bulk operations.</strong> The agent was told to "send the weekly digest." It interpreted "all subscribers" as "all 200,000 users" instead of the segment. Nobody approved 200,000. Nobody stopped it either.</li>
+  </ul>
+
+  <p>These aren't edge cases. They're the default behavior of agents that can write without constraints. The agent follows its instructions. The instructions don't specify limits. Production pays the price.</p>
+
+  <p>For a real-world example of what this looks like at scale, read about <a href="/blog/847-records-no-audit-trail.html">the enrichment agent that overwrote 847 CRM records with no audit trail</a>. That incident traces back to the same root cause: no checkpoint between the agent's intent and the production write.</p>
+
+  <h2>The AI Agent Commit Checkpoint Pattern</h2>
+
+  <p><strong>An AI agent commit checkpoint sits between the agent's decision and the production write.</strong> The agent proposes an action. The checkpoint evaluates it against policy. An approval is required — automated or human. Only after approval does the write execute, exactly once.</p>
+
+  <p>The pattern has four steps:</p>
+
+  <ol>
+    <li><strong>Propose.</strong> The agent calls <code>gate.propose()</code> with its intended action. The action is described, not executed. It includes what, where, and how many.</li>
+    <li><strong>Policy check.</strong> The gate evaluates the proposal against rules. Is the destination allowed? Is the volume within approved limits? Is this action type permitted for this agent?</li>
+    <li><strong>Approval.</strong> If policy passes, the action is approved. Automated for low-risk operations. Human-in-the-loop for anything above a defined threshold.</li>
+    <li><strong>Deliver.</strong> <code>gate.deliver()</code> executes the action — once. The delivery token is consumed. Retries don't re-execute.</li>
+  </ol>
+
+  <p>The critical design constraint: <strong>deliver is one-time</strong>. The token expires after use. If the agent retries due to a timeout, the gate rejects the duplicate. The write doesn't happen twice.</p>
+
+  <h2>Before and After: Code Example</h2>
+
+  <p>Here's an agent writing to a database without a checkpoint:</p>
+
+<pre><code># Before: no checkpoint
+def send_campaign(agent_output):
+    emails = agent_output["recipients"]   # Could be 200k
+    subject = agent_output["subject"]
+    body = agent_output["body"]
+
+    for email in emails:
+        mailer.send(to=email, subject=subject, body=body)
+    # No policy check. No approval. No limit. Fires immediately.
+</code></pre>
+
+  <p>Add a commit checkpoint with Zehrava Gate:</p>
+
+<pre><code># After: commit checkpoint via Zehrava Gate
+from zehrava import Gate
+
+gate = Gate(api_url="https://your-gate-instance/", api_key="YOUR_KEY")
+
+def send_campaign(agent_output):
+    emails = agent_output["recipients"]
+    subject = agent_output["subject"]
+    body = agent_output["body"]
+
+    # Step 1: Propose the action — don't execute yet
+    proposal = gate.propose(
+        action="send_email_campaign",
+        payload={
+            "recipient_count": len(emails),
+            "recipients": emails,
+            "subject": subject,
+        },
+        metadata={
+            "agent_id": "campaign-agent-v2",
+            "requested_by": "weekly_digest_job"
+        }
+    )
+
+    # Step 2: Gate evaluates policy automatically
+    # If recipient_count > 10,000, it routes to human approval
+    # If destination is on blocklist, it rejects immediately
+
+    if not proposal.approved:
+        print(f"Blocked: {proposal.rejection_reason}")
+        return
+
+    # Step 3: Execute — exactly once
+    # gate.deliver() uses a one-time token; retries are safe
+    result = gate.deliver(proposal.token, executor=lambda: [
+        mailer.send(to=email, subject=subject, body=body)
+        for email in emails
+    ])
+
+    print(f"Delivered: {result.status}")
+</code></pre>
+
+  <p>The <code>propose()</code> call describes intent without acting on it. The gate applies policy — in this case, routing bulk sends over 10,000 recipients to a human for approval. <code>deliver()</code> fires once, protected by a one-time token. A retry on timeout won't send twice.</p>
+
+  <p>Three lines changed the blast radius of this agent from "everything" to "what was approved."</p>
+
+  <h2>Why Observability Tools Don't Solve This</h2>
+
+  <p>The standard response to agent incidents is better logging. Add traces. Pipe to Datadog. Build a dashboard.</p>
+
+  <p><strong>Observability shows you what happened. It does not prevent what happens.</strong></p>
+
+  <p>You'll see the 47,000 emails in the trace. You'll see exactly when each one was sent, which template was used, what the latency was. The trace is beautiful. Your sender reputation is still gone.</p>
+
+  <p>Observability and governance solve different problems. Observability is post-hoc visibility. Governance is pre-execution control. You need both, but you can't substitute one for the other.</p>
+
+  <p>Existing agent frameworks — LangChain, CrewAI, AutoGen — provide orchestration. They let you chain tools, route between agents, manage memory. None of them provide a policy layer between the agent's decision and the production write. That layer is your responsibility, and most teams build nothing.</p>
+
+  <p>Human-in-the-loop wrappers exist but are ad hoc. A Slack message asking "should I proceed?" is not a checkpoint. It has no token. It has no policy evaluation. If the agent doesn't wait correctly, or the message is missed, the write happens anyway.</p>
+
+  <p>A commit checkpoint is a first-class architectural component — not a Slack notification, not a log line, not a "we'll review the traces later." It sits in the execution path. The action cannot proceed without it. Want to define those policies in version-controlled YAML that your whole team can audit? That's covered in <a href="/blog/policy-as-yaml-agent-governance.html">Policy-as-YAML: Agent Governance That Scales Across Teams</a>.</p>
+
+  <h2>How to Get Started</h2>
+
+  <p>Zehrava Gate is the commit checkpoint between AI agents and production systems. It's MIT-licensed, self-hostable, and framework-agnostic — it works with any agent stack that can make HTTP calls.</p>
+
+  <p>The setup is three steps:</p>
+
+  <ul>
+    <li><strong>Deploy the gate.</strong> Run it on your infrastructure. Docker image available. Takes five minutes.</li>
+    <li><strong>Wrap your writes.</strong> Replace direct API calls with <code>gate.propose()</code> and <code>gate.deliver()</code>. Start with your highest-risk operations: email sends, database writes, external API calls.</li>
+    <li><strong>Define your policies.</strong> Set volume limits, allowed destinations, and approval thresholds. Low-risk operations auto-approve. High-risk operations route to human review.</li>
+  </ul>
+
+  <p>Start with one agent. Wrap one write operation. Run it for a week and watch what gets proposed versus what would have fired directly. The delta is usually surprising.</p>
+
+  <p>Most teams discover their agents were writing more, to more places, than anyone knew. The checkpoint makes that visible — and controllable — before the incident does.</p>
+
+  <hr>
+
+  <p><strong>Add a commit checkpoint to your agent stack.</strong> Zehrava Gate is open source, self-hostable, and takes less than an hour to wrap your first agent. Read the docs and deploy at <a href="https://zehrava.com">zehrava.com</a>.</p>
+
+  <div class="cta-block">
+    <h3>Add a commit checkpoint to your agent stack.</h3>
+    <p>MIT license. Self-hostable. Framework-agnostic. Takes under an hour to wrap your first agent.</p>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
+  </div>
+
+  <div class="related">
+    <h3>More from Zehrava Gate</h3>
+    <div class="related-links">
+      <a href="/blog/847-records-no-audit-trail.html" class="related-link">→ 847 Records Overwritten, No Audit Trail: The AI Agent Production Incident</a>
+      <a href="/blog/policy-as-yaml-agent-governance.html" class="related-link">→ Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams</a>
+    </div>
+  </div>
+</main>
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+</body>
+</html>

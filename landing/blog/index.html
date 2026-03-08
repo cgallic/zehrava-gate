@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <meta name="description" content="Writing about AI agent governance, the write-path problem, and building safe agentic systems.">
+  <meta property="og:title" content="Blog — Zehrava Gate">
+  <meta property="og:description" content="Writing about AI agent governance, the write-path problem, and building safe agentic systems.">
+  <meta property="og:url" content="https://zehrava.com/blog">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0a0a; --bg2: #111; --bg3: #1a1a1a;
+      --border: #222; --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.07); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted2); }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .blog-header { margin-bottom: 3rem; }
+    .blog-header h1 { font-size: clamp(1.75rem, 5vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 0.75rem; }
+    .blog-header p { color: var(--muted2); font-size: 1rem; max-width: 560px; }
+    .post-list { display: flex; flex-direction: column; gap: 1.5rem; }
+    .post-card { background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1.5rem; transition: border-color 0.15s; }
+    .post-card:hover { border-color: rgba(99,102,241,0.4); }
+    .post-card-meta { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; font-size: 0.78rem; color: var(--muted2); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+    .post-card h2 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; margin-bottom: 0.5rem; }
+    .post-card h2 a { color: var(--text); }
+    .post-card h2 a:hover { color: var(--purple); text-decoration: none; }
+    .post-card p { color: var(--muted2); font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.6; }
+    .read-link { font-size: 0.85rem; font-weight: 600; color: var(--purple); }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted2); }
+    @media(max-width: 600px) { header { padding: 1rem; } .hdr-links { gap: 1rem; font-size: 0.8rem; } main { padding: 2rem 1rem 3rem; } }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      header, nav { padding: 0.875rem 1.25rem !important; }
+      .nav-links { display: none !important; }
+      .blog-container, .post-container, .container, main, article {
+        padding: 2rem 1.125rem !important; max-width: 100% !important;
+      }
+      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
+      h2 { font-size: 1.2rem !important; }
+      h3 { font-size: 1rem !important; }
+      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      table { font-size: .78rem !important; }
+      .post-header, .blog-header { padding: 2.5rem 1.125rem 1.5rem !important; }
+      .post-meta { flex-wrap: wrap; gap: .5rem !important; }
+      .blog-grid, .post-grid { grid-template-columns: 1fr !important; }
+      img { max-width: 100%; height: auto; }
+      blockquote { padding: .75rem 1rem !important; }
+    }
+  </style>
+</head>
+<body>
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+<main>
+  <div class="blog-header">
+    <h1>Zehrava Gate Blog</h1>
+    <p>Writing about AI agent governance, the write-path problem, and building safe agentic systems.</p>
+  </div>
+
+  <div class="post-list">
+
+    <div class="post-card">
+      <div class="post-card-meta">
+        <span class="tag">Engineering</span>
+        <span>March 8, 2026</span>
+        <span>5 min read</span>
+      </div>
+      <h2><a href="/blog/why-ai-agents-need-a-commit-checkpoint.html">Why AI Agents Need an AI Agent Commit Checkpoint</a></h2>
+      <p>An agent sent 47,000 emails in 90 seconds because no checkpoint existed between its decision and the production write — here's the pattern that prevents it.</p>
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="read-link">Read →</a>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-meta">
+        <span class="tag">Engineering</span>
+        <span>March 8, 2026</span>
+        <span>4 min read</span>
+      </div>
+      <h2><a href="/blog/847-records-no-audit-trail.html">847 Records Overwritten, No Audit Trail: An AI Agent Production Incident</a></h2>
+      <p>An enrichment agent overwrote 847 CRM records with partial data and left no trace — three incident patterns, and the structural fix that prevents all of them.</p>
+      <a href="/blog/847-records-no-audit-trail.html" class="read-link">Read →</a>
+    </div>
+
+    <div class="post-card">
+      <div class="post-card-meta">
+        <span class="tag">Engineering</span>
+        <span>March 8, 2026</span>
+        <span>6 min read</span>
+      </div>
+      <h2><a href="/blog/policy-as-yaml-agent-governance.html">Policy-as-YAML: AI Agent Policy Enforcement That Scales Across Teams</a></h2>
+      <p>Define approval rules once in version-controlled YAML, share them across every agent and team, and give your compliance lead something they can actually read.</p>
+      <a href="/blog/policy-as-yaml-agent-governance.html" class="read-link">Read →</a>
+    </div>
+
+  </div>
+</main>
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+</body>
+</html>
