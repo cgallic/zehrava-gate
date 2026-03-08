@@ -1,0 +1,13 @@
+id: finance-high-risk
+require_approval: always
+destinations:
+  - stripe.charge
+  - stripe.refund
+  - stripe.payout
+  - stripe.payment
+  - stripe.subscription
+  - stripe.api
+  - netsuite.payout
+  - quickbooks.batch
+  - finance.payout
+expiry_minutes: 30

@@ -1,0 +1,20 @@
+id: outbound-email
+destinations:
+  - gmail.send
+  - loops.send
+  - instantly.send
+  - sendgrid.send
+  - mailgun.send
+  - twilio.email
+block_if_terms:
+  - "refund guaranteed"
+  - "guaranteed"
+  - "100% free"
+  - "no risk"
+  - "legal action"
+  - "sue"
+  - "settlement"
+require_approval: never
+auto_approve_under: 5
+require_approval_over: 10
+expiry_minutes: 60

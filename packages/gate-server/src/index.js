@@ -201,6 +201,14 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`Zehrava Gate running on port ${PORT}`);
   console.log(`Base URL: ${BASE_URL}`);
+
+  // Start V3 proxy if PROXY_API_KEY is set
+  if (process.env.PROXY_API_KEY) {
+    const { startProxy } = require('./proxy/engine');
+    startProxy();
+  } else {
+    console.log('[gate] Proxy disabled — set PROXY_API_KEY to enable forward proxy on port 4001');
+  }
 });
 
 module.exports = app;

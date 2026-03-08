@@ -1,0 +1,109 @@
+# Gate V3 — Destination Registry
+# Maps outbound HTTP hosts (and optional path prefixes) to Gate policy IDs.
+# The proxy intercepts requests, looks up the destination here, and evaluates
+# the corresponding policy before passing or holding.
+#
+# Format:
+#   <hostname>:
+#     destination: <destination string used in policy>
+#     policy: <policy file id (no .yaml extension)>
+#     extract_records: <optional — jsonpath expression to count records from body>
+#     require_approval: always | never   (overrides policy threshold if set)
+#
+# Path-specific overrides:
+#   <hostname>:
+#     paths:
+#       /v1/charges: { destination: stripe.charge, policy: finance-high-risk }
+#       /v1/refunds: { destination: stripe.refund, policy: finance-high-risk, require_approval: always }
+#
+# Catch-all: any host not listed here uses the __default__ entry.
+# Set __default__.block: true to block unknown destinations entirely.
+
+# ── Email providers ─────────────────────────────────────────────────────────
+api.sendgrid.com:
+  destination: sendgrid.send
+  policy: outbound-email
+  extract_records: "personalizations.length"
+
+smtp.sendgrid.net:
+  destination: sendgrid.send
+  policy: outbound-email
+
+api.mailgun.net:
+  destination: mailgun.send
+  policy: outbound-email
+
+api.loops.so:
+  destination: loops.send
+  policy: outbound-email
+
+api.instantly.ai:
+  destination: instantly.send
+  policy: outbound-email
+
+# ── CRM / Sales ─────────────────────────────────────────────────────────────
+api.salesforce.com:
+  destination: salesforce.api
+  policy: crm-low-risk
+  extract_records: "records.length"
+
+login.salesforce.com:
+  destination: salesforce.auth
+  policy: crm-low-risk
+
+api.hubapi.com:
+  destination: hubspot.api
+  policy: crm-low-risk
+
+# ── Payments ─────────────────────────────────────────────────────────────────
+api.stripe.com:
+  paths:
+    /v1/charges:       { destination: stripe.charge,    policy: finance-high-risk }
+    /v1/payment_intents: { destination: stripe.payment,  policy: finance-high-risk }
+    /v1/refunds:       { destination: stripe.refund,    policy: finance-high-risk, require_approval: always }
+    /v1/payouts:       { destination: stripe.payout,    policy: finance-high-risk, require_approval: always }
+    /v1/subscriptions: { destination: stripe.subscription, policy: finance-high-risk }
+  destination: stripe.api
+  policy: finance-high-risk
+
+# ── Communication / Notifications ────────────────────────────────────────────
+api.twilio.com:
+  destination: twilio.sms
+  policy: outbound-email
+
+hooks.slack.com:
+  destination: slack.webhook
+  policy: support-reply
+
+api.slack.com:
+  destination: slack.api
+  policy: support-reply
+
+api.discord.com:
+  destination: discord.api
+  policy: support-reply
+
+# ── Databases / Storage ──────────────────────────────────────────────────────
+# Add your self-hosted DB endpoints here if you want proxy-level governance
+
+# ── Social / Publishing ──────────────────────────────────────────────────────
+bsky.social:
+  destination: bluesky.post
+  policy: bluesky-post
+
+api.bsky.app:
+  destination: bluesky.post
+  policy: bluesky-post
+
+# ── Internal Gate API (never proxy, always pass) ─────────────────────────────
+localhost:
+  passthrough: true
+127.0.0.1:
+  passthrough: true
+
+# ── Default for unknown destinations ────────────────────────────────────────
+# block: true = reject unknown hosts. false = auto-approve unknown (permissive mode).
+__default__:
+  block: false
+  destination: unknown.outbound
+  policy: crm-low-risk
