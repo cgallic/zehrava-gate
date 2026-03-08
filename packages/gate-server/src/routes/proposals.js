@@ -151,7 +151,7 @@ router.post('/propose', authenticate, (req, res) => {
     proposalId,
     intentId: proposalId,   // V2 alias
     status: result.status,
-    blockReason: result.status === 'blocked' ? result.reason : null,
+    blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
     riskLevel: risk.risk_level,

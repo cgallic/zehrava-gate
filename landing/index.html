@@ -845,7 +845,7 @@
 <!-- HOW IT WORKS -->
 <section class="section" id="how-it-works">
   <div class="section-label reveal">How it works</div>
-  <h2 class="section-h2 reveal">Five events. No exceptions.<br>Every agent write, every time.</h2>
+  <h2 class="section-h2 reveal">Every event logged.<br>Every agent write, every time.</h2>
   <p class="section-lead reveal">Agent submits intent. Gate evaluates YAML policy in microseconds — no LLM, deterministic, same answer every time. Low risk auto-approves. High risk waits for a human. Approved writes get a signed execution token that expires in 15 minutes. Your worker runs it inside your own VPC. Ledger sealed.</p>
 
   <div class="flow-track">
@@ -1284,7 +1284,7 @@ npx zehrava-gate --port 4000</pre>
   <div class="faq-list reveal" style="max-width:780px;margin:3rem auto 0">
 
     <details class="faq-item">
-      <summary class="faq-q">Intent → evaluate → approve → execute. That's four API calls per agent write. What does this cost at scale?</summary>
+      <summary class="faq-q">Intent → evaluate → approve → execute. That's up to four API calls per agent write on the happy path. What does this cost at scale?</summary>
       <div class="faq-a">
         <p>For auto-approved low-risk writes: one call. <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">POST /v1/intents</code> returns <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">approved</code> immediately if the policy allows it. Evaluation is synchronous and deterministic — no LLM call, no network hop outside Gate, sub-10ms in practice.</p>
         <p style="margin-top:.75rem">For human-reviewed writes: yes, there's latency — that's the point. You're waiting for a human. The approve + execute calls are lightweight once the decision is made.</p>

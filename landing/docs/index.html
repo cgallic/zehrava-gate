@@ -391,7 +391,7 @@ zehrava-gate --port 4000</pre>
 
 <span class="fn">console</span>.<span class="fn">log</span>(p.status) <span class="cm">// "approved" | "blocked" | "pending_approval" | "duplicate_blocked"</span>
 <span class="fn">console</span>.<span class="fn">log</span>(p.intentId)
-<span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// set if status === "blocked"</span></pre>
+<span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// set if status === "blocked" or "duplicate_blocked"</span></pre>
     <p>Gate evaluates the policy immediately and returns one of four statuses:</p>
     <ul>
       <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to request execution.</li>
