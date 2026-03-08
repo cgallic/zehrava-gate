@@ -20,6 +20,17 @@ process.env.BASE_URL = BASE_URL;
 
 app.use(express.json({ limit: '50mb' }));
 
+// CORS — public feed open to all origins, rest locked to same-origin
+app.use((req, res, next) => {
+  if (req.path === '/v1/public/feed' || req.path === '/health') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+  }
+  next();
+});
+
 // Health
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'zehrava-gate', version: '0.1.0' });
@@ -111,6 +122,7 @@ app.get('/v1/public/feed', (req, res) => {
     SELECT p.*, a.name as agent_name
     FROM proposals p
     LEFT JOIN agents a ON p.sender_agent_id = a.id
+    WHERE a.name = 'kai-cmo'
     ORDER BY p.created_at DESC
     LIMIT ?
   `).all(limit);

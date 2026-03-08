@@ -1,0 +1,10 @@
+id: bluesky-post
+description: Bluesky posts from @meetkai.bsky.social via Kai-CMO
+destinations:
+  - bluesky.post
+require_approval: always
+expiry_minutes: 720
+delivery: one_time
+notes: >
+  All Bluesky posts require approval before publishing.
+  Expires after 12 hours — if not approved, the post is skipped (next day generates fresh content).
