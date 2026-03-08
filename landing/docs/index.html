@@ -609,7 +609,7 @@ zehrava-gate --port 4000</pre>
           <tr><td>recordCount</td><td>number</td><td>Batch size. Used for threshold evaluation (<code>auto_approve_under</code>, <code>require_approval_over</code>).</td></tr>
           <tr><td>estimated_value_usd</td><td>number</td><td>Estimated financial value. Contributes to risk score.</td></tr>
           <tr><td>sensitivity_tags</td><td>string[]</td><td>Data sensitivity labels: <code>pii</code>, <code>financial</code>, <code>health</code>, <code>legal</code>. Contributes to risk score.</td></tr>
-          <tr><td>idempotency_key</td><td>string</td><td>If set, duplicate submissions with the same key + agent return <code>409 duplicate_blocked</code> instead of re-evaluating.</td></tr>
+          <tr><td>idempotency_key</td><td>string</td><td>If set, duplicate submissions with the same key + agent return <code>status: "duplicate_blocked"</code> instead of re-evaluating.</td></tr>
           <tr><td>on_behalf_of</td><td>string</td><td>Agent ID of the orchestrating agent. Logged in audit trail for multi-agent accountability.</td></tr>
           <tr><td>expiresIn</td><td>string</td><td>Approval window: <code>30m</code>, <code>1h</code>, <code>2h</code>. Default: <code>1h</code>.</td></tr>
           <tr><td>metadata</td><td>object</td><td>Arbitrary key/value pairs. Stored with the intent and included in audit events.</td></tr>
