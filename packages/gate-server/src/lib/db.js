@@ -56,6 +56,17 @@ db.exec(`
     metadata TEXT,
     created_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS webhooks (
+    id TEXT PRIMARY KEY,
+    intent_id TEXT NOT NULL,
+    url TEXT NOT NULL,
+    secret TEXT,
+    fired INTEGER DEFAULT 0,
+    fired_at INTEGER,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (intent_id) REFERENCES proposals(id)
+  );
 `);
 
 module.exports = db;
