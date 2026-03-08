@@ -1297,19 +1297,12 @@ npx zehrava-gate --port 4000</pre>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">You have the action ledger for everything agents do in production. That's extraordinarily sensitive. What's the security model?</summary>
+      <summary class="faq-q">Gate sees every agent intent. What happens to that data?</summary>
       <div class="faq-a">
-        <p>Self-hosted: Gate runs in your infrastructure. The SQLite database never leaves your servers. We never see your data. This is the default deployment and the recommended one for any company with sensitive workloads.</p>
-        <p style="margin-top:.75rem">Cloud-hosted: for teams that don't want to run infrastructure. Data residency options, encryption at rest, SOC 2 compliance — these are on the roadmap, not shipped today. If your security requirement is hard, self-host.</p>
-        <p style="margin-top:.75rem">The PII scrubber on the public feed endpoint exists specifically because we know the ledger contains sensitive operational data. Emails, phone numbers, payload content are scrubbed before any read endpoint that doesn't require auth.</p>
-      </div>
-    </details>
-
-    <details class="faq-item">
-      <summary class="faq-q">You store payload_hash forever for replay protection. Who owns that data and what's the retention policy?</summary>
-      <div class="faq-a">
-        <p>You do. Self-hosted Gate means your SQLite, your server, your retention policy. Delete the database, the hashes are gone. The payload itself is stored in <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">/data/payloads/</code> on your server — same rules apply.</p>
-        <p style="margin-top:.75rem">Configurable retention — auto-expire intents and payloads after N days — is on the roadmap. The <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">expires_at</code> field on intents exists today but only affects approval windows, not storage. Storage-level TTL is a near-term addition.</p>
+        <p>Self-hosted — the default — means Gate runs on your infrastructure. The database, the payloads, the ledger: all on your server. We never see it. You own it. You control retention.</p>
+        <p style="margin-top:.75rem">Intent payloads can contain sensitive data. Gate knows this. PII scrubber runs on every unauthenticated read endpoint — emails, phone numbers, payload content stripped before anything goes out. Authenticated API calls get full data; public endpoints get scrubbed data.</p>
+        <p style="margin-top:.75rem">Cloud-hosted is on the roadmap. SOC 2, encryption at rest, configurable data residency — not shipped yet. If you have a hard compliance requirement today, self-host. It's a 5-minute deploy.</p>
+        <p style="margin-top:.75rem">Storage retention: configurable TTL per policy is on the roadmap. Right now you control retention by controlling the database. Delete what you don't need.</p>
       </div>
     </details>
 
