@@ -36,7 +36,30 @@ app.use((req, res, next) => {
 
 // Health
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'zehrava-gate', version: '0.2.0' });
+  const proxyEnabled = !!process.env.PROXY_API_KEY;
+  const tlsIntercept = process.env.GATE_TLS_INTERCEPT === 'true';
+  res.json({
+    status: 'ok',
+    service: 'zehrava-gate',
+    version: '0.3.0',
+    proxy: proxyEnabled ? { enabled: true, port: process.env.PROXY_PORT || 4001, tls_intercept: tlsIntercept } : { enabled: false },
+  });
+});
+
+// GET /v1/proxy/ca.crt — download Gate's CA certificate for agent trust
+app.get('/v1/proxy/ca.crt', (req, res) => {
+  if (!process.env.PROXY_API_KEY) {
+    return res.status(404).json({ error: 'Proxy not enabled' });
+  }
+  const { getCAPath } = require('./proxy/ca');
+  const caPath = getCAPath();
+  const fs = require('fs');
+  if (!fs.existsSync(caPath)) {
+    return res.status(404).json({ error: 'CA not initialized yet — server may still be starting' });
+  }
+  res.setHeader('Content-Type', 'application/x-x509-ca-cert');
+  res.setHeader('Content-Disposition', 'attachment; filename="gate-ca.crt"');
+  res.sendFile(caPath);
 });
 
 // Legacy agent endpoints now handled by agentsRouter
@@ -204,6 +227,9 @@ app.listen(PORT, () => {
 
   // Start V3 proxy if PROXY_API_KEY is set
   if (process.env.PROXY_API_KEY) {
+    // Initialize CA for TLS intercept (generates once, loads on subsequent starts)
+    const { initCA, getCAPath } = require('./proxy/ca');
+    initCA();
     const { startProxy } = require('./proxy/engine');
     startProxy();
   } else {

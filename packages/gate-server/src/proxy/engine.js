@@ -322,13 +322,22 @@ async function handleRequest(clientReq, clientRes) {
   clientRes.end(JSON.stringify({ error: 'unexpected_gate_status', status: intentStatus, intentId }));
 }
 
-// ── HTTPS CONNECT tunnel (Phase 1: blind passthrough, Phase 2: intercept) ──
+// ── HTTPS CONNECT handler ─────────────────────────────────────────────────────
+// If GATE_TLS_INTERCEPT=true: full MITM — Gate reads and governs HTTPS traffic
+// Otherwise: blind TCP tunnel passthrough (Phase 1 behavior)
 
 function handleConnect(req, clientSocket, head) {
   const [hostname, port] = req.url.split(':');
   const targetPort = parseInt(port) || 443;
 
-  console.log(`[proxy] CONNECT tunnel ${hostname}:${targetPort} (Phase 1: passthrough — no TLS intercept)`);
+  if (process.env.GATE_TLS_INTERCEPT === 'true') {
+    const { handleConnectMitm } = require('./mitm');
+    handleConnectMitm(req, clientSocket, head);
+    return;
+  }
+
+  // Passthrough (TLS intercept disabled)
+  console.log(`[proxy] CONNECT tunnel ${hostname}:${targetPort} (passthrough — set GATE_TLS_INTERCEPT=true to intercept)`);
 
   const serverSocket = require('net').connect(targetPort, hostname, () => {
     clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');

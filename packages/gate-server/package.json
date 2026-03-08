@@ -1,7 +1,7 @@
 {
   "name": "zehrava-gate",
   "version": "0.2.0",
-  "description": "Zehrava Gate \u2014 the commit checkpoint between AI agents and production systems",
+  "description": "Zehrava Gate — the commit checkpoint between AI agents and production systems",
   "main": "src/sdk.js",
   "bin": {
     "zehrava-gate": "bin/cli.js"
@@ -30,7 +30,9 @@
     "url": "https://github.com/cgallic/zehrava-gate"
   },
   "homepage": "https://zehrava.com",
-  "dependencies": {},
+  "dependencies": {
+    "node-forge": "^1.3.1"
+  },
   "exports": {
     ".": "./src/sdk.js",
     "./server": "./src/index.js"
