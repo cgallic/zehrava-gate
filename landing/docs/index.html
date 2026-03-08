@@ -226,7 +226,7 @@
     <div class="nav-group-label">Getting started</div>
     <a href="#quickstart" class="nav-link">Quickstart</a>
     <a href="#register-agent" class="nav-link">Register an agent</a>
-    <a href="#your-first-proposal" class="nav-link">First proposal</a>
+    <a href="#your-first-intent" class="nav-link">First intent</a>
   </div>
   <div class="nav-group">
     <div class="nav-group-label">Policies</div>
@@ -275,7 +275,7 @@
       <div class="nav-group-label">Getting started</div>
       <a href="#quickstart" class="nav-link active">Quickstart</a>
       <a href="#register-agent" class="nav-link">Register an agent</a>
-      <a href="#your-first-proposal" class="nav-link">First proposal</a>
+      <a href="#your-first-intent" class="nav-link">First intent</a>
     </div>
     <div class="nav-group">
       <div class="nav-group-label">Policies</div>
@@ -312,7 +312,7 @@
     </div>
     <div class="nav-group">
       <div class="nav-group-label">Concepts</div>
-      <a href="#intent-lifecycle" class="nav-link">Proposal lifecycle</a>
+      <a href="#intent-lifecycle" class="nav-link">Intent lifecycle</a>
       <a href="#fail-closed" class="nav-link">Fail closed</a>
       <a href="#multi-agent" class="nav-link">Multi-agent</a>
     </div>
@@ -361,8 +361,8 @@ zehrava-gate --port 4000</pre>
     </div>
     <p>The <code>riskTier</code> field is stored for auditing. Current values: <code>standard</code>, <code>elevated</code>, <code>restricted</code>. Future policy enforcement will gate actions by tier.</p>
 
-    <!-- ── FIRST PROPOSAL ── -->
-    <h2 id="your-first-proposal">Your first proposal</h2>
+    <!-- ── FIRST INTENT ── -->
+    <h2 id="your-first-intent">Your first intent</h2>
     <p>Create a policy file first. Drop it in your <code>--policy-dir</code>:</p>
     <pre><span class="com"># policies/support-reply.yaml</span>
 <span class="key">id</span>: <span class="val">support-reply</span>
@@ -409,7 +409,7 @@ zehrava-gate --port 4000</pre>
         <div class="step-num">2</div>
         <div class="step-body">
           <h4>Destination allowlist</h4>
-          <p>If <code>destinations</code> is set and the proposal's destination isn't in the list, Gate blocks it.</p>
+          <p>If <code>destinations</code> is set and the intent's destination isn't in the list, Gate blocks it.</p>
         </div>
       </div>
       <div class="step">
@@ -423,7 +423,7 @@ zehrava-gate --port 4000</pre>
         <div class="step-num">4</div>
         <div class="step-body">
           <h4>Term scan</h4>
-          <p>If <code>block_if_terms</code> is set, Gate scans the payload content for each term. Matching is normalized — strips punctuation, collapses whitespace, maps leet substitutions. First match blocks the proposal.</p>
+          <p>If <code>block_if_terms</code> is set, Gate scans the payload content for each term. Matching is normalized — strips punctuation, collapses whitespace, maps leet substitutions. First match blocks the intent.</p>
         </div>
       </div>
       <div class="step">
@@ -462,7 +462,7 @@ zehrava-gate --port 4000</pre>
         <tr>
           <td>destinations</td>
           <td>string[]</td>
-          <td>Allowlist of destination identifiers. Proposals to any other destination are blocked. Omit to allow any destination.</td>
+          <td>Allowlist of destination identifiers. Intents to any other destination are blocked. Omit to allowlow any destination.</td>
         </tr>
         <tr>
           <td>allowed_types</td>
@@ -477,7 +477,7 @@ zehrava-gate --port 4000</pre>
         <tr>
           <td>require_approval</td>
           <td>string</td>
-          <td>Set to <code>"always"</code> to require human approval on every proposal regardless of other rules. Recommended for high-risk destinations.</td>
+          <td>Set to <code>"always"</code> to require human approval on every intent regardless of other rules. Recommended for high-risk destinations.</td>
         </tr>
         <tr>
           <td>auto_approve_under</td>
@@ -532,7 +532,7 @@ zehrava-gate --port 4000</pre>
 
     <!-- ── API REFERENCE ── -->
     <div class="callout callout-info" style="margin-bottom:1.5rem">
-      <strong>V1 backward compat:</strong> <code>/v1/propose</code>, <code>/v1/approve</code>, <code>/v1/reject</code>, <code>/v1/deliver</code>, and <code>/v1/proposals</code> still work. V2 canonical routes are <code>/v1/intents</code> and <code>/v1/executions</code>.
+      <strong>V1 backward compat:</strong> <code>/v1/propose</code>, <code>/v1/approve</code>, <code>/v1/reject</code>, <code>/v1/deliver</code>, and <code>/v1/intents</code> still work. V2 canonical routes are <code>/v1/intents</code> and <code>/v1/executions</code>.
     </div>
 
     <h2 id="api-agents">API — Register agent</h2>
@@ -881,7 +881,7 @@ gate.<span class="fn">register_webhook</span>(
   "firedAt":    "2026-03-08T11:30:00.000Z"
 }</span></pre>
     <div class="callout callout-info">
-      <p><strong>Webhooks are in-memory.</strong> If the Gate server restarts before the webhook fires, the registration is lost. Persistent webhook storage is on the roadmap. For now, use webhooks for short-lived proposals.</p>
+      <p><strong>Webhooks are in-memory.</strong> If the Gate server restarts before the webhook fires, the registration is lost. Persistent webhook storage is on the roadmap. For now, use webhooks for short-lived intents.</p>
     </div>
 
     <!-- ── DASHBOARD ── -->

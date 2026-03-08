@@ -590,7 +590,7 @@
 
     <!-- RIGHT: TERMINAL DEMO -->
     <div class="hero-right">
-      <div class="hero-terminal" role="img" aria-label="Gate terminal demo showing proposal flow">
+      <div class="hero-terminal" role="img" aria-label="Gate terminal demo showing intent flow">
         <div class="ht-header">
           <div class="ht-dots">
             <div class="ht-dot ht-dot-r"></div>
@@ -726,8 +726,8 @@
       <div class="incident-arrow" aria-hidden="true">→</div>
       <div class="incident-gate">
         <div class="incident-checks">
-          <div class="ic-row"><span class="ic-label">Gate policy</span><span class="ic-val purple">block_duplicate_proposals</span></div>
-          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val ok">✓ Second execution blocked at proposal stage</span></div>
+          <div class="ic-row"><span class="ic-label">Gate policy</span><span class="ic-val purple">idempotency_key: matched</span></div>
+          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val ok">✓ Duplicate intent blocked (409)</span></div>
         </div>
       </div>
     </div>
@@ -801,7 +801,7 @@
         <tr>
           <td>Audit log</td>
           <td>Console logs scattered across 5 different repos.</td>
-          <td class="win">Centralized. Immutable. Queryable by proposal ID.</td>
+          <td class="win">Centralized. Immutable. Queryable by intent ID.</td>
         </tr>
         <tr>
           <td>Cross-team</td>
@@ -811,7 +811,7 @@
         <tr>
           <td>Identity</td>
           <td>The agent is code. No verified sender. No accountability.</td>
-          <td class="win">Every proposal has a verified sender. Signed manifest.</td>
+          <td class="win">Every intent has a verified sender. Agent registry enforced.</td>
         </tr>
         <tr>
           <td>Delivery</td>
@@ -979,7 +979,7 @@
         <div class="incident-checks">
           <div class="ic-row"><span class="ic-label">Sender</span><span class="ic-val ok">verified</span></div>
           <div class="ic-row"><span class="ic-label">Destination</span><span class="ic-val err">unknown.system ✗ blocked</span></div>
-          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val err">proposal.status = "blocked"</span></div>
+          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val err">intent.status = "blocked"</span></div>
           <div class="ic-row"><span class="ic-label">Audit</span><span class="ic-val ok">logged — blocked at policy check</span></div>
         </div>
       </div>
@@ -1013,7 +1013,7 @@
         <div class="incident-checks">
           <div class="ic-row"><span class="ic-label">Destination</span><span class="ic-val ok">zendesk.reply ✓</span></div>
           <div class="ic-row"><span class="ic-label">Term scan</span><span class="ic-val err">"refund guaranteed" → blocked</span></div>
-          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val err">proposal.status = "blocked"</span></div>
+          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val err">intent.status = "blocked"</span></div>
           <div class="ic-row"><span class="ic-label">Audit</span><span class="ic-val ok">logged — reason recorded</span></div>
         </div>
       </div>
@@ -1185,7 +1185,7 @@ npx zehrava-gate --port 4000</pre>
 
   <div class="code-block reveal" style="transition-delay:.08s">
     <div class="cb-header">
-      <span>Your first proposal</span>
+      <span>Your first intent</span>
       <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy quickstart code">Copy</button>
     </div>
     <pre>
@@ -1224,7 +1224,7 @@ npx zehrava-gate --port 4000</pre>
       <ul class="plan-features">
         <li>Local dev server</li>
         <li>1 workspace</li>
-        <li>500 proposals/mo</li>
+        <li>500 intents/mo</li>
         <li>7-day audit retention</li>
       </ul>
     </div>
@@ -1235,7 +1235,7 @@ npx zehrava-gate --port 4000</pre>
       <div class="plan-desc">Teams running agents in production workflows.</div>
       <ul class="plan-features">
         <li>5 workspaces</li>
-        <li>10,000 proposals/mo</li>
+        <li>10,000 intents/mo</li>
         <li>Approval queue UI</li>
         <li>Execution orders + webhooks</li>
         <li>90-day audit retention</li>
@@ -1312,7 +1312,7 @@ npx zehrava-gate --port 4000</pre>
     <details class="faq-item">
       <summary class="faq-q">You have three execution modes listed but gate_exec doesn't exist yet. Why advertise what isn't built?</summary>
       <div class="faq-a">
-        <p>Fair. runner_exec is the only mode that's fully implemented today. external_pull (one-time token, destination pulls the payload) is partially built — the delivery token infrastructure exists from V1. gate_exec (Gate holds the connector and executes directly) is not built.</p>
+        <p>Fair. runner_exec is the only mode that's fully implemented today. external_pull (worker fetches a signed payload ref) is partially built. gate_exec (Gate holds the connector and executes directly) is not built.</p>
         <p style="margin-top:.75rem">The three modes reflect the architecture we're building toward, not what shipped today. runner_exec works, handles the enterprise use case cleanly (credentials stay in your VPC), and is what you should use right now. The others will land in order of customer demand.</p>
       </div>
     </details>
