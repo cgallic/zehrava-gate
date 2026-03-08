@@ -269,6 +269,7 @@
     <a href="#intent-lifecycle" class="nav-link">Intent lifecycle</a>
     <a href="#fail-closed" class="nav-link">Fail closed</a>
     <a href="#multi-agent" class="nav-link">Multi-agent</a>
+    <a href="#roadmap" class="nav-link">Roadmap</a>
   </div>
   <a href="/" style="display:block;margin-top:1.5rem;color:var(--muted);font-size:.875rem">← Home</a>
 </div>
@@ -321,6 +322,7 @@
       <a href="#intent-lifecycle" class="nav-link">Intent lifecycle</a>
       <a href="#fail-closed" class="nav-link">Fail closed</a>
       <a href="#multi-agent" class="nav-link">Multi-agent</a>
+    <a href="#roadmap" class="nav-link">Roadmap</a>
     </div>
   </nav>
 
@@ -971,6 +973,41 @@ POST /v1/executions/:id/report
     <div class="callout callout-tip">
       <p>✓ <strong>Best practice:</strong> Wire Gate at the orchestrator level, not just leaf agents. If the orchestrator calls Gate before dispatching to sub-agents, the accountability chain is cleaner.</p>
     </div>
+
+    <h2 id="roadmap">Roadmap</h2>
+    <p>Gate today is cooperative — agents call the SDK voluntarily. The roadmap closes that gap. Here is what is being built, in priority order.</p>
+
+    <h3>1. Network-level enforcement (top priority)</h3>
+    <p>The current model requires agents to call Gate. A cooperative agent that skips the SDK call bypasses governance entirely. The next major version adds enforcement that does not rely on agent cooperation.</p>
+    <p>Three enforcement approaches on the roadmap:</p>
+    <ul>
+      <li><strong>Reverse proxy mode</strong> — Gate sits in front of destination APIs. Agents route all outbound calls through Gate's proxy. Write requests without a valid <code>gex_</code> execution token are rejected at the network layer — not the application layer.</li>
+      <li><strong>Tool wrapper injection</strong> — Framework-specific wrappers (LangChain, CrewAI, AutoGen) replace tool call handlers. Agents cannot execute tools directly — every tool call passes through Gate before firing.</li>
+      <li><strong>Service mesh integration</strong> — Sidecar policy enforcement for Kubernetes deployments. Gate runs as a sidecar; egress traffic to destination APIs requires a valid execution token in headers.</li>
+    </ul>
+    <p>Until enforcement ships, Gate is most effective for teams that control the agent code and commit to the SDK integration pattern.</p>
+
+    <h3>2. Schema-aware policies</h3>
+    <p>Current policy evaluation is structural — record count, destination, substring terms. Schema-aware policies evaluate the content of the write against a defined schema. Examples:</p>
+    <ul>
+      <li>Block CRM imports where <code>email</code> field is empty on more than 20% of records</li>
+      <li>Flag financial writes where <code>amount</code> exceeds a threshold per transaction</li>
+      <li>Require approval for database mutations where <code>DELETE</code> affects more than N rows</li>
+    </ul>
+
+    <h3>3. Environment-aware evaluation</h3>
+    <p>Policies will support environment flags. A write that auto-approves in staging requires human approval in production. Environment is passed at intent submission and changes which policy thresholds apply.</p>
+
+    <h3>4. Cryptographically signed audit log</h3>
+    <p>Current audit events are append-only in SQLite. A database admin can edit them. The signed audit log adds an HMAC signature to every event at write time. Tampering becomes detectable. This is the gap between Gate's current audit trail and compliance-grade immutability.</p>
+
+    <h3>5. External log drain</h3>
+    <p>Export audit events to S3, Splunk, or any SIEM via webhook stream. Required for teams that need audit log retention outside the Gate database.</p>
+
+    <div class="callout callout-warn">
+      <p>⚠ <strong>Current limitation:</strong> Gate is cooperative infrastructure. An agent that does not call the SDK bypasses governance. If your threat model includes agents that actively circumvent controls, wait for network-level enforcement before relying on Gate as your only safety layer.</p>
+    </div>
+
   </main>
 </div>
 
