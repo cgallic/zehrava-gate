@@ -397,6 +397,7 @@ zehrava-gate --port 4000</pre>
       <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to request execution.</li>
       <li><span class="status status-blocked">blocked</span> — violated a policy rule. Do not proceed. Check <code>blockReason</code>.</li>
       <li><span class="status status-pending">pending_approval</span> — within policy but requires human review. Poll <code>/v1/intents/:id</code> for status updates, or register a webhook.</li>
+      <li><span class="status status-blocked">duplicate_blocked</span> — idempotency_key matched an existing intent. The action was already submitted and Gate will not re-evaluate it.</li>
     </ul>
 
     <!-- ── POLICY OVERVIEW ── -->
@@ -838,7 +839,7 @@ p = gate.<span class="fn">propose</span>(
 )
 
 <span class="cm"># p["status"] → "approved" | "blocked" | "pending_approval" | "duplicate_blocked"</span>
-<span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"blocked"</span>:
+<span class="k">if</span> p[<span class="s">"status"</span>] <span class="k">in</span> [<span class="s">"blocked"</span>, <span class="s">"duplicate_blocked"</span>]:
     <span class="k">raise</span> <span class="fn">GateError</span>(p[<span class="s">"blockReason"</span>])</pre>
 
     <h3>LangGraph integration</h3>
@@ -855,7 +856,7 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
         record_count=state[<span class="s">"record_count"</span>],
         on_behalf_of=state.get(<span class="s">"orchestrator_id"</span>)
     )
-    <span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"blocked"</span>:
+    <span class="k">if</span> p[<span class="s">"status"</span>] <span class="k">in</span> [<span class="s">"blocked"</span>, <span class="s">"duplicate_blocked"</span>]:
         <span class="k">return</span> {**state, <span class="s">"error"</span>: p[<span class="s">"blockReason"</span>]}
     <span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"pending_approval"</span>:
         <span class="k">return</span> {**state, <span class="s">"intent_id"</span>: p[<span class="s">"intentId"</span>], <span class="s">"waiting"</span>: <span class="k">True</span>}
