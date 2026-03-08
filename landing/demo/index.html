@@ -111,22 +111,6 @@
 
     .link-row { text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--muted2); }
   
-    /* === SITE NAV (identical across all pages) === */
-    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
-    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
-    .nav-brand span { color: #6366f1; }
-    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
-    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
-    .nav-links a:hover { color: #f0f0f0; }
-    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
-    .nav-cta:hover { opacity: 0.9; }
-    @media(max-width: 768px) {
-      .site-nav { padding: 1rem; }
-      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
-      .nav-links a:not(.nav-cta) { display: none; }
-      .nav-links .nav-cta { display: inline-block; }
-    }
-    /* === END SITE NAV === */
   
     /* MOBILE MENU */
     .menu-btn { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 6px; border-radius: 8px; transition: background 150ms ease-out; }
@@ -144,7 +128,6 @@
     @media (max-width: 768px) {
       .menu-btn { display: flex; }
       .hdr-right .btn-primary, .hdr-right .btn-secondary { display: none; }
-      .site-nav { padding: .875rem 1.25rem; }
       .hero { padding: 3rem 1.25rem 2rem !important; }
       .hero h1 { font-size: 1.75rem; }
       .hero p { font-size: .95rem; }
@@ -160,21 +143,101 @@
       .result-badge, .status-big { font-size: .75rem; }
     }
 
+
+    /* ── CANONICAL NAV (matches landing page) ── */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(10,15,26,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    }
+    .nav-logo { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; display: flex; align-items: center; gap: .625rem; text-decoration: none; }
+    .nav-logo span { background: linear-gradient(135deg, #818cf8, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; gap: 1.75rem; font-size: 0.85rem; }
+    .nav-links a { color: var(--muted2); transition: color 150ms ease-out; text-decoration: none; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a.active { color: var(--purple-b); font-weight: 700; }
+    .nav-right { display: flex; gap: 0.875rem; align-items: center; }
+    .nav-right a { color: var(--muted2); font-size: .875rem; font-weight: 500; transition: color 150ms ease-out; text-decoration: none; }
+    .nav-right a:hover { color: var(--text); }
+    .nav-gh { font-size: 0.85rem; color: var(--muted2); transition: color 150ms ease-out; }
+    .btn-nav {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff; padding: 0.4rem 1rem; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.35); transition: all 150ms ease-out;
+      text-decoration: none;
+    }
+    .btn-nav:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(34,197,94,0.55), 0 8px 20px rgba(22,163,74,0.3); }
+    .menu-btn {
+      display: none; flex-direction: column; gap: 5px; cursor: pointer;
+      background: none; border: none; padding: 6px; border-radius: 8px;
+      transition: background 150ms ease-out;
+    }
+    .menu-btn:hover { background: rgba(255,255,255,0.06); }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: var(--text); border-radius: 2px; transition: all 200ms ease-out; transform-origin: center; }
+    .menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .menu-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+    .mobile-menu {
+      display: none; position: fixed; inset: 0; top: 57px; z-index: 199;
+      background: rgba(10,15,26,0.97); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      padding: 2rem 1.5rem; border-top: 1px solid var(--border);
+      flex-direction: column; gap: 0; overflow-y: auto;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 1.125rem; font-weight: 600; color: var(--text); padding: 1rem 0; border-bottom: 1px solid var(--border); display: block; transition: color 150ms ease-out; text-decoration: none; }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu a:hover { color: #818cf8; }
+    .mobile-menu .m-cta { margin-top: 1.5rem; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 1rem; text-align: center; border-bottom: none !important; }
+    @media (max-width: 768px) {
+      nav { padding: .875rem 1.25rem; }
+      .nav-links { display: none; }
+      .nav-right .btn-nav { display: none; }
+      .nav-right a:not(.btn-nav) { display: none; }
+      .menu-btn { display: flex; }
+    }
   </style>
 </head>
 <body>
 
-<nav class="site-nav">
-  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+<nav aria-label="Site navigation">
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#dnlg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="dnlg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
   <div class="nav-links">
-    <a href="/blog">Blog</a>
-    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
-    <a href="/demo">Demo</a>
+    <a href="/">Home</a>
+    <a href="/demo" class="active">Live Demo</a>
+    <a href="/docs">Docs</a>
     <a href="/dashboard">Dashboard</a>
-    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
-    <a href="/#get-started" class="nav-cta">Get started</a>
+    <a href="/blog">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/">Home</a>
+  <a href="/demo">Live Demo</a>
+  <a href="/docs">Docs</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/blog">Blog</a>
+  <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  <a href="/demo" class="m-cta">Get started free</a>
+</div>
 
 <div class="hero">
   <h1>The <span>live</span> demo.</h1>
@@ -491,12 +554,14 @@ async function approveCurrent() {
   }
 }
 
-  const _mb = document.getElementById('_menuBtn'), _mm = document.getElementById('_mobileMenu')
-  if (_mb && _mm) {
-    const _tog = o => { _mb.classList.toggle('open', o); _mm.classList.toggle('open', o); _mb.setAttribute('aria-expanded', o); document.body.style.overflow = o ? 'hidden' : '' }
-    _mb.addEventListener('click', () => _tog(!_mm.classList.contains('open')))
-    _mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => _tog(false)))
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') _tog(false) })
+  const menuBtn = document.getElementById('menuBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  if (menuBtn && mobileMenu) {
+    const tog = o => { menuBtn.classList.toggle('open', o); mobileMenu.classList.toggle('open', o); menuBtn.setAttribute('aria-expanded', o); document.body.style.overflow = o ? 'hidden' : ''; }
+    menuBtn.addEventListener('click', () => tog(!mobileMenu.classList.contains('open')));
+    mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => tog(false)));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') tog(false); });
+  }
   }
 
 </script>
