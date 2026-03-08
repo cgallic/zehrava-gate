@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Audit Log & Compliance Governance — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Immutable audit trail for every AI agent action. Gate logs who proposed the write, which policy evaluated it, who approved it, and when it executed. Required for SOC 2, HIPAA, and AI governance frameworks.">
+  <meta property="og:title" content="AI Agent Audit Log & Compliance Governance — Zehrava Gate">
+  <meta property="og:description" content="Every AI agent write logged with actor, timestamp, policy decision, and outcome. Immutable SQLite audit trail. Self-hosted, MIT.">
+  <meta property="og:url" content="https://zehrava.com/for/compliance/">
+  <meta name="robots" content="index, follow">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Zehrava Gate","applicationCategory":"DeveloperApplication","description":"AI agent audit log and compliance governance — immutable write-path record for SOC 2, HIPAA, and enterprise AI governance","url":"https://zehrava.com"}</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --purple: #6366f1; --green: #22c55e; --bg: #0a0f1a; --bg2: #111827; --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888; }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; } a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    .hdr-cta { background: #16a34a; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.82rem; }
+    main { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+    .badge { display: inline-block; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); color: var(--purple); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 1.5rem; }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1.25rem; }
+    .lead { font-size: 1.1rem; color: #ccc; margin-bottom: 2.5rem; max-width: 640px; }
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 3.5rem; }
+    .btn-primary { background: #16a34a; color: #fff; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+    .btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+    .btn-primary:hover, .btn-secondary:hover { text-decoration: none; opacity: 0.9; }
+    h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; color: var(--green); margin: 1.75rem 0 0.5rem; }
+    p { color: #ccc; margin-bottom: 1rem; }
+    p strong { color: var(--text); }
+    ul, ol { color: #ccc; padding-left: 1.4rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.4rem; }
+    code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; color: #a5b4fc; }
+    pre { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; margin: 1rem 0 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e2e8f0; line-height: 1.7; }
+    .audit-row { display: flex; align-items: flex-start; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .audit-row:last-child { border-bottom: none; }
+    .audit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-top: 7px; flex-shrink: 0; }
+    .audit-event { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--green); font-weight: 600; }
+    .audit-detail { font-size: 0.85rem; color: #ccc; margin-top: 2px; }
+    .audit-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1rem 0; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.88rem; }
+    th { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    td { padding: 0.6rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #ccc; }
+    td:first-child { color: var(--text); font-weight: 500; }
+    .check { color: var(--green); font-weight: 700; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">zehrava <span>gate</span></div>
+  <nav class="hdr-links">
+    <a href="/">Home</a>
+    <a href="/docs/">Docs</a>
+    <a href="/demo/">Demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate">GitHub</a>
+    <a href="/demo/" class="hdr-cta">Try live demo →</a>
+  </nav>
+</header>
+
+<main>
+  <div class="badge">SOC 2 · AI Governance · Audit Log · Compliance</div>
+
+  <h1>Audit log for every AI agent write</h1>
+
+  <p class="lead">Gate records an immutable audit trail for every agent action — who proposed the write, which policy evaluated it, who approved it, and whether it executed. Every event timestamped. Every actor named. Queryable via API.</p>
+
+  <div class="cta-row">
+    <a href="/demo/" class="btn-primary">See live demo →</a>
+    <a href="/docs/" class="btn-secondary">API reference</a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary">GitHub →</a>
+  </div>
+
+  <h2>The AI agent audit gap</h2>
+
+  <p>SOC 2 and enterprise AI governance frameworks require evidence of control over AI-driven actions. Application logs record that a function was called. <strong>They do not record what the agent intended, what policy applied, who approved the action, or whether the action succeeded.</strong></p>
+
+  <p>Gate records all 5 dimensions for every agent write:</p>
+
+  <ol>
+    <li><strong>Intent</strong> — what the agent proposed, payload hash, destination, record count</li>
+    <li><strong>Policy evaluation</strong> — which policy ran, result, reason code</li>
+    <li><strong>Risk assessment</strong> — composite score 0–1, level (low/medium/high/critical)</li>
+    <li><strong>Approval</strong> — auto-approved by policy, or named human reviewer + timestamp</li>
+    <li><strong>Execution outcome</strong> — succeeded or failed, reported by worker</li>
+  </ol>
+
+  <h2>The audit trail — live example</h2>
+
+  <p>Every intent generates a queryable event log. The canonical audit trail for an approved write contains 5 events in sequence:</p>
+
+  <div class="audit-block">
+    <div class="audit-row">
+      <div class="audit-dot"></div>
+      <div>
+        <div class="audit-event">proposed</div>
+        <div class="audit-detail">Actor: crm-sync-agent | Destination: salesforce.import | Records: 847 | Hash: sha256:a5dc…</div>
+      </div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-dot"></div>
+      <div>
+        <div class="audit-event">policy_checked</div>
+        <div class="audit-detail">Policy: crm-standard | Result: pending_approval | Reason: record_threshold_exceeded (>100)</div>
+      </div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-dot"></div>
+      <div>
+        <div class="audit-event">approved</div>
+        <div class="audit-detail">Actor: sarah@company.com | Timestamp: 2026-03-08T14:22:11Z | Latency: 4m 37s</div>
+      </div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-dot"></div>
+      <div>
+        <div class="audit-event">execution_requested</div>
+        <div class="audit-detail">Execution ID: exe_5c0e… | Token: gex_•••• | Mode: runner_exec | TTL: 15 min</div>
+      </div>
+    </div>
+    <div class="audit-row">
+      <div class="audit-dot"></div>
+      <div>
+        <div class="audit-event">execution_succeeded</div>
+        <div class="audit-detail">Worker reported: 847 records imported | executed_at: 2026-03-08T14:22:19Z</div>
+      </div>
+    </div>
+  </div>
+
+  <p>Retrieve the full audit trail with a single API call:</p>
+
+<pre><code>GET /v1/intents/:id/audit
+Authorization: Bearer gate_sk_...
+
+{
+  "intentId": "int_6e5342…",
+  "events": [
+    { "event_type": "proposed",              "actor": "crm-sync-agent", "created_at": "…" },
+    { "event_type": "policy_checked",        "actor": "system",         "created_at": "…" },
+    { "event_type": "approved",              "actor": "sarah@co.com",   "created_at": "…" },
+    { "event_type": "execution_requested",   "actor": "crm-sync-agent", "created_at": "…" },
+    { "event_type": "execution_succeeded",   "actor": "runner",         "created_at": "…" }
+  ]
+}</code></pre>
+
+  <h2>Policy decisions — stored separately</h2>
+
+  <p>Gate stores the policy decision record independently from the audit trail. <strong>The <code>GET /v1/intents/:id/decision</code> endpoint returns the exact policy snapshot evaluated</strong> — reason code, risk score, risk level, and timestamp — queryable indefinitely after the fact.</p>
+
+  <p>The 6 reason codes Gate records:</p>
+
+  <ol>
+    <li><code>approved_by_policy</code> — auto-approved, under all thresholds</li>
+    <li><code>record_threshold_exceeded</code> — batch size over auto-approve limit</li>
+    <li><code>blocked_term_detected</code> — payload matched a blocked term</li>
+    <li><code>destination_not_allowed</code> — destination not in policy allowlist</li>
+    <li><code>sensitive_data_detected</code> — sensitivity tag triggered manual review</li>
+    <li><code>manual_review_required</code> — policy requires human approval always</li>
+  </ol>
+
+  <h2>Multi-agent accountability — on_behalf_of</h2>
+
+  <p>Orchestrator architectures create accountability gaps. A leaf agent submits a write. The orchestrator that instructed it is unrecorded. <strong>Gate's <code>on_behalf_of</code> field closes that gap.</strong></p>
+
+  <p>The leaf agent records the orchestrator agent ID in every intent it submits. The audit trail shows the full instruction chain — orchestrator instructed leaf agent; leaf agent submitted intent; Gate evaluated policy; human approved.</p>
+
+  <h2>What Gate does not (yet) guarantee</h2>
+
+  <p>Gate records an accurate audit trail. The audit log is append-only in SQLite (WAL mode). 2 properties are on the roadmap, not yet shipped:</p>
+
+  <ol>
+    <li><strong>Cryptographic signing</strong> — audit events are not yet individually signed; a database admin can edit them</li>
+    <li><strong>External log drain</strong> — events are in SQLite only; no S3/Splunk/SIEM export yet</li>
+  </ol>
+
+  <p>For compliance use cases that require tamper-evident logs, pair Gate with an external append-only log service. Gate's audit API provides the structured event stream.</p>
+
+  <hr class="divider">
+
+  <h2>Compliance coverage by control type</h2>
+
+  <table>
+    <tr><th>Control requirement</th><th>Gate provides</th></tr>
+    <tr><td>Change authorization records</td><td><span class="check">✓</span> Every write has named approver + timestamp</td></tr>
+    <tr><td>Policy enforcement evidence</td><td><span class="check">✓</span> Policy decision stored per intent, queryable by API</td></tr>
+    <tr><td>Access boundary enforcement</td><td><span class="check">✓</span> Destination allowlist blocks out-of-scope writes</td></tr>
+    <tr><td>Data classification handling</td><td><span class="check">✓</span> Sensitivity tags (PII, financial, health) trigger risk elevation</td></tr>
+    <tr><td>Duplicate action prevention</td><td><span class="check">✓</span> Idempotency keys prevent replay writes</td></tr>
+    <tr><td>Multi-agent accountability</td><td><span class="check">✓</span> on_behalf_of records orchestrator chain</td></tr>
+    <tr><td>Tamper-evident log</td><td>Roadmap — cryptographic signing not yet shipped</td></tr>
+    <tr><td>External SIEM integration</td><td>Roadmap — log drain not yet shipped</td></tr>
+  </table>
+
+  <div class="cta-row" style="margin-top: 2rem;">
+    <a href="/docs/" class="btn-primary">Read the full docs →</a>
+    <a href="/demo/" class="btn-secondary">Try the demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary">View on GitHub</a>
+  </div>
+</main>
+</body>
+</html>

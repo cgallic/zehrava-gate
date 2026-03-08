@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate for Solo AI Builders — Approve Before Your Agent Breaks Things | Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Solo builders: add a human approval step to your AI agent before it sends emails, imports records, or writes to any production system. One command to start. MIT, self-hosted.">
+  <meta property="og:title" content="Gate for Solo AI Builders — Human Approval Before Your Agent Writes">
+  <meta property="og:description" content="The fastest way to add a review step between your agent and production. Under 10 lines of code. MIT, self-hosted.">
+  <meta property="og:url" content="https://zehrava.com/for/builders/">
+  <meta name="robots" content="index, follow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --purple: #6366f1; --green: #22c55e; --bg: #0a0f1a; --bg2: #111827; --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888; }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; } a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    .hdr-cta { background: #16a34a; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.82rem; }
+    main { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+    .badge { display: inline-block; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); color: var(--purple); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 1.5rem; }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1.25rem; }
+    .lead { font-size: 1.1rem; color: #ccc; margin-bottom: 2.5rem; max-width: 640px; }
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 3.5rem; }
+    .btn-primary { background: #16a34a; color: #fff; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+    .btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+    .btn-primary:hover, .btn-secondary:hover { text-decoration: none; opacity: 0.9; }
+    h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; color: var(--green); margin: 1.75rem 0 0.5rem; }
+    p { color: #ccc; margin-bottom: 1rem; }
+    p strong { color: var(--text); }
+    ul, ol { color: #ccc; padding-left: 1.4rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.4rem; }
+    code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; color: #a5b4fc; }
+    pre { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; margin: 1rem 0 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e2e8f0; line-height: 1.7; }
+    .scenario { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1rem 0; }
+    .scenario-title { font-weight: 700; color: var(--text); margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .scenario p { margin-bottom: 0; font-size: 0.88rem; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">zehrava <span>gate</span></div>
+  <nav class="hdr-links">
+    <a href="/">Home</a>
+    <a href="/docs/">Docs</a>
+    <a href="/demo/">Demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate">GitHub</a>
+    <a href="/demo/" class="hdr-cta">Try live demo →</a>
+  </nav>
+</header>
+
+<main>
+  <div class="badge">Solo builders · Indie hackers · Side projects</div>
+
+  <h1>Approve before your agent breaks something</h1>
+
+  <p class="lead">You're shipping an AI agent that sends emails, writes records, or calls production APIs. You need a review step before it fires. Gate adds that in 10 lines. No infra, no dashboard to build — one command to start.</p>
+
+  <div class="cta-row">
+    <a href="/demo/" class="btn-primary">See it in action →</a>
+    <a href="/docs/" class="btn-secondary">Read the docs</a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary">GitHub →</a>
+  </div>
+
+  <h2>3 scenarios where builders need Gate</h2>
+
+  <div class="scenario">
+    <div class="scenario-title">Scenario 1 — Cold email agent</div>
+    <p>Your outreach agent drafts and sends personalized emails. It has 800 leads queued. Before it fires a single send, Gate reviews each draft. Content policy blocks anything with banned phrases. Batch sends over 10 require your approval.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="scenario-title">Scenario 2 — CRM sync agent</div>
+    <p>Your agent syncs enriched data back to HubSpot or Salesforce. Gate blocks imports over your threshold. You review and approve the 847-record batch from the dashboard before a single row lands.</p>
+  </div>
+
+  <div class="scenario">
+    <div class="scenario-title">Scenario 3 — Agentic product feature</div>
+    <p>Your product lets users trigger AI actions. Gate sits between the AI decision and the actual API call. Users see "pending review" instead of a silent failure — and you catch the bad writes before they happen.</p>
+  </div>
+
+  <h2>Start in 2 minutes</h2>
+
+<pre><code># Terminal 1 — start Gate
+npx zehrava-gate --port 4000
+
+# Terminal 2 — register your agent
+curl -X POST http://localhost:4000/v1/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","riskTier":"standard"}'
+# → { "agentId": "agt_…", "apiKey": "gate_sk_…" }</code></pre>
+
+  <h2>Replace your direct writes with Gate proposals</h2>
+
+<pre><code># Before — agent writes directly
+import requests
+requests.post("https://api.sendgrid.com/v3/mail/send", json=email_payload)
+
+# After — agent proposes through Gate
+from zehrava_gate import Gate
+
+gate = Gate(endpoint="http://localhost:4000", api_key="gate_sk_...")
+
+p = gate.propose(
+    payload=email_body,          # what the agent wants to send
+    destination="sendgrid.send", # where it wants to send it
+    policy="outbound-email",     # which rules apply
+    record_count=1
+)
+
+if p["status"] == "approved":
+    order = gate.execute(intent_id=p["intentId"])
+    # pass order["execution_token"] to your sender worker
+
+elif p["status"] == "pending_approval":
+    print(f"Queued for review → http://localhost:4000/dashboard")
+    # your agent stops here — write does not happen
+
+elif p["status"] in ["blocked", "duplicate_blocked"]:
+    print(f"Blocked: {p['blockReason']}")</code></pre>
+
+  <h2>Write a 5-line policy</h2>
+
+<pre><code># policies/outbound-email.yaml
+id: outbound-email
+destinations: [sendgrid.send, gmail.send, loops.send]
+block_if_terms:
+  - "refund guaranteed"
+  - "limited time offer"
+auto_approve_under: 1    # single emails auto-approve
+require_approval_over: 5 # anything bulk → you review</code></pre>
+
+  <h2>Review and approve at /dashboard</h2>
+
+  <p>Every intent lands in the approval queue at <code>http://localhost:4000/dashboard</code>. Approve individually or reject with a reason. The audit trail records every decision with timestamp and actor name.</p>
+
+  <p>Gate runs locally during development and inside your VPC in production. No external SaaS. No data leaves your network.</p>
+
+  <hr class="divider">
+
+  <h2>Why not just add an if statement?</h2>
+
+  <p>The common alternative is a manual review step in the code — log the output, check it, then proceed. <strong>Gate gives you 4 things an if statement does not:</strong></p>
+
+  <ol>
+    <li><strong>Idempotency keys</strong> — your retry logic won't send the same email twice</li>
+    <li><strong>Audit trail</strong> — every proposed write, every decision, every actor logged automatically</li>
+    <li><strong>Policy file</strong> — rules live in YAML, not scattered through application code</li>
+    <li><strong>Dashboard</strong> — review interface without building one</li>
+  </ol>
+
+  <p>Gate is MIT licensed and self-hosted. Run it anywhere Node.js runs.</p>
+
+  <div class="cta-row" style="margin-top: 2rem;">
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-primary">Star on GitHub →</a>
+    <a href="/demo/" class="btn-secondary">Try the demo</a>
+    <a href="/docs/" class="btn-secondary">Read the docs</a>
+  </div>
+</main>
+</body>
+</html>

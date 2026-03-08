@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate for LangChain & LangGraph Developers — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Add human-in-the-loop approval and deterministic write governance to any LangChain or LangGraph agent. Gate intercepts every real-world write before it executes — email sends, CRM imports, database updates.">
+  <meta property="og:title" content="Gate for LangChain & LangGraph Developers">
+  <meta property="og:description" content="Add human-in-the-loop approval and deterministic write governance to any LangChain or LangGraph agent in under 10 lines.">
+  <meta property="og:url" content="https://zehrava.com/for/langchain/">
+  <meta name="robots" content="index, follow">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Zehrava Gate","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, macOS, Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Write-path control plane for LangChain and LangGraph AI agents. Deterministic policy evaluation, human approval workflow, full audit trail.","url":"https://zehrava.com"}</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --purple: #6366f1; --green: #22c55e; --bg: #0a0f1a; --bg2: #111827; --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888; }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; } a:hover { text-decoration: underline; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    .hdr-cta { background: #16a34a; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.82rem; }
+    main { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+    .badge { display: inline-block; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); color: var(--purple); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 1.5rem; }
+    h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1.25rem; }
+    h1 em { color: var(--green); font-style: normal; }
+    .lead { font-size: 1.1rem; color: #ccc; margin-bottom: 2.5rem; max-width: 640px; }
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 3.5rem; }
+    .btn-primary { background: #16a34a; color: #fff; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+    .btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+    .btn-primary:hover, .btn-secondary:hover { text-decoration: none; opacity: 0.9; }
+    h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; color: var(--green); margin: 1.75rem 0 0.5rem; }
+    p { color: #ccc; margin-bottom: 1rem; }
+    p strong { color: var(--text); }
+    ul, ol { color: #ccc; padding-left: 1.4rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.4rem; }
+    code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.07); padding: 1px 6px; border-radius: 4px; font-size: 0.85em; color: #a5b4fc; }
+    pre { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; margin: 1rem 0 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e2e8f0; line-height: 1.7; }
+    .compare { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1.25rem 0; }
+    .compare .label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.88rem; }
+    th { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    td { padding: 0.6rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #ccc; }
+    td:first-child { color: var(--text); font-weight: 500; }
+    .check { color: var(--green); font-weight: 700; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">zehrava <span>gate</span></div>
+  <nav class="hdr-links">
+    <a href="/">Home</a>
+    <a href="/docs/">Docs</a>
+    <a href="/demo/">Demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate">GitHub</a>
+    <a href="/demo/" class="hdr-cta">Try live demo →</a>
+  </nav>
+</header>
+
+<main>
+  <div class="badge">LangChain · LangGraph · CrewAI · AutoGen</div>
+
+  <h1>Gate for LangChain & LangGraph Developers</h1>
+
+  <p class="lead">LangChain and LangGraph agents write to production systems — CRM, email, databases, APIs. Gate adds a deterministic approval layer to every write in 10 lines of code. No LLM at evaluation time. Full audit trail.</p>
+
+  <div class="cta-row">
+    <a href="/demo/" class="btn-primary">See live demo →</a>
+    <a href="/docs/" class="btn-secondary">Read the docs</a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary">GitHub →</a>
+  </div>
+
+  <h2>The problem with LangGraph agent writes</h2>
+
+  <p>LangGraph agents execute graph nodes that trigger real-world side effects. A node sends email. Another writes to Salesforce. A third issues a Stripe refund. <strong>LangGraph handles the orchestration — nothing handles the writes.</strong></p>
+
+  <p>The LangChain ecosystem provides tracing (LangSmith), prompt management, and memory. It does not provide write-path governance. Writes happen when the node executes. There is no checkpoint between "agent decided to write" and "write landed in production."</p>
+
+  <p>Gate is that checkpoint.</p>
+
+  <h2>How Gate integrates with LangGraph</h2>
+
+  <p>Gate replaces direct tool calls with an intent-first pattern. The agent submits what it wants to do. Gate evaluates the YAML policy. Only an approved intent triggers execution.</p>
+
+  <div class="compare">
+    <div class="label">Before Gate — direct write</div>
+<pre><code>from langchain_core.tools import tool
+
+@tool
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email directly."""
+    # This fires immediately — no review, no audit
+    return gmail_client.send(to=to, subject=subject, body=body)</code></pre>
+  </div>
+
+  <div class="compare">
+    <div class="label">After Gate — governed write</div>
+<pre><code>from langchain_core.tools import tool
+from zehrava_gate import Gate
+
+gate = Gate(endpoint="https://your-gate.com", api_key="gate_sk_...")
+
+@tool
+def send_email(to: str, subject: str, body: str) -> str:
+    """Send an email through Gate — evaluated, logged, approved."""
+    p = gate.propose(
+        payload=f"To: {to}\nSubject: {subject}\n\n{body}",
+        destination="gmail.send",
+        policy="outbound-email",
+        record_count=1
+    )
+    if p["status"] == "blocked":
+        return f"Blocked: {p['blockReason']}"
+    if p["status"] == "duplicate_blocked":
+        return f"Duplicate — already submitted: {p['blockReason']}"
+    if p["status"] == "pending_approval":
+        return f"Queued for human review. Intent ID: {p['intentId']}"
+
+    # approved — request execution order
+    order = gate.execute(intent_id=p["intentId"])
+    return f"Approved. Execution token: {order['execution_token'][:12]}…"</code></pre>
+  </div>
+
+  <h2>LangGraph StateGraph — full example</h2>
+
+  <p>Gate integrates with any LangGraph <code>StateGraph</code> node. The pattern replaces direct side-effect calls with Gate-governed writes.</p>
+
+<pre><code>from langgraph.graph import StateGraph, END
+from zehrava_gate import Gate, GateError
+from typing import TypedDict
+
+gate = Gate(endpoint="https://your-gate.com", api_key="gate_sk_...")
+
+class AgentState(TypedDict):
+    lead_id: str
+    email_body: str
+    gate_intent_id: str
+    status: str
+
+def draft_email(state: AgentState) -> AgentState:
+    """LLM drafts the email body."""
+    body = llm.invoke(f"Write follow-up email for lead {state['lead_id']}")
+    return {**state, "email_body": body.content}
+
+def gate_submit(state: AgentState) -> AgentState:
+    """Submit intent to Gate — never writes directly."""
+    p = gate.propose(
+        payload=state["email_body"],
+        destination="gmail.send",
+        policy="outbound-email",
+        record_count=1,
+        idempotency_key=f"lead-email-{state['lead_id']}"  # blocks retry loops
+    )
+    if p["status"] in ["blocked", "duplicate_blocked"]:
+        return {**state, "status": "blocked", "gate_intent_id": p["intentId"]}
+    return {**state, "status": p["status"], "gate_intent_id": p["intentId"]}
+
+def route_after_gate(state: AgentState) -> str:
+    if state["status"] == "approved":
+        return "execute"
+    return END  # blocked or pending — halt
+
+def execute_write(state: AgentState) -> AgentState:
+    """Execute only on Gate approval."""
+    order = gate.execute(intent_id=state["gate_intent_id"])
+    # Pass order["execution_token"] to your worker — it performs the actual send
+    return {**state, "status": "succeeded"}
+
+graph = StateGraph(AgentState)
+graph.add_node("draft_email", draft_email)
+graph.add_node("gate_submit", gate_submit)
+graph.add_node("execute_write", execute_write)
+graph.set_entry_point("draft_email")
+graph.add_edge("draft_email", "gate_submit")
+graph.add_conditional_edges("gate_submit", route_after_gate, {"execute": "execute_write", END: END})
+graph.add_edge("execute_write", END)</code></pre>
+
+  <h2>What the policy looks like</h2>
+
+  <p>Gate evaluates a YAML policy file. No LLM processes the policy at evaluation time. The same input always produces the same output.</p>
+
+<pre><code># policies/outbound-email.yaml
+id: outbound-email
+destinations:
+  - gmail.send
+  - sendgrid.send
+  - loops.send
+block_if_terms:
+  - "refund guaranteed"
+  - "legal action"
+  - "sue"
+  - "settlement"
+auto_approve_under: 1         # single emails auto-approve
+require_approval_over: 10     # bulk sends require human review
+expiry_minutes: 60</code></pre>
+
+  <h2>Why Gate instead of LangSmith interrupt?</h2>
+
+  <table>
+    <tr><th>Feature</th><th>LangSmith Interrupt</th><th>Gate</th></tr>
+    <tr><td>Policy enforcement</td><td>Code-level, no standard</td><td><span class="check">✓</span> YAML policy, deterministic</td></tr>
+    <tr><td>Idempotency keys</td><td>✗</td><td><span class="check">✓</span> Blocks retry loops</td></tr>
+    <tr><td>Audit trail</td><td>Trace logs</td><td><span class="check">✓</span> Immutable event log per intent</td></tr>
+    <tr><td>Risk scoring</td><td>✗</td><td><span class="check">✓</span> 0–1 composite score</td></tr>
+    <tr><td>Self-hosted</td><td>✗ (SaaS)</td><td><span class="check">✓</span> MIT, one command</td></tr>
+    <tr><td>Multi-agent audit</td><td>✗</td><td><span class="check">✓</span> on_behalf_of field</td></tr>
+    <tr><td>Webhook on approve/reject</td><td>✗</td><td><span class="check">✓</span> SQLite-backed, survives restarts</td></tr>
+  </table>
+
+  <h2>Install in 60 seconds</h2>
+
+<pre><code># Start Gate server
+npx zehrava-gate --port 4000 --policy-dir ./policies
+
+# Register your LangGraph agent
+curl -X POST http://localhost:4000/v1/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"langgraph-agent","riskTier":"standard","framework":"langgraph"}'
+
+# Install Python SDK
+pip install zehrava-gate</code></pre>
+
+  <hr class="divider">
+
+  <h2>The 3 patterns Gate prevents in LangGraph</h2>
+
+  <h3>1. Retry loop duplication</h3>
+  <p>LangGraph retry logic re-executes failed nodes. <strong>Idempotency keys block duplicate writes</strong> — same agent, same key, Gate returns <code>duplicate_blocked</code> instead of writing twice.</p>
+
+  <h3>2. Policy drift under context pressure</h3>
+  <p>LLM behavior drifts across long conversations. A 64k-token context produces different decisions than a fresh session. <strong>Gate's YAML evaluation is stateless</strong> — the 100,000th evaluation is identical to the first.</p>
+
+  <h3>3. Undetected unauthorized destinations</h3>
+  <p>Agents hallucinate destination strings. A policy with <code>destinations: [gmail.send, sendgrid.send]</code> blocks writes to <code>gmail.send.cc.attacker.com</code> or any string not in the allowlist. <strong>Destination validation happens at Gate, not in the LLM prompt.</strong></p>
+
+  <hr class="divider">
+
+  <p>Gate is MIT-licensed and self-hosted. Run it inside your VPC alongside your LangGraph deployment.</p>
+
+  <div class="cta-row" style="margin-top: 2rem;">
+    <a href="/docs/" class="btn-primary">Read the full docs →</a>
+    <a href="/demo/" class="btn-secondary">Try the demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary">View on GitHub</a>
+  </div>
+</main>
+
+</body>
+</html>
