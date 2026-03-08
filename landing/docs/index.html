@@ -948,6 +948,7 @@ POST /v1/executions/:id/report
     <pre><span class="k">try</span> {
   <span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
   <span class="k">if</span> (p.status === <span class="s">'blocked'</span>) <span class="k">throw new</span> <span class="fn">Error</span>(p.blockReason)
+  <span class="k">if</span> (p.status === <span class="s">'duplicate_blocked'</span>) <span class="k">throw new</span> <span class="fn">Error</span>(<span class="s">'Duplicate intent blocked'</span>)
   <span class="k">if</span> (p.status === <span class="s">'pending_approval'</span>) <span class="k">return</span> <span class="cm">// wait — do not proceed</span>
   <span class="cm">// status === 'approved' → safe to request execution</span>
 } <span class="k">catch</span> (err) {
