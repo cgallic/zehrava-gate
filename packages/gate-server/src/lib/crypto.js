@@ -12,6 +12,10 @@ function generateDeliveryToken() {
   return `dlv_${crypto.randomBytes(20).toString('hex')}`;
 }
 
+function generateExecutionToken() {
+  return `gex_${crypto.randomBytes(20).toString('hex')}`;
+}
+
 function hashApiKey(key) {
   return crypto.createHash('sha256').update(key).digest('hex');
 }
@@ -29,4 +33,4 @@ function parseExpiry(expiresIn) {
   return val * (units[unit] || 3600);
 }
 
-module.exports = { generateId, generateApiKey, generateDeliveryToken, hashApiKey, hashPayload, parseExpiry };
+module.exports = { generateId, generateApiKey, generateDeliveryToken, generateExecutionToken, hashApiKey, hashPayload, parseExpiry };

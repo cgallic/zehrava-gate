@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../lib/db');
-const { generateId, generateDeliveryToken } = require('../lib/crypto');
+const { generateId, generateExecutionToken } = require('../lib/crypto');
 const { logEvent } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
 
@@ -35,7 +35,7 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
 
   const mode = req.body.mode || 'runner_exec';
   const executionId = generateId('exe');
-  const executionToken = generateDeliveryToken();
+  const executionToken = generateExecutionToken();
   const now = Date.now();
   const expiresAt = now + (15 * 60 * 1000); // 15 min
 
@@ -119,6 +119,7 @@ router.post('/executions/:id/report', (req, res) => {
 
 function formatExecution(e) {
   return {
+    executionId: e.id,
     execution_id: e.id,
     intent_id: e.intent_id,
     mode: e.mode,
