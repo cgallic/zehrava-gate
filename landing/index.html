@@ -1298,6 +1298,21 @@ npx zehrava-gate --port 4000</pre>
   </div>
 </section>
 
+
+<!-- EMAIL CAPTURE -->
+<section class="section" style="padding-bottom:1rem">
+  <div class="email-section reveal">
+    <div class="section-label" style="margin-bottom:1rem">Stay in the loop</div>
+    <h2>Gate is moving fast.</h2>
+    <p>Get notified when the Python SDK, webhook subscriptions, and the reverse proxy architecture ship. No spam — just release notes.</p>
+    <form class="email-form" id="emailForm" onsubmit="submitEmail(event)">
+      <input type="email" class="email-input" id="emailInput" placeholder="you@company.com" required aria-label="Email address">
+      <button type="submit" class="email-submit">Notify me</button>
+    </form>
+    <p class="email-note" id="emailNote">No account required. Unsubscribe any time.</p>
+  </div>
+</section>
+
 <hr class="divider">
 
 <footer>
@@ -1316,6 +1331,35 @@ npx zehrava-gate --port 4000</pre>
 </footer>
 
 <script>
+
+  // Email capture
+  async function submitEmail(e) {
+    e.preventDefault()
+    const email = document.getElementById('emailInput').value
+    const note = document.getElementById('emailNote')
+    const btn = e.target.querySelector('.email-submit')
+    btn.textContent = 'Submitting...'
+    btn.disabled = true
+    try {
+      const res = await fetch('/v1/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      if (res.ok) {
+        btn.textContent = '✓ Added'
+        btn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)'
+        note.textContent = "You\'re on the list."
+        note.style.color = 'var(--green)'
+      } else { throw new Error() }
+    } catch {
+      btn.textContent = 'Notify me'
+      btn.disabled = false
+      note.textContent = 'Something went wrong — try again.'
+      note.style.color = 'var(--red)'
+    }
+  }
+
   // Mobile menu
   const menuBtn = document.getElementById('menuBtn')
   const mobileMenu = document.getElementById('mobileMenu')

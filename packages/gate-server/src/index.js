@@ -7,6 +7,7 @@ const { listPolicies } = require('./lib/policy');
 const { authenticate } = require('./middleware/auth');
 
 const proposalsRouter = require('./routes/proposals');
+const subscribeRouter = require('./routes/subscribe');
 const approvalsRouter = require('./routes/approvals');
 const deliveryRouter = require('./routes/delivery');
 const auditRouter = require('./routes/audit');
@@ -88,6 +89,7 @@ app.get('/v1/proposals', authenticate, (req, res) => {
 
 // Mount all routers at /v1
 app.use('/v1', proposalsRouter);
+app.use('/v1', subscribeRouter);
 app.use('/v1', approvalsRouter);
 app.use('/v1', deliveryRouter);
 app.use('/v1/audit', auditRouter);
