@@ -1,8 +1,8 @@
 {
   "name": "zehrava-gate",
-  "version": "0.1.1",
-  "description": "Zehrava Gate — the commit checkpoint between AI agents and production systems",
-  "main": "src/index.js",
+  "version": "0.1.2",
+  "description": "Zehrava Gate \u2014 the commit checkpoint between AI agents and production systems",
+  "main": "src/sdk.js",
   "bin": {
     "zehrava-gate": "bin/cli.js"
   },
@@ -37,5 +37,9 @@
     "js-yaml": "^4.1.0",
     "multer": "^1.4.5-lts.1",
     "uuid": "^9.0.0"
+  },
+  "exports": {
+    ".": "./src/sdk.js",
+    "./server": "./src/index.js"
   }
 }

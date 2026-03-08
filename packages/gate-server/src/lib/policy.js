@@ -4,7 +4,40 @@ const yaml = require('js-yaml');
 
 const POLICY_DIR = process.env.POLICY_DIR || path.join(__dirname, '../../../../policies');
 
+/**
+ * Normalize text for term matching:
+ * lowercases, strips special chars/obfuscation, collapses whitespace.
+ * Defeats simple bypass attempts like "r3fund-guaranteed" or "refund  guaranteed".
+ */
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')  // strip punctuation/special chars
+    .replace(/0/g, 'o')            // leet: 0 → o
+    .replace(/1/g, 'i')            // leet: 1 → i
+    .replace(/3/g, 'e')            // leet: 3 → e
+    .replace(/4/g, 'a')            // leet: 4 → a
+    .replace(/5/g, 's')            // leet: 5 → s
+    .replace(/\s+/g, ' ')          // collapse whitespace
+    .trim();
+}
+
 const policyCache = {};
+
+// Invalidate cache when policy files change on disk
+function watchPolicies() {
+  if (!fs.existsSync(POLICY_DIR)) return;
+  fs.watch(POLICY_DIR, (event, filename) => {
+    if (filename && filename.endsWith('.yaml')) {
+      const policyId = filename.replace('.yaml', '');
+      if (policyCache[policyId]) {
+        delete policyCache[policyId];
+        console.log(`[gate] Policy cache invalidated: ${policyId}`);
+      }
+    }
+  });
+}
+watchPolicies();
 
 function loadPolicy(policyId) {
   if (policyCache[policyId]) return policyCache[policyId];
@@ -43,8 +76,8 @@ function evaluatePolicy(policyId, { destination, payloadType, payloadContent, re
     };
   }
 
-  // Type check
-  if (policy.allowed_types && payloadType) {
+  // Type check — only enforce if payloadType is a simple extension (not a full content string)
+  if (policy.allowed_types && payloadType && payloadType.length < 20 && !payloadType.includes(' ')) {
     const ext = payloadType.toLowerCase().replace('.', '');
     if (!policy.allowed_types.includes(ext)) {
       return {
@@ -54,10 +87,12 @@ function evaluatePolicy(policyId, { destination, payloadType, payloadContent, re
     }
   }
 
-  // Sensitive term check
+  // Sensitive term check — normalized matching defeats simple obfuscation
   if (policy.block_if_terms && payloadContent) {
+    const normalizedContent = normalizeText(payloadContent);
     for (const term of policy.block_if_terms) {
-      if (payloadContent.toLowerCase().includes(term.toLowerCase())) {
+      const normalizedTerm = normalizeText(term);
+      if (normalizedContent.includes(normalizedTerm)) {
         return { status: 'blocked', reason: `Payload contains blocked term: "${term}"` };
       }
     }

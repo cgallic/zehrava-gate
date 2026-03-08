@@ -5,3 +5,8 @@ node_modules/
 data/
 .env
 .DS_Store
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+.claude/skills/ui-ux-pro-max/scripts/__pycache__/

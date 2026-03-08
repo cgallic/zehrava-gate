@@ -1,316 +1,132 @@
 # Zehrava Gate
 
-**The safe commit layer for AI agents.**
+**The commit checkpoint between AI agents and production systems.**
 
-Your agents can already read, reason, call tools, and generate outputs.  
-Gate is the layer that decides whether those outputs are allowed to reach production systems.
-
-```
-Agent output → Gate evaluates policy → approved / blocked / pending → deliver once → audit
-```
-
-→ [zehrava.com](https://zehrava.com)
+→ [zehrava.com](https://zehrava.com) · [npm](https://www.npmjs.com/package/zehrava-gate) · [Live demo](https://zehrava.com/demo)
 
 ---
 
-## The problem
+Every agent write — email send, CRM import, database update, file publish — goes through Gate before it lands. Gate evaluates your policy, blocks violations, and holds anything uncertain for human review. No LLM at evaluation time. Deterministic. Audited.
 
-Teams are comfortable letting agents read data, draft outputs, and call low-risk tools.  
-They are not comfortable letting agents push CRM updates, send financial payloads, or trigger imports — because there's no governed layer between the agent and the downstream write.
+```
+propose → policy check → approved | blocked | pending
+                                              ↓
+                                     human reviews
+                                              ↓
+                                     approve → one-time deliver
+```
 
-Gate fills that gap.
-
----
-
-## Quickstart
+## Install
 
 ```bash
-# Start a local Gate server
-npx @zehrava/gate-server
-
-# Install the SDK
-npm install @zehrava/gate
+npm install zehrava-gate
 ```
+
+## SDK usage
 
 ```js
-const { Gate } = require('@zehrava/gate')
+const { Gate } = require('zehrava-gate')
+// or: import { Gate } from 'zehrava-gate'
 
 const gate = new Gate({
-  endpoint: 'http://localhost:3001',
-  apiKey: 'gate_sk_...'
+  endpoint: 'http://localhost:4000',
+  apiKey: 'YOUR_KEY'
 })
 
-// Agent proposes an output
-const proposal = await gate.propose({
-  payload: './leads.csv',
-  destination: 'salesforce.import',
-  policy: 'crm-low-risk',
-  recordCount: 150
+const p = await gate.propose({
+  payload: 'Thank you for reaching out — your issue is resolved.',
+  destination: 'zendesk.reply',
+  policy: 'support-reply',
+  recordCount: 1
 })
 
-console.log(proposal.status)
-// pending_approval  ← held for human review (over 100-record threshold)
-// approved          ← auto-approved (under threshold)
-// blocked           ← policy violation, nothing moves
-
-// Human approves
-await gate.approve({ proposalId: proposal.proposalId })
-
-// Gate delivers to the destination — once
-const delivery = await gate.deliver({ proposalId: proposal.proposalId })
-console.log(delivery.url)
-// https://gate.../v1/download/dlv_abc123  ← one-time signed link
-
-// Verify — full audit trail
-const verified = await gate.verify({ proposalId: proposal.proposalId })
-console.log(verified.auditTrail)
+// p.status → "approved" | "blocked" | "pending_approval"
+if (p.status === 'blocked') {
+  console.log(p.blockReason) // "Payload contains blocked term: refund guaranteed"
+}
 ```
 
----
+## Run the Gate server
 
-## Before / After
-
-```
-WITHOUT GATE                          WITH GATE
-
-agent.enrichLeads(results)            agent.enrichLeads(results)
-      ↓                                     ↓
-salesforce.import(leads)              gate.propose({ destination: 'salesforce.import',
-      ↓                                               policy: 'crm-low-risk' })
-847 records corrupted ✗                     ↓
-                                      status: 'pending_approval'
-                                            ↓
-                                      manager.approve()
-                                            ↓
-                                      gate.deliver()  →  salesforce.import ✓
-                                            ↓
-                                      full audit trail logged
+```bash
+npx zehrava-gate --port 4000
 ```
 
----
+```
+--port <number>      Port (default: 4000)
+--data-dir <path>    SQLite data directory (default: ./data)
+--policy-dir <path>  Policy YAML directory (default: ./policies)
+```
 
-## Why presigned URLs aren't enough
+## Self-host
 
-S3 presigned URLs give access to bytes. They don't:
+```bash
+git clone https://github.com/cgallic/zehrava-gate
+cd zehrava-gate/packages/gate-server
+npm install
+npm start
+```
 
-- Verify who produced the payload (agent identity)
-- Enforce policy before delivery (destination allowlist, schema, PII check)
-- Require human approval for high-risk writes
-- Enforce one-time delivery
-- Log an immutable audit trail
+## Policy files
 
-Gate does all of this. Storage stores bytes. Gate decides whether bytes are allowed to become actions.
-
----
-
-## Policy
-
-Policies are simple YAML files. No DSL. No giant policy language.
+Drop YAML files in your `--policy-dir`. Gate evaluates them deterministically — no LLM, no drift.
 
 ```yaml
-# policies/crm-low-risk.yaml
+id: support-reply
+destinations: [zendesk.reply, intercom.reply, freshdesk.reply]
+allowed_types: [text, json]
+block_if_terms:
+  - "refund guaranteed"
+  - "legal action"
+  - "sue"
+auto_approve_under: 1
+expiry_minutes: 30
+```
+
+```yaml
 id: crm-low-risk
-allowed_types: [csv, json]
 destinations: [salesforce.import, hubspot.contacts]
-auto_approve_under: 100    # records
+auto_approve_under: 100
 require_approval_over: 100
 expiry_minutes: 60
 ```
 
 ```yaml
-# policies/finance-high-risk.yaml
 id: finance-high-risk
+destinations: [stripe.refund, quickbooks.journal]
 require_approval: always
-destinations: [netsuite.payout, stripe.payout, quickbooks.batch]
-expiry_minutes: 30
-delivery: one_time_only
+expiry_minutes: 15
 ```
 
-```yaml
-# policies/support-reply.yaml
-id: support-reply
-destinations: [zendesk.reply, intercom.reply]
-auto_approve_under: 1
-block_if_terms:
-  - "refund guaranteed"
-  - "legal action"
-expiry_minutes: 30
-```
-
-Included policies: `crm-low-risk`, `finance-high-risk`, `legal-packet`, `internal-publish`, `support-reply`
-
----
-
-## API reference
-
-### Register an agent
+## API
 
 ```
-POST /v1/agents/register
-{ "name": "kai-enrichment-agent", "riskTier": "standard" }
-→ { "agentId": "agt_...", "apiKey": "gate_sk_..." }
+POST /v1/agents/register   Register an agent → get API key
+POST /v1/propose           Propose an action for policy evaluation
+POST /v1/approve           Approve a pending proposal
+POST /v1/reject            Reject a pending proposal
+POST /v1/deliver           Deliver an approved proposal (one-time token)
+GET  /v1/proposals         List proposals (filter by status)
+GET  /v1/audit/:id         Full audit trail for a proposal
+GET  /health               Server health check
 ```
 
-### Propose an output
+## Dashboard
 
-```
-POST /v1/propose
-Authorization: Bearer gate_sk_...
-{
-  "payload": "./leads.csv",
-  "destination": "salesforce.import",
-  "policy": "crm-low-risk",
-  "expiresIn": "1h",
-  "recordCount": 150
-}
-→ {
-  "proposalId": "prop_...",
-  "status": "pending_approval | approved | blocked",
-  "blockReason": null,
-  "expiresAt": "..."
-}
-```
+Every proposal lands in `/dashboard`. Approve, reject, view audit trail — no code required.
 
-### Get proposal status
+Try it live: [zehrava.com/dashboard](https://zehrava.com/dashboard)
 
-```
-GET /v1/proposals/:id
-→ { proposal + auditTrail[] }
-```
+## Why deterministic evaluation?
 
-### Approve
+Gate doesn't use an LLM to evaluate proposals. Your agent may drift across 128k tokens of context — Gate's evaluation is stateless and identical every time. The policy was written by a human when they were thinking clearly. Gate enforces it mechanically, forever.
 
-```
-POST /v1/approve
-{ "proposalId": "prop_..." }
-→ { "status": "approved", "deliveryToken": "dlv_..." }
-```
+[Read the full explanation →](https://zehrava.com/blog/why-gate-uses-yaml-not-llms)
 
-### Reject
+## Honest scope
 
-```
-POST /v1/reject
-{ "proposalId": "prop_...", "reason": "PII detected" }
-```
-
-### Deliver (one-time)
-
-```
-POST /v1/deliver
-{ "proposalId": "prop_..." }
-→ { "url": "https://.../v1/download/dlv_...", "expiresAt": "..." }
-```
-
-### Download (one-time retrieval)
-
-```
-GET /v1/download/:token
-→ payload file or metadata
-   Second request: 410 Gone
-```
-
-### Audit trail
-
-```
-GET /v1/audit/:proposalId
-→ { "events": [ { event_type, actor, metadata, created_at } ] }
-```
-
----
-
-## SDK reference
-
-### JavaScript / TypeScript
-
-```js
-const { Gate } = require('@zehrava/gate')
-
-const gate = new Gate({ endpoint, apiKey })
-
-await gate.propose({ payload, destination, policy, expiresIn, recordCount, metadata })
-await gate.approve({ proposalId })
-await gate.reject({ proposalId, reason })
-await gate.deliver({ proposalId })
-await gate.verify({ proposalId })
-```
-
-### Python
-
-```python
-from zehrava_gate import Gate
-
-gate = Gate(endpoint="http://localhost:3001", api_key="gate_sk_...")
-
-gate.propose(payload="./leads.csv", destination="salesforce.import", policy="crm-low-risk")
-gate.approve(proposal_id="prop_...")
-gate.deliver(proposal_id="prop_...")
-gate.verify(proposal_id="prop_...")
-```
-
----
-
-## Examples
-
-- [`examples/hubspot-gate`](examples/hubspot-gate) — CRM update gate with approval queue
-- [`examples/finance-gate`](examples/finance-gate) — Finance payout batch with block + one-time delivery
-- [`examples/zendesk-gate`](examples/zendesk-gate) — Support reply approval with term blocking
-
-Run any example:
-```bash
-# Start Gate server
-PORT=3001 node packages/gate-server/src/index.js
-
-# Run example
-GATE_URL=http://localhost:3001 node examples/hubspot-gate/index.js
-```
-
----
-
-## Deploy
-
-### Local dev
-```bash
-git clone https://github.com/cgallic/agent-sentinel
-cd agent-sentinel
-npm install --prefix packages/gate-server
-node packages/gate-server/src/index.js
-```
-
-### Self-hosted (MIT license — free forever)
-```bash
-# Copy gate-server to your server
-# Set environment variables:
-PORT=3001
-BASE_URL=https://gate.yourdomain.com
-DATA_DIR=/opt/zehrava/data
-POLICY_DIR=/opt/zehrava/policies
-
-# Run with PM2
-pm2 start packages/gate-server/src/index.js --name zehrava-gate
-```
-
-### Cloud
-Managed hosting at [zehrava.com](https://zehrava.com)
-
----
-
-## Competitive positioning
-
-| | Agent runtimes | MCP gateways | Object storage | Zehrava Gate |
-|--|--|--|--|--|
-| Tool access control | ✓ | ✓ | ✗ | ✗ |
-| Output policy enforcement | ✗ | ✗ | ✗ | ✓ |
-| Human approval queue | ✗ | ✗ | ✗ | ✓ |
-| Downstream write control | ✗ | partial | ✗ | ✓ |
-| One-time delivery | ✗ | ✗ | ✗ | ✓ |
-| Immutable audit trail | partial | partial | ✗ | ✓ |
-
-Agent runtimes help agents act. MCP gateways govern tool access. Gate governs whether outputs are allowed to commit.
-
----
+Gate protects against agent mistakes, not rogue agents. If your agent is wired to call Gate, it's already trying to be safe — Gate enforces that it actually is. A fully adversarial agent that skips the SDK call is out of scope. [Full FAQ →](https://zehrava.com/#faq)
 
 ## License
 
-MIT — self-deploy is free forever.
-
-[zehrava.com](https://zehrava.com) · [GitHub](https://github.com/cgallic/agent-sentinel)
+MIT — free to self-host forever.

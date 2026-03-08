@@ -31,6 +31,7 @@ db.exec(`
     block_reason TEXT,
     created_at INTEGER NOT NULL,
     expires_at INTEGER,
+    on_behalf_of TEXT,
     FOREIGN KEY (sender_agent_id) REFERENCES agents(id)
   );
 

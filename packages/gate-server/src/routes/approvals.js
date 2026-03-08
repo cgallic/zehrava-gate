@@ -58,6 +58,7 @@ router.post('/approve', authenticate, (req, res) => {
   `).run(generateId('mfst'), proposalId, req.agent.name, deliveryToken);
 
   logEvent(proposalId, 'approved', req.agent.name, { approver: req.agent.name });
+  fireWebhook(proposalId, 'approved', { deliveryToken, approver: req.agent.name });
 
   // Auto-deliver for configured destinations
   if (AUTO_DELIVER_DESTINATIONS.includes(proposal.destination)) {
@@ -83,8 +84,52 @@ router.post('/reject', authenticate, (req, res) => {
     .run(reason || 'Rejected by reviewer', proposalId);
 
   logEvent(proposalId, 'rejected', req.agent.name, { reason, rejector: req.agent.name });
+  fireWebhook(proposalId, 'rejected', { reason });
 
   res.json({ status: 'blocked', reason });
 });
 
 module.exports = router;
+
+// ── WEBHOOK REGISTRATION ─────────────────────────────────────────
+const webhooks = new Map(); // proposalId → { url, secret }
+
+function registerWebhook(proposalId, url, secret) {
+  webhooks.set(proposalId, { url, secret });
+}
+
+async function fireWebhook(proposalId, event, data) {
+  const hook = webhooks.get(proposalId);
+  if (!hook) return;
+  try {
+    const payload = JSON.stringify({ proposalId, event, ...data, firedAt: new Date().toISOString() });
+    const { default: https } = await import('https');
+    const { default: http } = await import('http');
+    const { URL } = await import('url');
+    const u = new URL(hook.url);
+    const lib = u.protocol === 'https:' ? https : http;
+    const req = lib.request({ hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload),
+        ...(hook.secret ? { 'X-Gate-Secret': hook.secret } : {}) }
+    });
+    req.write(payload);
+    req.end();
+    webhooks.delete(proposalId); // fire once
+    console.log(`[gate] webhook fired: ${proposalId} → ${event}`);
+  } catch (e) {
+    console.error(`[gate] webhook failed for ${proposalId}:`, e.message);
+  }
+}
+
+// POST /v1/webhooks/register — register a callback URL for a proposal
+router.post('/webhooks/register', authenticate, (req, res) => {
+  const { proposalId, url, secret } = req.body;
+  if (!proposalId || !url) return res.status(400).json({ error: 'proposalId and url are required' });
+  const proposal = db.prepare('SELECT id FROM proposals WHERE id = ?').get(proposalId);
+  if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
+  registerWebhook(proposalId, url, secret);
+  res.json({ registered: true, proposalId, url });
+});
+
+module.exports.registerWebhook = registerWebhook;
+module.exports.fireWebhook = fireWebhook;

@@ -13,7 +13,7 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // POST /v1/propose
 router.post('/propose', authenticate, (req, res) => {
-  const { payload, destination, policy, expiresIn, metadata, recordCount } = req.body;
+  const { payload, destination, policy, expiresIn, metadata, recordCount, on_behalf_of } = req.body;
 
   if (!destination || !policy) {
     return res.status(400).json({ error: 'destination and policy are required' });
@@ -31,17 +31,22 @@ router.post('/propose', authenticate, (req, res) => {
   let payloadContent = null;
 
   if (payload) {
-    if (payload.startsWith('data:') || payload.length > 500) {
-      // Treat as content
+    const looksLikeFilePath = /\.(csv|json|txt|pdf|xml|xlsx|jsonl)$/i.test(payload.trim());
+
+    if (looksLikeFilePath) {
+      // File path — use extension for type, no content to term-scan
+      payloadType = path.extname(payload.trim()).slice(1).toLowerCase();
+      payloadPath = payload.trim();
+      payloadContent = null;
+    } else {
+      // Text content (support reply, email body, JSON string, data: URI, etc.)
       payloadContent = payload;
       payloadHash = hashPayload(payload);
       payloadPath = path.join(UPLOAD_DIR, proposalId);
       fs.writeFileSync(payloadPath, payload);
-    } else {
-      // Treat as filename hint
-      payloadType = path.extname(payload).slice(1) || null;
-      payloadPath = payload;
-      payloadContent = null;
+      // Infer type from data: URI prefix if present
+      if (payload.startsWith('data:application/json')) payloadType = 'json';
+      else if (payload.startsWith('data:text/csv')) payloadType = 'csv';
     }
   }
 
@@ -56,8 +61,8 @@ router.post('/propose', authenticate, (req, res) => {
 
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -69,11 +74,12 @@ router.post('/propose', authenticate, (req, res) => {
     result.status,
     result.reason || null,
     now,
-    expiresAt
+    expiresAt,
+    on_behalf_of || null
   );
 
   // Log audit event
-  logEvent(proposalId, 'proposed', req.agent.name, { destination, policy });
+  logEvent(proposalId, 'proposed', req.agent.name, { destination, policy, on_behalf_of: on_behalf_of || null });
   logEvent(proposalId, 'policy_checked', 'system', { result: result.status, reason: result.reason });
 
   if (result.status === 'blocked') {
