@@ -48,8 +48,8 @@
     }
 
     /* ─── BASE ─── */
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
     a { color: var(--purple-b); text-decoration: none; }
     a:hover { text-decoration: underline; }
     code, pre { font-family: var(--mono); }
@@ -462,7 +462,39 @@
       .ht-stat { border-right: none; border-bottom: 1px solid var(--border); }
       .ht-stat:last-child { border-bottom: none; }
       .pricing-grid { grid-template-columns: 1fr; }
+      .email-form { flex-direction: column; }
+      .email-input, .email-submit { width: 100%; }
     }
+
+    /* ─── EMAIL CAPTURE ─── */
+    .email-section { max-width: 600px; }
+    .email-section h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 800; margin-bottom: 0.75rem; }
+    .email-section p { color: var(--muted2); font-size: 0.95rem; line-height: 1.75; margin-bottom: 1.5rem; }
+    .email-form {
+      display: flex; gap: 0.625rem; flex-wrap: wrap;
+      max-width: 520px;
+    }
+    .email-input {
+      flex: 1 1 220px; min-width: 0;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.75rem 1rem;
+      font-size: 0.95rem; color: var(--text); font-family: var(--font);
+      transition: border-color 150ms ease-out;
+      outline: none;
+    }
+    .email-input::placeholder { color: var(--muted); }
+    .email-input:focus { border-color: var(--purple-b); }
+    .email-submit {
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--green-dark), #15803d);
+      color: #fff; border: none; border-radius: 10px;
+      padding: 0.75rem 1.375rem; font-size: 0.9rem; font-weight: 700;
+      font-family: var(--font); cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(34,197,94,0.3);
+      transition: opacity 150ms ease-out;
+    }
+    .email-submit:hover { opacity: 0.88; }
+    .email-note { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
   </style>
 </head>
 <body>
