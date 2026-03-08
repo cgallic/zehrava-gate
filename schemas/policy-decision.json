@@ -1,0 +1,19 @@
+{
+  "$id": "https://zehrava.com/schemas/policy-decision.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PolicyDecision",
+  "type": "object",
+  "required": ["decision_id","intent_id","status","reason_code","risk_score","risk_level","evaluated_at"],
+  "properties": {
+    "decision_id": { "type": "string", "pattern": "^dec_[a-zA-Z0-9]{10,}$" },
+    "intent_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["blocked","pending_approval","approved","duplicate_blocked","replay_blocked","sandboxed"] },
+    "reason_code": { "type": "string", "enum": ["destination_not_allowed","policy_not_allowed","record_threshold_exceeded","sensitive_data_detected","blocked_term_detected","duplicate_intent","expired_intent","manual_review_required","risk_score_exceeded","approved_by_policy"] },
+    "reason_detail": { "type": ["string","null"], "maxLength": 500 },
+    "risk_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "risk_level": { "type": "string", "enum": ["low","medium","high","critical"] },
+    "policy_snapshot": { "type": "object", "additionalProperties": true },
+    "required_approvals": { "type": "integer", "minimum": 0 },
+    "evaluated_at": { "type": "string", "format": "date-time" }
+  }
+}

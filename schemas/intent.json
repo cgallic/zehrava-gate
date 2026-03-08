@@ -1,0 +1,29 @@
+{
+  "$id": "https://zehrava.com/schemas/intent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Intent",
+  "type": "object",
+  "required": ["intent_id","agent_id","action","destination","policy_id","payload_mode","payload_hash","idempotency_key","proposed_at","status","signature"],
+  "properties": {
+    "intent_id": { "type": "string", "pattern": "^int_[a-zA-Z0-9]{10,}$" },
+    "agent_id": { "type": "string", "pattern": "^agt_[a-zA-Z0-9]{10,}$" },
+    "action": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "destination": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "policy_id": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "payload_mode": { "type": "string", "enum": ["inline","external_ref"] },
+    "payload_inline": { "type": ["object","array","string","null"] },
+    "payload_ref": { "type": ["string","null"] },
+    "payload_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "payload_type": { "type": "string", "enum": ["json","csv","text","file"] },
+    "estimated_records": { "type": "integer", "minimum": 0 },
+    "estimated_value_usd": { "type": "number", "minimum": 0 },
+    "sensitivity_tags": { "type": "array", "items": { "type": "string", "enum": ["none","pii","financial","legal","health","internal_only"] } },
+    "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 255 },
+    "intent_hash": { "type": ["string","null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+    "status": { "type": "string", "enum": ["proposed","blocked","pending_approval","approved","scheduled","executing","succeeded","failed","expired","duplicate_blocked","replay_blocked"] },
+    "proposed_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": ["string","null"], "format": "date-time" },
+    "signature": { "type": "string", "minLength": 32 },
+    "metadata": { "type": "object", "additionalProperties": true }
+  }
+}

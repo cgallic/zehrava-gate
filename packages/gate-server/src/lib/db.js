@@ -32,6 +32,9 @@ db.exec(`
     created_at INTEGER NOT NULL,
     expires_at INTEGER,
     on_behalf_of TEXT,
+    idempotency_key TEXT,
+    risk_score REAL,
+    risk_level TEXT,
     FOREIGN KEY (sender_agent_id) REFERENCES agents(id)
   );
 

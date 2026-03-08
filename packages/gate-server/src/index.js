@@ -89,6 +89,20 @@ app.get('/v1/proposals', authenticate, (req, res) => {
 
 // Mount all routers at /v1
 app.use('/v1', proposalsRouter);
+
+// V2 API: /v1/intents aliases for spec-compliant clients
+app.post('/v1/intents', (req, res, next) => {
+  // Map V2 intent fields to V1 proposal fields
+  if (req.body.action && !req.body.destination) req.body.destination = req.body.action;
+  if (req.body.policy_id && !req.body.policy) req.body.policy = req.body.policy_id;
+  if (req.body.estimated_records && !req.body.recordCount) req.body.recordCount = req.body.estimated_records;
+  next();
+}, (req, res, next) => { req.url = '/propose'; next(); }, proposalsRouter);
+
+app.post('/v1/intents/:id/approve', (req, res, next) => { req.body.proposalId = req.params.id; next(); }, (req, res, next) => { req.url = '/approve'; next(); }, require('./routes/approvals'));
+app.post('/v1/intents/:id/reject', (req, res, next) => { req.body.proposalId = req.params.id; next(); }, (req, res, next) => { req.url = '/reject'; next(); }, require('./routes/approvals'));
+app.get('/v1/intents/:id', (req, res, next) => { req.url = `/proposals/${req.params.id}`; next(); }, proposalsRouter);
+app.get('/v1/intents/:id/audit', (req, res, next) => { req.url = `/${req.params.id}`; next(); }, require('./routes/audit'));
 app.use('/v1', subscribeRouter);
 app.use('/v1', approvalsRouter);
 app.use('/v1', deliveryRouter);

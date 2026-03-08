@@ -5,6 +5,7 @@ const router = express.Router();
 const db = require('../lib/db');
 const { generateId, generateDeliveryToken, hashPayload, parseExpiry } = require('../lib/crypto');
 const { evaluatePolicy } = require('../lib/policy');
+const { scoreRisk } = require('../lib/risk');
 const { logEvent, getAuditTrail } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
 
@@ -59,10 +60,35 @@ router.post('/propose', authenticate, (req, res) => {
     metadata
   });
 
+  // Idempotency check — block duplicate intents
+  const idempotencyKey = req.body.idempotency_key || null;
+  if (idempotencyKey) {
+    const existing = db.prepare('SELECT id, status FROM proposals WHERE idempotency_key = ? AND sender_agent_id = ?').get(idempotencyKey, req.agent.id);
+    if (existing) {
+      return res.status(409).json({
+        proposalId: existing.id,
+        intentId: existing.id,
+        status: 'duplicate_blocked',
+        blockReason: `Duplicate intent — idempotency_key already used: ${idempotencyKey}`,
+        existingStatus: existing.status
+      });
+    }
+  }
+
+  // Risk scoring
+  const risk = scoreRisk({
+    destination,
+    recordCount: recordCount ? parseInt(recordCount) : 0,
+    estimatedValueUsd: req.body.estimated_value_usd ? parseFloat(req.body.estimated_value_usd) : 0,
+    sensitivityTags: req.body.sensitivity_tags || [],
+    payloadContent,
+    policyRequireApproval: null // evaluated in policy engine
+  });
+
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -75,7 +101,10 @@ router.post('/propose', authenticate, (req, res) => {
     result.reason || null,
     now,
     expiresAt,
-    on_behalf_of || null
+    on_behalf_of || null,
+    idempotencyKey,
+    risk.risk_score,
+    risk.risk_level
   );
 
   // Log audit event
@@ -90,9 +119,13 @@ router.post('/propose', authenticate, (req, res) => {
 
   res.json({
     proposalId,
+    intentId: proposalId,   // V2 alias
     status: result.status,
     blockReason: result.status === 'blocked' ? result.reason : null,
-    expiresAt: new Date(expiresAt).toISOString()
+    expiresAt: new Date(expiresAt).toISOString(),
+    riskScore: risk.risk_score,
+    riskLevel: risk.risk_level,
+    riskFactors: risk.factors
   });
 });
 

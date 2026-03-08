@@ -1,0 +1,23 @@
+{
+  "$id": "https://zehrava.com/schemas/execution-order.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecutionOrder",
+  "type": "object",
+  "required": ["execution_id","intent_id","mode","destination","action","payload_hash","execution_token","issued_at","expires_at","status"],
+  "properties": {
+    "execution_id": { "type": "string", "pattern": "^exe_[a-zA-Z0-9]{10,}$" },
+    "intent_id": { "type": "string" },
+    "mode": { "type": "string", "enum": ["gate_exec","runner_exec","external_pull"] },
+    "destination": { "type": "string" },
+    "action": { "type": "string" },
+    "payload_ref": { "type": ["string","null"] },
+    "payload_hash": { "type": "string" },
+    "execution_token": { "type": "string", "minLength": 32 },
+    "retry_policy": { "type": "object", "properties": { "max_attempts": { "type": "integer", "minimum": 1, "maximum": 10 }, "backoff_seconds": { "type": "integer" } } },
+    "status": { "type": "string", "enum": ["scheduled","executing","succeeded","failed","expired","replay_blocked"] },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "executed_at": { "type": ["string","null"], "format": "date-time" },
+    "result": { "type": ["object","null"] }
+  }
+}

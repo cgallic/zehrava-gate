@@ -1,0 +1,19 @@
+{
+  "$id": "https://zehrava.com/schemas/audit-event.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuditEvent",
+  "type": "object",
+  "required": ["event_id","intent_id","event_type","actor_type","actor_id","timestamp"],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^evt_[a-zA-Z0-9]{10,}$" },
+    "intent_id": { "type": "string" },
+    "execution_id": { "type": ["string","null"] },
+    "event_type": { "type": "string", "enum": ["intent_proposed","policy_checked","approval_requested","approval_granted","approval_rejected","execution_scheduled","execution_started","execution_succeeded","execution_failed","intent_expired","duplicate_blocked","replay_blocked"] },
+    "actor_type": { "type": "string", "enum": ["agent","human","system","runner"] },
+    "actor_id": { "type": "string" },
+    "details": { "type": "object" },
+    "hash": { "type": ["string","null"] },
+    "signature": { "type": ["string","null"] },
+    "timestamp": { "type": "string", "format": "date-time" }
+  }
+}

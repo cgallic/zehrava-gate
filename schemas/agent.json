@@ -1,0 +1,19 @@
+{
+  "$id": "https://zehrava.com/schemas/agent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent",
+  "type": "object",
+  "required": ["agent_id","name","owner","public_key","status","allowed_policies","allowed_destinations","created_at"],
+  "properties": {
+    "agent_id": { "type": "string", "pattern": "^agt_[a-zA-Z0-9]{10,}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "owner": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "public_key": { "type": "string", "minLength": 32 },
+    "status": { "type": "string", "enum": ["active","suspended","revoked"] },
+    "allowed_policies": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "allowed_destinations": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "metadata": { "type": "object", "additionalProperties": true },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
