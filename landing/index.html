@@ -1286,14 +1286,6 @@ npx zehrava-gate --port 4000</pre>
       </div>
     </details>
 
-    <details class="faq-item">
-      <summary class="faq-q">A risk score of 0.74 — who calibrated that number? What does it mean for a healthcare company vs a SaaS startup?</summary>
-      <div class="faq-a">
-        <p>The default weights are opinionated starting points, not universal truth. Destination category, record count thresholds, financial value brackets, and sensitivity tags each contribute a fixed increment. 0.74 means "several high-weight factors triggered" — not "74% probability of catastrophe."</p>
-        <p style="margin-top:.75rem">The risk engine is designed to be overridden by policy. A healthcare company sets <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code> for any intent with <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">sensitivity_tags: [health]</code> — the score is irrelevant because the policy already mandates review. A SaaS startup sets <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">auto_approve_under: 500</code> for CRM imports — the score informs the approver but doesn't block.</p>
-        <p style="margin-top:.75rem">Configurable risk weights per policy is on the roadmap. Right now the score is a signal, not a verdict. The policy is the verdict.</p>
-      </div>
-    </details>
 
     <details class="faq-item">
       <summary class="faq-q">Agent registry with allowed_destinations — that's IAM. How does this not collide with the access control you already have?</summary>
