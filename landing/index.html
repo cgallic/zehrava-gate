@@ -569,10 +569,10 @@
     <div class="hero-left">
       <div class="hero-badge">
         <span class="hero-badge-dot"></span>
-        Agent Infrastructure · MIT License
+        Write-Path Governance · MIT · Self-hosted
       </div>
-      <h1 class="hero-h1">AGENTS THINK.<br>GATE DECIDES<br><span class="accent">WHEN THEY ACT.</span></h1>
-      <p class="hero-sub">Gate is the runtime control plane for AI agent actions. Agents submit intent. Gate evaluates policy, scores risk, and governs execution. Every action logged forever.</p>
+      <h1 class="hero-h1">WHAT CI/CD DID<br>FOR CODE, GATE<br>DOES FOR <span class="accent">AGENT WRITES.</span></h1>
+      <p class="hero-sub">Agents are in the write path. Gate is the control plane between intent and execution. Policy decides what runs. Risk gets scored. Humans approve what matters. Everything logged forever.</p>
       <div class="hero-actions">
         <a href="/demo" class="btn-primary">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" aria-hidden="true"><path d="M2.5 1.5l9 5-9 5z"/></svg>
@@ -649,8 +649,8 @@
 <!-- PROBLEM -->
 <section class="section" id="problem">
   <div class="section-label reveal">The problem</div>
-  <h2 class="section-h2 reveal">Agents are writing to production.<br>Nobody governs what they execute.</h2>
-  <p class="section-lead reveal">Frameworks help you build agent workflows. None of them give you a control plane for what the agent actually does in the real world. Writes go out unchecked, unapproved, unlogged. Gate is the missing infrastructure layer.</p>
+  <h2 class="section-h2 reveal">An agent just wrote to your database.<br>Who approved it?</h2>
+  <p class="section-lead reveal">Was it the first run or the fifth? What policy did it follow? If you can't answer those in 30 seconds, you don't have write-path governance. Every company shipping agents to production will need it. Most are building it from scratch, per-team, badly. Gate is the infrastructure.</p>
 
   <div class="problem-grid">
     <div class="problem-card reveal">
@@ -711,8 +711,8 @@
 <!-- INCIDENTS -->
 <section class="section">
   <div class="section-label reveal">Real incidents Gate prevents</div>
-  <h2 class="section-h2 reveal">These failures happen the moment<br>agents start writing to systems.</h2>
-  <p class="section-lead reveal">Not hypothetical. These are the exact failure modes teams hit when they move agents from read-only to write-path.</p>
+  <h2 class="section-h2 reveal">You won't catch these until<br>they're already in production.</h2>
+  <p class="section-lead reveal">These aren't edge cases. They're the first three things that go wrong when agents move from read-only to write-path. Every team hits them.</p>
 
   <div class="incident-list">
     <div class="incident-row reveal">
@@ -767,8 +767,8 @@
 <!-- CROSS-FRAMEWORK -->
 <section class="section">
   <div class="section-label reveal">One queue. Every framework.</div>
-  <h2 class="section-h2 reveal">Every framework ships its own<br>half-baked approval widget.<br>None of it is a control plane.</h2>
-  <p class="section-lead reveal">LangGraph has HITL. CrewAI has callbacks. AutoGen has code review. None of it gives you a shared runtime governance layer. Gate sits outside every framework and governs all of them.</p>
+  <h2 class="section-h2 reveal">One policy file.<br>Every framework.<br>One audit trail.</h2>
+  <p class="section-lead reveal">LangGraph has HITL. CrewAI has callbacks. None of it is shared. None of it spans teams. Gate sits outside every framework and governs all of them the same way — because the policy doesn't care what built the agent.</p>
 
   <div class="fw-row reveal">
     <span class="fw-pill">CrewAI</span>
@@ -831,8 +831,8 @@
 <!-- HOW IT WORKS -->
 <section class="section" id="how-it-works">
   <div class="section-label reveal">How it works</div>
-  <h2 class="section-h2 reveal">Intent in. Governed execution out.<br>Full ledger always.</h2>
-  <p class="section-lead reveal">Agents submit intent. Gate decides whether it executes, when, and how. Every step is logged. The agent never touches the destination directly.</p>
+  <h2 class="section-h2 reveal">Five events. No exceptions.<br>Every agent write, every time.</h2>
+  <p class="section-lead reveal">Agent submits intent. Gate evaluates YAML policy in microseconds — no LLM, deterministic, same answer every time. Low risk auto-approves. High risk waits for a human. Approved writes get a signed execution token that expires in 15 minutes. Your worker runs it inside your own VPC. Ledger sealed.</p>
 
   <div class="flow-track">
     <div class="flow-step reveal">
@@ -888,8 +888,8 @@
 <!-- API -->
 <section class="section" id="api">
   <div class="section-label reveal">API</div>
-  <h2 class="section-h2 reveal">Submit intent. Get a decision.<br>Execute when authorized.</h2>
-  <p class="section-lead reveal">Three steps every agent write goes through. The surface area is intentionally small. Complexity lives in the policy file, not the API.</p>
+  <h2 class="section-h2 reveal">Three calls. That's the whole API.</h2>
+  <p class="section-lead reveal">Propose the intent. Get a decision back in milliseconds. Execute when Gate says go. If you need more than this, you're building the wrong thing.</p>
 
   <div class="code-block reveal">
     <div class="cb-header">
@@ -1103,8 +1103,8 @@
 <!-- ARCHITECTURE -->
 <section class="section" style="text-align:center">
   <div class="section-label reveal">Architecture</div>
-  <h2 class="section-h2 reveal">Gate becomes the control plane<br>for agent commits.</h2>
-  <p class="section-lead reveal" style="margin-left:auto;margin-right:auto;text-align:center">Gate sits outside every framework. One commit checkpoint. One approval queue. One audit trail.</p>
+  <h2 class="section-h2 reveal">Between agent intent<br>and production execution,<br>Gate.</h2>
+  <p class="section-lead reveal" style="margin-left:auto;margin-right:auto;text-align:center">One control plane. Every framework. Every write. One ledger.</p>
 
   <div class="arch-diagram reveal">
     <div class="arch-box">
@@ -1119,8 +1119,8 @@
     <div class="arch-arrow" aria-hidden="true">↓</div>
     <div class="arch-box arch-box-gate">
       <div class="arch-box-label">Zehrava Gate</div>
-      <div class="arch-gate-title">propose → policy → approve → deliver → audit</div>
-      <div class="arch-gate-sub">The commit checkpoint</div>
+      <div class="arch-gate-title">intent → policy → risk → approve → execute → ledger</div>
+      <div class="arch-gate-sub">The write-path control plane</div>
     </div>
     <div class="arch-arrow" aria-hidden="true">↓</div>
     <div class="arch-box">
@@ -1140,7 +1140,7 @@
 <!-- CATEGORY POSITIONING -->
 <section class="section" style="text-align:center">
   <div class="section-label reveal">The category</div>
-  <h2 class="section-h2 reveal">The ecosystem has observability,<br>evaluation, and guardrails.<br><span style="color:var(--purple-b)">The commit checkpoint is missing.</span></h2>
+  <h2 class="section-h2 reveal">Observability. Guardrails. LLM gateways.<br>Nobody built<br><span style="color:var(--purple-b)">write-path governance.</span></h2>
 
   <div class="cat-grid reveal" style="margin-top:3rem">
     <div class="cat-item">
@@ -1160,8 +1160,8 @@
     </div>
     <div class="cat-item cat-gate">
       <div class="cat-status owns">⬡ Gate owns this</div>
-      <div class="cat-name">Commit Checkpoint</div>
-      <div class="cat-sub">Write-path governance</div>
+      <div class="cat-name">Write-Path Governance</div>
+      <div class="cat-sub">Gate — the missing layer</div>
     </div>
   </div>
 </section>
@@ -1171,8 +1171,8 @@
 <!-- QUICKSTART -->
 <section class="section" id="quickstart">
   <div class="section-label reveal">Quickstart</div>
-  <h2 class="section-h2 reveal">Running in 5 minutes.</h2>
-  <p class="section-lead reveal">The first "aha" is seeing Gate block a write.</p>
+  <h2 class="section-h2 reveal">Five minutes to the first block.</h2>
+  <p class="section-lead reveal">That's the moment it clicks. An agent tried to write. Gate stopped it. You saw why. Now you know what governance looks like.</p>
 
   <div class="code-block reveal">
     <div class="cb-header"><span>Install + run local server</span></div>
