@@ -103,6 +103,20 @@ app.post('/v1/intents', (req, res, next) => {
 
 app.post('/v1/intents/:id/approve', (req, res, next) => { req.body.proposalId = req.params.id; next(); }, (req, res, next) => { req.url = '/approve'; next(); }, require('./routes/approvals'));
 app.post('/v1/intents/:id/reject', (req, res, next) => { req.body.proposalId = req.params.id; next(); }, (req, res, next) => { req.url = '/reject'; next(); }, require('./routes/approvals'));
+app.get('/v1/intents', authenticate, (req, res) => {
+  const { status, limit = 50 } = req.query;
+  let query = 'SELECT p.*, a.name as agent_name FROM proposals p LEFT JOIN agents a ON p.sender_agent_id = a.id';
+  const params = [];
+  if (status) { query += ' WHERE p.status = ?'; params.push(status); }
+  query += ' ORDER BY p.created_at DESC LIMIT ?';
+  params.push(parseInt(limit));
+  const intents = db.prepare(query).all(...params).map(p => ({
+    ...p, intentId: p.id,
+    created_at: new Date(p.created_at).toISOString(),
+    expires_at: p.expires_at ? new Date(p.expires_at).toISOString() : null
+  }));
+  res.json({ intents, count: intents.length });
+});
 app.get('/v1/intents/:id', (req, res, next) => { req.url = `/proposals/${req.params.id}`; next(); }, proposalsRouter);
 app.get('/v1/intents/:id/audit', (req, res, next) => { req.url = `/${req.params.id}`; next(); }, require('./routes/audit'));
 app.get('/v1/intents/:id/decision', authenticate, (req, res) => {
