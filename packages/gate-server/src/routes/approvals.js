@@ -58,7 +58,7 @@ router.post('/approve', authenticate, (req, res) => {
   `).run(generateId('mfst'), proposalId, req.agent.name, deliveryToken);
 
   logEvent(proposalId, 'approved', req.agent.name, { approver: req.agent.name });
-  fireWebhook(proposalId, 'approved', { deliveryToken, approver: req.agent.name });
+  fireWebhook(proposalId, 'approved', { approver: req.agent.name });
 
   // Auto-deliver for configured destinations
   if (AUTO_DELIVER_DESTINATIONS.includes(proposal.destination)) {
@@ -102,7 +102,7 @@ async function fireWebhook(proposalId, event, data) {
   const hook = webhooks.get(proposalId);
   if (!hook) return;
   try {
-    const payload = JSON.stringify({ proposalId, event, ...data, firedAt: new Date().toISOString() });
+    const payload = JSON.stringify({ intentId: proposalId, event, ...data, firedAt: new Date().toISOString() });
     const { default: https } = await import('https');
     const { default: http } = await import('http');
     const { URL } = await import('url');

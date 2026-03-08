@@ -394,7 +394,7 @@ zehrava-gate --port 4000</pre>
 <span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// set if status === "blocked"</span></pre>
     <p>Gate evaluates the policy immediately and returns one of three statuses:</p>
     <ul>
-      <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to act.</li>
+      <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to request execution.</li>
       <li><span class="status status-blocked">blocked</span> — violated a policy rule. Do not proceed. Check <code>blockReason</code>.</li>
       <li><span class="status status-pending">pending_approval</span> — within policy but requires human review. Poll or wait for webhook.</li>
     </ul>
@@ -637,7 +637,7 @@ zehrava-gate --port 4000</pre>
       <div class="table-scroll"><table class="field-table">
         <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td>status</td><td>string</td><td>Filter: <code>pending_approval</code> · <code>approved</code> · <code>blocked</code> · <code>scheduled</code> · <code>executing</code> · <code>succeeded</code> · <code>failed</code> · <code>expired</code>. Omit for all.</td></tr>
+          <tr><td>status</td><td>string</td><td>Filter: <code>pending_approval</code> · <code>approved</code> · <code>blocked</code> · <code>scheduled</code> · <code>succeeded</code> · <code>failed</code> · <code>expired</code>. Omit for all.</td></tr>
           <tr><td>limit</td><td>number</td><td>Max results. Default: 50.</td></tr>
         </tbody>
       </table></div>
@@ -680,7 +680,7 @@ zehrava-gate --port 4000</pre>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <pre><span class="val">{
-  "executionId":    "exec_a1b2c3d4",
+  "executionId":    "exe_a1b2c3d4",
   "execution_token": "gex_••••••••••••",  </span><span class="com">// one-time, 15min TTL</span><span class="val">
   "intent_id":      "int_a1b2c3d4e5f6",
   "expires_at":     "2026-03-08T12:15:00.000Z",
@@ -696,7 +696,7 @@ zehrava-gate --port 4000</pre>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <pre><span class="val">{
-  "executionId":  "exec_a1b2c3d4",
+  "executionId":  "exe_a1b2c3d4",
   "intent_id":   "int_a1b2c3d4e5f6",
   "mode":         "runner_exec",
   "status":       "succeeded",          </span><span class="com">// pending | executing | succeeded | failed | expired</span><span class="val">
@@ -753,7 +753,7 @@ zehrava-gate --port 4000</pre>
   { "eventType": "policy_checked", "actor": "system",       "metadata": { "result": "approved", "risk_score": 0.42 } },
   { "eventType": "approved",        "actor": "system",       "createdAt": "..." },
   { "eventType": "execution_requested", "actor": "my-crm-agent", "createdAt": "..." },
-  { "eventType": "succeeded",      "actor": "worker",       "createdAt": "..." }
+  { "eventType": "execution_succeeded", "actor": "worker",  "createdAt": "..." }
 ]</span></pre>
     </div>
 
@@ -862,7 +862,7 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
     <span class="k">return</span> {**state, <span class="s">"sent"</span>: <span class="k">True</span>}</pre>
 
     <h2 id="webhooks">Webhooks</h2>
-    <p>Instead of polling, register a webhook URL. Gate fires once per terminal lifecycle event: <code>approved</code>, <code>rejected</code>, <code>succeeded</code>, <code>failed</code>, <code>expired</code>, <code>duplicate_blocked</code>.</p>
+    <p>Instead of polling, register a webhook URL. Gate fires once — on <code>approved</code> or <code>rejected</code>. Execution outcome events are on the roadmap.</p>
     <pre><span class="cm">// JavaScript</span>
 <span class="k">const</span> p = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
 
@@ -880,10 +880,8 @@ gate.<span class="fn">register_webhook</span>(
     <p>The webhook payload:</p>
     <pre><span class="val">{
   "intentId":   "int_a1b2c3d4",
-  "event":      "approved",        </span><span class="com">// approved | rejected | succeeded | failed | expired | duplicate_blocked</span><span class="val">
-  "execution_token": "gex_••••",   </span><span class="com">// only on approved</span><span class="val">
-  "execution_id":   "exec_a1b2c3",  </span><span class="com">// only on succeeded | failed</span><span class="val">
-  "actor":      "system",
+  "event":      "approved",        </span><span class="com">// approved | rejected</span><span class="val">
+  "approver":   "system",          </span><span class="com">// agent name that triggered the event</span><span class="val">
   "firedAt":    "2026-03-08T11:30:00.000Z"
 }</span></pre>
     <div class="callout callout-info">
