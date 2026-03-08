@@ -1269,74 +1269,72 @@ npx zehrava-gate --port 4000</pre>
   <div class="faq-list reveal" style="max-width:780px;margin:3rem auto 0">
 
     <details class="faq-item">
-      <summary class="faq-q">Agents opt in by calling Gate. A rogue agent just skips it. So what are you actually protecting against?</summary>
+      <summary class="faq-q">Intent → evaluate → approve → execute. That's four API calls per agent write. What does this cost at scale?</summary>
       <div class="faq-a">
-        <p>Well-intentioned agents with bad data, stale context, or instructions that violate policy. That's 99% of what goes wrong in production.</p>
-        <p style="margin-top:.75rem">The rogue agent threat model is real but it's rare — and it's a different product category that requires OS-level or network-level enforcement. Gate doesn't claim to solve that today. What it solves is the CRM overwrite at 2am because the enrichment agent had a stale record count. The duplicate emails because the retry loop fired twice. The payout that went out because nobody set a threshold.</p>
-        <p style="margin-top:.75rem">Reverse proxy architecture — Gate as a network layer that agents can't skip — is on the roadmap. Until then, Gate is a mandatory convention for teams that want structured accountability. Same reason you have code review: a determined developer could push to prod anyway. Most don't.</p>
+        <p>For auto-approved low-risk writes: one call. <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">POST /v1/intents</code> returns <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">approved</code> immediately if the policy allows it. Evaluation is synchronous and deterministic — no LLM call, no network hop outside Gate, sub-10ms in practice.</p>
+        <p style="margin-top:.75rem">For human-reviewed writes: yes, there's latency — that's the point. You're waiting for a human. The approve + execute calls are lightweight once the decision is made.</p>
+        <p style="margin-top:.75rem">Self-hosted Gate runs in your own infrastructure. No external dependency, no rate limits, no per-call pricing. The latency is whatever your SQLite + Node can do on the hardware you run it on.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">LangGraph has HITL. LangSmith has tracing. Why doesn't every team just use that?</summary>
+      <summary class="faq-q">runner_exec mode: the worker reports success, but Gate never verified the execution. What does "succeeded" actually mean?</summary>
       <div class="faq-a">
-        <p>LangGraph's HITL is per-graph. LangSmith's tracing is per-LangSmith. Neither governs the agent built by the other team on a different framework.</p>
-        <p style="margin-top:.75rem">The real problem isn't that any one framework lacks approval logic. It's that every framework ships its own version, none of them talk to each other, and the result is five different approval patterns across five different repos — none of which your compliance team can audit.</p>
-        <p style="margin-top:.75rem">Gate sits outside every framework. One policy directory. One queue. One audit trail. Whether the agent is CrewAI, LangGraph, AutoGen, or a raw API call doesn't matter. The governance layer is the same.</p>
+        <p>"The worker called <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">/v1/executions/:id/report</code> with status: succeeded." That's it. Gate trusts the worker's report.</p>
+        <p style="margin-top:.75rem">Gate's job is governance — deciding whether an action is allowed and logging the full lifecycle. Verifying that the worker did exactly what it said is the destination system's job. Salesforce confirms the import. Stripe confirms the charge. Gate confirms the intent was authorized and the execution was attempted by an authenticated worker with a valid one-time token.</p>
+        <p style="margin-top:.75rem">Cryptographic execution proofs — the worker signs the result, Gate verifies — is on the roadmap. For now, the audit trail shows who authorized what, when, and what outcome was reported. That's auditable accountability, not cryptographic proof.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">OpenAI ships <code style="font-size:.85em">require_human_approval=True</code> and you're done. Why won't that happen?</summary>
+      <summary class="faq-q">A risk score of 0.74 — who calibrated that number? What does it mean for a healthcare company vs a SaaS startup?</summary>
       <div class="faq-a">
-        <p>It might. That's a real risk and we're not going to pretend otherwise.</p>
-        <p style="margin-top:.75rem">But OpenAI's version would only govern OpenAI agents. The company running CrewAI, LangGraph, and a custom Python agent against the same Salesforce org would still have three different approval systems. Gate's value is cross-framework centralization, not per-model guardrails.</p>
-        <p style="margin-top:.75rem">The more honest answer: the companies that survive in infrastructure are the ones that become the standard before the platform players notice the category. Stripe built payments before Visa built an API. Datadog built observability before AWS shipped CloudWatch Insights. The window is real. We're moving.</p>
+        <p>The default weights are opinionated starting points, not universal truth. Destination category, record count thresholds, financial value brackets, and sensitivity tags each contribute a fixed increment. 0.74 means "several high-weight factors triggered" — not "74% probability of catastrophe."</p>
+        <p style="margin-top:.75rem">The risk engine is designed to be overridden by policy. A healthcare company sets <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code> for any intent with <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">sensitivity_tags: [health]</code> — the score is irrelevant because the policy already mandates review. A SaaS startup sets <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">auto_approve_under: 500</code> for CRM imports — the score informs the approver but doesn't block.</p>
+        <p style="margin-top:.75rem">Configurable risk weights per policy is on the roadmap. Right now the score is a signal, not a verdict. The policy is the verdict.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Who actually pays for this?</summary>
+      <summary class="faq-q">Agent registry with allowed_destinations — that's IAM. How does this not collide with the access control you already have?</summary>
       <div class="faq-a">
-        <p>The VP of Engineering who just watched an AI agent overwrite 12,000 CRM records and has to explain it to the CTO at 9am.</p>
-        <p style="margin-top:.75rem">More precisely: any company shipping AI agents that write to production systems — CRM, payments, email, databases — where a mistake has a real cost. That's not a niche. That's every enterprise that's moving past AI demos into AI operations.</p>
-        <p style="margin-top:.75rem">The indie dev isn't the buyer. The team that just got approval to put agents in the write path, and now needs to tell their security team how it's governed — that's the buyer.</p>
+        <p>Gate's agent registry isn't replacing your IAM. It's a layer above it — governing <em>intent</em>, not <em>credentials</em>.</p>
+        <p style="margin-top:.75rem">Your IAM controls whether the service account can call Salesforce. Gate controls whether the <em>agent</em> is allowed to send <em>this specific write</em> to Salesforce given the current policy, risk score, and approval state. Two different questions. Both need answers.</p>
+        <p style="margin-top:.75rem">In runner_exec mode, Gate never touches your credentials. The worker holds them, inside your VPC. Gate issues a signed execution order saying "this write is authorized" — the worker reads it, verifies the token, executes using its own credentials. Gate is in the decision path, not the credential path.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">YAML policy is a blocklist. What about everything that isn't on the list?</summary>
+      <summary class="faq-q">You have the action ledger for everything agents do in production. That's extraordinarily sensitive. What's the security model?</summary>
       <div class="faq-a">
-        <p>Fair. The term scan catches what you explicitly blocked. Everything else passes if it fits the destination and threshold rules.</p>
-        <p style="margin-top:.75rem">This is why <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code> exists. For high-risk destinations, don't rely on the blocklist — require a human for everything. The YAML policy is composable: auto-approve low-risk bulk writes under 100 records, require approval over 100, block anything touching sensitive fields entirely.</p>
-        <p style="margin-top:.75rem">The risk engine adds a second layer — score based on destination, record count, financial value, and sensitivity tags. High-risk score triggers approval regardless of terms. It's not semantic understanding, but it catches the things a blocklist misses in practice.</p>
+        <p>Self-hosted: Gate runs in your infrastructure. The SQLite database never leaves your servers. We never see your data. This is the default deployment and the recommended one for any company with sensitive workloads.</p>
+        <p style="margin-top:.75rem">Cloud-hosted: for teams that don't want to run infrastructure. Data residency options, encryption at rest, SOC 2 compliance — these are on the roadmap, not shipped today. If your security requirement is hard, self-host.</p>
+        <p style="margin-top:.75rem">The PII scrubber on the public feed endpoint exists specifically because we know the ledger contains sensitive operational data. Emails, phone numbers, payload content are scrubbed before any read endpoint that doesn't require auth.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Your audit log isn't cryptographically signed. A DBA could modify it. How do you sell this to compliance?</summary>
+      <summary class="faq-q">You store payload_hash forever for replay protection. Who owns that data and what's the retention policy?</summary>
       <div class="faq-a">
-        <p>You don't, yet — not for SOC 2 Type II or regulated industries where tamper-proof immutability is a hard requirement.</p>
-        <p style="margin-top:.75rem">For most production deployments today, server-side append-only is sufficient. The audit trail logs every state transition — proposed, evaluated, approved, executed — and agents have no API route to write or modify it. That's meaningfully better than what most teams have, which is nothing.</p>
-        <p style="margin-top:.75rem">Cryptographic signing and export to an external immutable log store (CloudTrail, Datadog, a WORM bucket) is on the roadmap. If your compliance requirement is hard today, that's a blocker we'll acknowledge.</p>
+        <p>You do. Self-hosted Gate means your SQLite, your server, your retention policy. Delete the database, the hashes are gone. The payload itself is stored in <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">/data/payloads/</code> on your server — same rules apply.</p>
+        <p style="margin-top:.75rem">Configurable retention — auto-expire intents and payloads after N days — is on the roadmap. The <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">expires_at</code> field on intents exists today but only affects approval windows, not storage. Storage-level TTL is a near-term addition.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Idempotency is just a Redis cache. Why is this a product?</summary>
+      <summary class="faq-q">You have three execution modes listed but gate_exec doesn't exist yet. Why advertise what isn't built?</summary>
       <div class="faq-a">
-        <p>The dedup logic isn't the product. The combination is.</p>
-        <p style="margin-top:.75rem">Yes, a competent dev can implement idempotency in an afternoon. They can also implement approval logic, an audit trail, a policy engine, a risk scorer, a delivery token system, and a dashboard in a week. Some do. Then they maintain it forever, it doesn't span frameworks, and the next team builds their own version from scratch.</p>
-        <p style="margin-top:.75rem">Gate is the infrastructure that already exists. The same reason you don't write your own auth: it's not that you can't, it's that you shouldn't have to.</p>
+        <p>Fair. runner_exec is the only mode that's fully implemented today. external_pull (one-time token, destination pulls the payload) is partially built — the delivery token infrastructure exists from V1. gate_exec (Gate holds the connector and executes directly) is not built.</p>
+        <p style="margin-top:.75rem">The three modes reflect the architecture we're building toward, not what shipped today. runner_exec works, handles the enterprise use case cleanly (credentials stay in your VPC), and is what you should use right now. The others will land in order of customer demand.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">What's the 10x version? If this works, where does it go?</summary>
+      <summary class="faq-q">What's the actual insight here? Why does this company exist?</summary>
       <div class="faq-a">
-        <p>Every real-world action an AI agent takes anywhere goes through Gate. Not because companies are required to — because not using Gate means flying blind on what your agents are doing in production.</p>
-        <p style="margin-top:.75rem">The 3-year version: Gate is the CI/CD for agent actions. Just like no serious engineering team ships code without a pipeline, no serious team ships agents without a governance layer. Gate is the standard for what that looks like.</p>
-        <p style="margin-top:.75rem">The infrastructure play: Gate accumulates the action ledger. Every approved action, every blocked action, every risk score. That dataset, across companies and frameworks, is the ground truth for what agents do in the real world. Nothing else has it.</p>
+        <p>AI agents are moving from read-only to write-path. When they get there, every company will need to answer the same questions: which agent ran this, who approved it, was it the first time or the fifth, what's the audit trail. Right now nobody has a good answer.</p>
+        <p style="margin-top:.75rem">The insight is that this problem is infrastructure, not application logic. Every team building it from scratch is building the same thing. The team that makes it standard infrastructure — like Stripe for payments, like Datadog for observability — owns the category.</p>
+        <p style="margin-top:.75rem">Gate is the bet that AI agent governance needs a dedicated control plane, that it needs to exist outside any single framework, and that the time to build it is now — before the category gets defined by someone else.</p>
       </div>
     </details>
 
