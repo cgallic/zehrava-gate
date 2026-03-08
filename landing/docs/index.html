@@ -397,7 +397,7 @@ zehrava-gate --port 4000</pre>
       <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to request execution.</li>
       <li><span class="status status-blocked">blocked</span> — violated a policy rule. Do not proceed. Check <code>blockReason</code>.</li>
       <li><span class="status status-pending">pending_approval</span> — within policy but requires human review. Poll <code>/v1/intents/:id</code> for status updates, or register a webhook.</li>
-      <li><span class="status status-blocked">duplicate_blocked</span> — idempotency_key matched an existing intent. The action was already submitted and Gate will not re-evaluate it.</li>
+      <li><span class="status status-blocked">duplicate_blocked</span> — idempotency_key matched an existing intent. The action was already submitted and Gate will not re-evaluate it. The API returns HTTP 409.</li>
     </ul>
 
     <!-- ── POLICY OVERVIEW ── -->
@@ -948,8 +948,8 @@ POST /v1/executions/:id/report
     <p>Gate is middleware. If the HTTP call to <code>/v1/intents</code> (or <code>gate.propose()</code>) fails with a network error, the safe behavior is to treat it as a block and not execute the write. Proceeding silently bypasses Gate entirely.</p>
     <pre><span class="k">try</span> {
   <span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
-  <span class="k">if</span> (p.status === <span class="s">'blocked'</span>) <span class="k">throw new</span> <span class="fn">Error</span>(p.blockReason)
-  <span class="k">if</span> (p.status === <span class="s">'duplicate_blocked'</span>) <span class="k">throw new</span> <span class="fn">Error</span>(<span class="s">'Duplicate intent blocked'</span>)
+  <span class="k">if</span> (p.status === <span class="s">'blocked'</span> || p.status === <span class="s">'duplicate_blocked'</span>)
+    <span class="k">throw new</span> <span class="fn">Error</span>(p.blockReason || <span class="s">'Duplicate intent blocked'</span>)
   <span class="k">if</span> (p.status === <span class="s">'pending_approval'</span>) <span class="k">return</span> <span class="cm">// wait — do not proceed</span>
   <span class="cm">// status === 'approved' → safe to request execution</span>
 } <span class="k">catch</span> (err) {
