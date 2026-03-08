@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zehrava Gate — The Safe Commit Layer for AI Agents</title>
+  <meta name="description" content="One approval queue for every agent in your company — regardless of which framework built it. Gate is the safe commit layer for AI agents.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1;
+      --purple-dim: #3730a3;
+      --purple-glow: rgba(99,102,241,0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --bg: #0a0a0a;
+      --bg2: #111;
+      --bg3: #1a1a1a;
+      --border: #222;
+      --border2: #2a2a2a;
+      --text: #f0f0f0;
+      --muted: #888;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; }
+
+    /* NAV */
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.96); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-logo { font-size: 1.1rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--purple); }
+    .nav-links { display: flex; gap: 2rem; font-size: 0.875rem; }
+    .nav-links a { color: var(--muted); transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
+    .nav-gh { font-size: 0.875rem; color: var(--muted); }
+    .nav-cta { background: var(--purple); color: #fff; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; }
+    .nav-cta:hover { text-decoration: none; opacity: 0.9; }
+
+    /* HERO */
+    .hero { text-align: center; padding: 6rem 2rem 3rem; max-width: 800px; margin: 0 auto; }
+    .badge { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.3); padding: 0.3rem 0.85rem; border-radius: 999px; margin-bottom: 2rem; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+    .badge-dot { width: 6px; height: 6px; background: var(--purple); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .hero h1 { font-size: clamp(2.8rem, 7vw, 5rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; margin-bottom: 1.5rem; }
+    .hero h1 .accent { color: var(--purple); }
+    .hero-sub { font-size: 1.2rem; color: var(--muted); max-width: 540px; margin: 0 auto 2.5rem; line-height: 1.7; }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 4rem; }
+    .btn-primary { background: var(--purple); color: #fff; padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-secondary { border: 1px solid var(--border2); color: var(--text); padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600; font-size: 1rem; background: var(--bg2); }
+    .btn-primary:hover, .btn-secondary:hover { text-decoration: none; opacity: 0.85; }
+
+    /* KILLER DEMO */
+    .demo-container { max-width: 760px; margin: 0 auto 2rem; }
+    .demo-title { font-size: 0.75rem; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.5rem; }
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media(max-width:640px) { .demo-grid { grid-template-columns: 1fr; } }
+
+    /* ── MOBILE ── */
+    @media(max-width:768px) {
+      /* Nav */
+      nav { padding: 1rem 1.25rem; }
+      .nav-links { display: none; }
+      .nav-right { gap: 0.75rem; }
+
+      /* Hero */
+      .hero { padding: 3.5rem 1.25rem 2rem; }
+      .hero-sub { font-size: 1rem; }
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-actions a { text-align: center; }
+      .demo-container { margin: 0 1.25rem 1rem; }
+
+      /* Sections */
+      .section { padding: 3rem 1.25rem; }
+      .section h2 { font-size: 1.6rem; }
+      .section .lead { font-size: 1rem; margin-bottom: 2rem; }
+
+      /* Flow steps */
+      .flow-step { grid-template-columns: 36px 1fr; gap: 1rem; }
+      .flow-num { width: 36px; height: 36px; font-size: 0.8rem; }
+      .flow-connector { left: 17px; }
+      .flow-body h3 { font-size: 1rem; }
+
+      /* Code blocks */
+      .code-block pre { font-size: 0.75rem; padding: 1rem; }
+
+      /* Demos grid */
+      .demos-grid { grid-template-columns: 1fr; }
+
+      /* Policy grid */
+      .policy-grid { grid-template-columns: 1fr; }
+
+      /* Pricing */
+      .pricing-grid { grid-template-columns: 1fr; }
+      .pricing-card.featured { order: -1; }
+
+      /* Footer */
+      footer { flex-direction: column; align-items: flex-start; padding: 2rem 1.25rem; }
+      footer .footer-links { flex-wrap: wrap; gap: 1rem; }
+
+      /* Metrics */
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    .demo-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .demo-card-header { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .dot-red { width: 8px; height: 8px; background: var(--red); border-radius: 50%; }
+    .dot-green { width: 8px; height: 8px; background: var(--green); border-radius: 50%; }
+    .demo-card pre { padding: 1rem; font-size: 0.78rem; line-height: 1.7; color: var(--muted); overflow-x: auto; }
+    .demo-card pre .hi { color: var(--text); }
+    .demo-card pre .err { color: var(--red); }
+    .demo-card pre .ok { color: var(--green); }
+    .demo-card pre .warn { color: var(--amber); }
+    .demo-card pre .purple { color: var(--purple); }
+
+    /* SECTIONS */
+    .section { max-width: 960px; margin: 0 auto; padding: 5rem 2rem; }
+    .section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--purple); font-weight: 600; margin-bottom: 1rem; }
+    .section h2 { font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 1rem; line-height: 1.2; }
+    .section .lead { font-size: 1.1rem; color: var(--muted); max-width: 600px; margin-bottom: 3rem; line-height: 1.7; }
+    hr.divider { border: none; border-top: 1px solid var(--border); }
+
+    /* PROBLEM */
+    .problem-split { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media(max-width:640px) { .problem-split { grid-template-columns: 1fr; } }
+    .problem-col h3 { font-size: 0.9rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+    .problem-col ul { list-style: none; padding: 0; }
+    .problem-col li { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--muted); }
+    .problem-col li .ico { flex-shrink: 0; margin-top: 0.15rem; }
+    .ico-check { color: var(--green); }
+    .ico-x { color: var(--red); }
+
+    /* HOW IT WORKS */
+    .flow-steps { display: flex; flex-direction: column; gap: 0; }
+    .flow-step { display: grid; grid-template-columns: 48px 1fr; gap: 1.5rem; position: relative; padding-bottom: 2.5rem; }
+    .flow-step:last-child { padding-bottom: 0; }
+    .flow-num { width: 48px; height: 48px; background: var(--bg2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.875rem; color: var(--purple); flex-shrink: 0; position: relative; z-index: 1; }
+    .flow-connector { position: absolute; left: 23px; top: 48px; bottom: 0; width: 2px; background: var(--border); }
+    .flow-step:last-child .flow-connector { display: none; }
+    .flow-body h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; padding-top: 0.7rem; }
+    .flow-body p { font-size: 0.9rem; color: var(--muted); max-width: 500px; }
+    .flow-body .flow-tag { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; margin-top: 0.5rem; font-family: monospace; }
+    .tag-block { background: rgba(239,68,68,0.15); color: var(--red); }
+    .tag-approve { background: rgba(34,197,94,0.15); color: var(--green); }
+    .tag-pending { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .tag-audit { background: rgba(99,102,241,0.15); color: var(--purple); }
+
+    /* API */
+    .code-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1rem 0; position: relative; }
+    .cb-header { background: var(--bg3); padding: 0.6rem 1.25rem; font-size: 0.72rem; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .copy-btn { font-size: 0.7rem; color: var(--muted); cursor: pointer; background: none; border: 1px solid var(--border); padding: 0.2rem 0.5rem; border-radius: 4px; font-family: inherit; }
+    .copy-btn:hover { color: var(--text); }
+    .code-block pre { padding: 1.25rem; font-size: 0.82rem; line-height: 1.7; color: #a78bfa; overflow-x: auto; }
+    .code-block pre .cm { color: #555; font-style: italic; }
+    .code-block pre .k { color: #e879f9; }
+    .code-block pre .s { color: #86efac; }
+    .code-block pre .p { color: #94a3b8; }
+    .code-block pre .fn { color: #60a5fa; }
+    .code-block pre .v { color: #f0f0f0; }
+
+    /* DEMOS */
+    .demos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+    .demo-use-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; transition: border-color 0.2s; }
+    .demo-use-card:hover { border-color: var(--purple-dim); }
+    .demo-use-card .use-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .demo-use-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .demo-use-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 0.75rem; }
+    .demo-use-card .use-checks { list-style: none; padding: 0; }
+    .demo-use-card .use-checks li { font-size: 0.8rem; color: var(--muted); padding: 0.2rem 0; display: flex; align-items: flex-start; gap: 0.5rem; }
+    .demo-use-card .use-checks li::before { content: '→'; color: var(--purple); flex-shrink: 0; }
+
+    /* POLICY */
+    .policy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .policy-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .policy-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .policy-card .rule { font-size: 0.78rem; color: var(--muted); font-family: monospace; padding: 0.3rem 0.5rem; background: var(--bg3); border-radius: 4px; margin-bottom: 0.4rem; border-left: 2px solid var(--purple-dim); }
+
+    /* WHAT IT IS / ISN'T */
+    .is-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media(max-width:640px) { .is-grid { grid-template-columns: 1fr; } }
+    .is-col { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+    .is-col h3 { font-size: 0.875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+    .is-col.is-yes h3 { color: var(--green); }
+    .is-col.is-no h3 { color: var(--red); }
+    .is-col ul { list-style: none; padding: 0; }
+    .is-col li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 0.75rem; }
+    .is-col li:last-child { border-bottom: none; }
+
+    /* METRICS */
+    .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; }
+    .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+    .metric-card .m-val { font-size: 1.75rem; font-weight: 800; color: var(--purple); letter-spacing: -0.03em; }
+    .metric-card .m-label { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* PRICING */
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; }
+    .pricing-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem; position: relative; }
+    .pricing-card.featured { border-color: var(--purple); }
+    .pricing-card .plan-name { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.75rem; }
+    .pricing-card .plan-price { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.25rem; }
+    .pricing-card .plan-price span { font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+    .pricing-card .plan-desc { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+    .pricing-card ul { list-style: none; padding: 0; }
+    .pricing-card li { font-size: 0.85rem; color: var(--muted); padding: 0.4rem 0; display: flex; gap: 0.6rem; }
+    .pricing-card li::before { content: '✓'; color: var(--green); flex-shrink: 0; }
+    .pricing-badge { position: absolute; top: -12px; right: 1rem; background: var(--purple); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .self-deploy-note { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 1rem 1.25rem; text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
+    .self-deploy-note a { color: var(--purple); }
+
+    /* USE CASE ROWS */
+    .use-case-list { display: flex; flex-direction: column; gap: 1rem; }
+    .use-case-row { display: grid; grid-template-columns: 1fr 32px 1fr; gap: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; align-items: stretch; }
+    .use-case-scenario { padding: 1.5rem; border-right: 1px solid var(--border); }
+    .use-case-arrow { display: flex; align-items: center; justify-content: center; font-size: 1rem; color: var(--border2); background: var(--bg3); }
+    .use-case-gate { padding: 1.5rem; }
+    .use-case-tag { display: inline-block; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.2rem 0.6rem; border-radius: 4px; margin-bottom: 0.6rem; }
+    .use-case-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .use-case-what { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+    .use-case-checks { display: flex; flex-direction: column; gap: 0.5rem; }
+    .uc-check { display: flex; align-items: baseline; gap: 0.6rem; font-size: 0.8rem; }
+    .uc-label { color: var(--muted); flex-shrink: 0; min-width: 100px; }
+    .uc-val { font-family: monospace; font-size: 0.78rem; }
+    .uc-val.ok { color: var(--green); }
+    .uc-val.warn { color: var(--amber); }
+    .uc-val.err { color: var(--red); }
+    @media(max-width:640px) {
+      .use-case-row { grid-template-columns: 1fr; }
+      .use-case-arrow { display: none; }
+      .use-case-scenario { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    /* FRAMEWORK LOGOS */
+    .frameworks-row { display: flex; align-items: center; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 3rem; }
+    .fw-tag { background: var(--bg2); border: 1px solid var(--border); padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: var(--muted); font-family: monospace; }
+
+    /* COMPARISON TABLE */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .compare-table th { text-align: left; padding: 0.75rem 1rem; border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .compare-table th:last-child { color: var(--purple); }
+    .compare-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+    .compare-table td:first-child { font-weight: 600; color: var(--text); width: 18%; }
+    .compare-table td:nth-child(2) { color: var(--muted); width: 41%; }
+    .compare-table td:last-child { color: var(--text); width: 41%; }
+    .compare-table .win { color: var(--green); font-weight: 600; }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-wrapper { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; max-width: 960px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    footer .footer-brand { font-size: 0.9rem; color: var(--muted); }
+    footer .footer-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    footer .footer-links a { color: var(--muted); }
+    footer .footer-links a:hover { color: var(--text); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Zehrava <span>Gate</span></div>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="/demo" style="color:var(--purple);font-weight:700">Live Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#use-cases">Use cases</a>
+    <a href="#api">API</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank">GitHub</a>
+    <a href="#get-started" class="nav-cta">Get started free</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Agent Infrastructure · MIT License
+  </div>
+  <h1>The commit checkpoint<br>between AI agents<br><span class="accent">and production systems.</span></h1>
+  <p class="hero-sub">AI agents can read your systems, generate outputs, call APIs. But the moment they write to production, teams panic. Gate sits between agent output and real-world actions. Every write follows the same path: agent → propose → policy → approval → deliver → audit.</p>
+  <div class="hero-actions">
+    <a href="/demo" class="btn-primary">▶ Live Demo</a>
+    <a href="#get-started" class="btn-secondary">Get started free</a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary" target="_blank" style="display:flex;align-items:center;gap:.4rem">GitHub</a>
+  </div>
+
+  <div class="demo-container">
+    <div class="demo-title">The gap in 30 seconds</div>
+    <div class="demo-grid">
+      <div class="demo-card">
+        <div class="demo-card-header">
+          <span class="dot-red"></span>
+          Every agent deployment today
+        </div>
+        <pre>
+agent.enrichLeads(results)
+
+<span class="err">// Who ran this?</span>
+<span class="err">// Was it reviewed?</span>
+<span class="err">// Is the destination safe?</span>
+<span class="err">// Is this the first send or the fifth?</span>
+<span class="err">// Where's the audit trail?</span>
+
+salesforce.import(leads)
+<span class="err">→ 847 records corrupted. No log. No rollback.</span>
+        </pre>
+      </div>
+      <div class="demo-card">
+        <div class="demo-card-header">
+          <span class="dot-green"></span>
+          With Gate
+        </div>
+        <pre>
+agent.enrichLeads(results)
+
+<span class="ok">const p = await gate.propose({</span>
+  <span class="hi">sender:</span>      <span class="ok">"kai-crm-agent"</span>,
+  <span class="hi">destination:</span> <span class="ok">"salesforce.import"</span>,
+  <span class="hi">policy:</span>      <span class="ok">"crm-low-risk"</span>
+<span class="ok">})</span>
+<span class="cm">// p.status → "pending_approval"</span>
+
+<span class="ok">await gate.approve({ proposalId: p.id })</span>
+<span class="ok">await gate.deliver({ proposalId: p.id })</span>
+<span class="cm">// one-time delivery. immutable audit. done.</span>
+        </pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- PROBLEM -->
+<section class="section" id="problem">
+  <div class="section-label">The problem</div>
+  <h2>Approval logic ends up scattered.<br>None of it becomes infrastructure.</h2>
+  <p class="lead">Agent frameworks help you build workflows. They do not give you a shared commit checkpoint. So companies end up with Slack approval bots, ad-hoc middleware, custom scripts, and fragile guardrails. None of it is centralized. None of it spans frameworks. None of it scales.</p>
+
+  <div class="problem-split">
+    <div class="problem-col">
+      <h3>What happens today</h3>
+      <ul>
+        <li><span class="ico ico-x">✗</span> Approval logic scattered across repos</li>
+        <li><span class="ico ico-x">✗</span> Inconsistent rules across teams</li>
+        <li><span class="ico ico-x">✗</span> No centralized audit trail</li>
+        <li><span class="ico ico-x">✗</span> Hard to enforce company policy</li>
+        <li><span class="ico ico-x">✗</span> No answer when something breaks</li>
+      </ul>
+    </div>
+    <div class="problem-col">
+      <h3>Nobody can answer these</h3>
+      <ul>
+        <li><span class="ico ico-x">✗</span> Which agent ran this?</li>
+        <li><span class="ico ico-x">✗</span> Did anyone review it?</li>
+        <li><span class="ico ico-x">✗</span> Is this the first run or the fifth?</li>
+        <li><span class="ico ico-x">✗</span> How many records changed?</li>
+        <li><span class="ico ico-x">✗</span> Where's the audit trail?</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- REAL INCIDENTS -->
+<section class="section">
+  <div class="section-label">Real incidents Gate prevents</div>
+  <h2>These failures happen the moment<br>agents start writing to systems.</h2>
+  <p class="lead">Not hypothetical. These are the exact failure modes teams hit when they move agents from read-only to write-path.</p>
+
+  <div class="use-case-list">
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-title">Duplicate AI calls</div>
+        <div class="use-case-what">Agent retried a lead workflow. Lead webhook triggered twice. Call automation executed twice. Lead received two AI calls in 30 seconds.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="uc-check"><span class="uc-label ok">Gate policy</span></div>
+        <div class="uc-check"><span class="uc-val"><code>block_duplicate_proposals</code></span></div>
+        <div class="uc-check"><span class="uc-label ok">✓</span><span class="uc-val">Second execution blocked at proposal stage</span></div>
+      </div>
+    </div>
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-title">Broken email template</div>
+        <div class="use-case-what">Auto-email agent sent messages with unresolved variables. <code>Hello {{customer_name}}</code> went to hundreds of contacts before anyone noticed.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="uc-check"><span class="uc-label ok">Gate policy</span></div>
+        <div class="uc-check"><span class="uc-val"><code>require_approval_if_template_error</code></span></div>
+        <div class="uc-check"><span class="uc-label ok">✓</span><span class="uc-val">Email held in approval queue for review</span></div>
+      </div>
+    </div>
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-title">CRM overwrite</div>
+        <div class="use-case-what">Enrichment agent pushed updates. 847 records updated. Dataset contained partial data. CRM records overwritten incorrectly with no rollback path.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="uc-check"><span class="uc-label ok">Gate policy</span></div>
+        <div class="uc-check"><span class="uc-val"><code>require_approval_over: 100</code></span></div>
+        <div class="uc-check"><span class="uc-label ok">✓</span><span class="uc-val">Update held for human review before execution</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- CROSS-FRAMEWORK -->
+<section class="section">
+  <div class="section-label">One queue. Every framework.</div>
+  <h2>Marketing ships CrewAI.<br>Engineering ships LangGraph.<br>Your CTO has no idea what's writing to prod.</h2>
+  <p class="lead">Every framework ships its own half-baked HITL. None of it is enforced. None of it is centralized. There's no shared policy, no unified identity, no audit trail that spans teams. Gate sits outside every framework and governs all of them.</p>
+
+  <div class="frameworks-row">
+    <span class="fw-tag">CrewAI</span>
+    <span class="fw-tag">LangGraph</span>
+    <span class="fw-tag">OpenAI Swarm</span>
+    <span class="fw-tag">AutoGen</span>
+    <span class="fw-tag">LangChain</span>
+    <span class="fw-tag">Claude Code</span>
+    <span class="fw-tag">Custom agents</span>
+    <span class="fw-tag">Any MCP client</span>
+  </div>
+
+  <div class="compare-wrapper">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Framework built-in HITL</th>
+          <th>Zehrava Gate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Enforcement</td>
+          <td>Opt-in. Dev forgets to add it. It doesn't run.</td>
+          <td class="win">Mandatory. Policy-driven. No bypass.</td>
+        </tr>
+        <tr>
+          <td>Audit log</td>
+          <td>Console logs scattered across 5 different repos.</td>
+          <td class="win">Centralized. Immutable. Queryable by proposal ID.</td>
+        </tr>
+        <tr>
+          <td>Cross-team</td>
+          <td>Siloed per framework. Engineering can't see Marketing's queue.</td>
+          <td class="win">One queue. Every agent. Every team. Every framework.</td>
+        </tr>
+        <tr>
+          <td>Identity</td>
+          <td>The agent is code. No verified sender. No accountability.</td>
+          <td class="win">Every proposal has a verified sender. Signed manifest.</td>
+        </tr>
+        <tr>
+          <td>Delivery</td>
+          <td>Agent writes directly. No expiry. No one-time enforcement.</td>
+          <td class="win">One-time signed delivery. Expired links return 410.</td>
+        </tr>
+        <tr>
+          <td>Policy</td>
+          <td>Hardcoded per agent. Inconsistent. Not shareable.</td>
+          <td class="win">Shared YAML policies. Same rules across every agent.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="section-label">How it works</div>
+  <h2>Five steps. No exceptions.</h2>
+  <p class="lead">Every agent output goes through the same flow — regardless of which team built the agent or which framework it runs on.</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-connector"></div>
+      <div class="flow-body">
+        <h3>Agent proposes an output</h3>
+        <p>Agent calls <code>gate.propose()</code> with payload, destination, and policy ID. Gate verifies the sender against the agent registry. Unknown agents are rejected immediately.</p>
+        <span class="flow-tag tag-audit">Identity verified</span>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-connector"></div>
+      <div class="flow-body">
+        <h3>Gate evaluates policy</h3>
+        <p>Payload is classified. Destination is checked against the allowlist. Policy rules fire — schema validation, PII detection, record count thresholds, sensitivity tags.</p>
+        <span class="flow-tag tag-block">Blocked if policy fails</span>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-connector"></div>
+      <div class="flow-body">
+        <h3>Block, auto-approve, or queue for human review</h3>
+        <p>Low-risk proposals auto-approve. High-risk proposals enter the approval queue — Slack hook, email, or dashboard. Humans approve or reject with full context.</p>
+        <span class="flow-tag tag-pending">Pending approval</span>
+        <span class="flow-tag tag-approve" style="margin-left:0.5rem">Auto-approved</span>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-connector"></div>
+      <div class="flow-body">
+        <h3>One-time signed delivery</h3>
+        <p>Approved proposals get a signed one-time delivery link or webhook. One destination. Expires. Second request returns 410. The payload cannot be redirected or reused.</p>
+        <span class="flow-tag tag-approve">Delivered once</span>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-connector"></div>
+      <div class="flow-body">
+        <h3>Immutable audit trail</h3>
+        <p>Every event is logged — proposal, policy check, approval decision, delivery, expiry. Queryable by proposal ID. Not deletable. Not editable. This is the paper trail your compliance team will ask for.</p>
+        <span class="flow-tag tag-audit">Full audit logged</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- API -->
+<section class="section" id="api">
+  <div class="section-label">API</div>
+  <h2>Four methods. That's the whole surface area.</h2>
+  <p class="lead">If you need more than this to govern agent writes, you're building the wrong thing.</p>
+
+  <div class="code-block">
+    <div class="cb-header">
+      <span>TypeScript — full flow</span>
+      <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('pre').innerText)">Copy</button>
+    </div>
+    <pre>
+<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>
+
+<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ <span class="v">endpoint</span>: <span class="s">"https://gate.yourco.com"</span>, <span class="v">apiKey</span>: <span class="s">"gate_sk_..."</span> })
+
+<span class="cm">// 1. Agent proposes</span>
+<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({
+  <span class="v">payload</span>:     <span class="s">"./leads.csv"</span>,
+  <span class="v">destination</span>: <span class="s">"salesforce.import"</span>,
+  <span class="v">policy</span>:      <span class="s">"crm-low-risk"</span>,
+  <span class="v">recordCount</span>: <span class="v">847</span>
+})
+<span class="cm">// p.status → "pending_approval" | "approved" | "blocked"</span>
+
+<span class="cm">// 2. Human approves (from queue, Slack, or API)</span>
+<span class="k">await</span> <span class="v">gate</span>.<span class="fn">approve</span>({ <span class="v">proposalId</span>: p.id })
+
+<span class="cm">// 3. One-time delivery</span>
+<span class="k">const</span> <span class="v">d</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">deliver</span>({ <span class="v">proposalId</span>: p.id })
+<span class="cm">// d.url → one-time signed link, expires, 410 on second request</span>
+
+<span class="cm">// 4. Full audit trail</span>
+<span class="k">const</span> <span class="v">audit</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">verify</span>({ <span class="v">proposalId</span>: p.id })
+<span class="cm">// every event: proposed → policy_checked → approved → delivered</span>
+    </pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header"><span>Python</span></div>
+    <pre>
+<span class="k">from</span> <span class="v">zehrava_gate</span> <span class="k">import</span> <span class="v">Gate</span>
+
+<span class="v">gate</span> = <span class="fn">Gate</span>(endpoint=<span class="s">"https://gate.yourco.com"</span>, api_key=<span class="s">"gate_sk_..."</span>)
+
+<span class="v">p</span> = <span class="v">gate</span>.<span class="fn">propose</span>(payload=<span class="s">"payout_batch.csv"</span>, destination=<span class="s">"netsuite.payout"</span>, policy=<span class="s">"finance-high-risk"</span>)
+<span class="fn">print</span>(p[<span class="s">"status"</span>])  <span class="cm"># pending_approval — always, for finance-high-risk</span>
+    </pre>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- USE CASES -->
+<section class="section" id="use-cases">
+  <div class="section-label">Use cases</div>
+  <h2>Gate doesn't validate your data.<br>It governs whether your agent<br>is allowed to send it.</h2>
+  <p class="lead">Gate checks: who sent this, where it's going, whether policy allows it, and whether a human approved it. Your downstream system validates the data. Gate controls whether it gets there.</p>
+
+  <div class="use-case-list">
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-tag tag-block">Blocked</div>
+        <div class="use-case-title">CRM bulk update</div>
+        <div class="use-case-what">Agent enriches 847 leads and proposes a Salesforce import. Gate sees the record count exceeds the auto-approve threshold. Proposal is held.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="use-case-checks">
+          <div class="uc-check"><span class="uc-label">Sender</span> <span class="uc-val ok">verified</span></div>
+          <div class="uc-check"><span class="uc-label">Destination</span> <span class="uc-val ok">salesforce.import ✓</span></div>
+          <div class="uc-check"><span class="uc-label">Record count</span> <span class="uc-val warn">847 → pending approval</span></div>
+          <div class="uc-check"><span class="uc-label">Manager approves</span> <span class="uc-val ok">one-time delivery issued</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-tag tag-block">Blocked</div>
+        <div class="use-case-title">Finance payout batch</div>
+        <div class="use-case-what">Agent proposes a payout to an unlisted destination. Gate blocks it cold — destination not in policy allowlist. Nothing moves. Full audit of the attempt.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="use-case-checks">
+          <div class="uc-check"><span class="uc-label">Sender</span> <span class="uc-val ok">verified</span></div>
+          <div class="uc-check"><span class="uc-label">Destination</span> <span class="uc-val err">unknown.system ✗ blocked</span></div>
+          <div class="uc-check"><span class="uc-label">Result</span> <span class="uc-val err">proposal.status = "blocked"</span></div>
+          <div class="uc-check"><span class="uc-label">Audit</span> <span class="uc-val ok">logged — blocked at policy check</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-tag tag-approve">Auto-approved</div>
+        <div class="use-case-title">Support reply</div>
+        <div class="use-case-what">Agent drafts a routine support reply. Policy: auto-approve single messages with no flagged terms. Gate approves instantly. Delivers once. Logs the event.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="use-case-checks">
+          <div class="uc-check"><span class="uc-label">Destination</span> <span class="uc-val ok">zendesk.reply ✓</span></div>
+          <div class="uc-check"><span class="uc-label">Term scan</span> <span class="uc-val ok">no blocked terms</span></div>
+          <div class="uc-check"><span class="uc-label">Policy</span> <span class="uc-val ok">auto-approved</span></div>
+          <div class="uc-check"><span class="uc-label">Delivery</span> <span class="uc-val ok">one-time. audit logged.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-tag tag-block">Blocked</div>
+        <div class="use-case-title">Support reply — risky</div>
+        <div class="use-case-what">Same agent, different draft. Reply contains "refund guaranteed." Policy blocks it before it reaches Zendesk. Agent never sent it. Audit shows why.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="use-case-checks">
+          <div class="uc-check"><span class="uc-label">Destination</span> <span class="uc-val ok">zendesk.reply ✓</span></div>
+          <div class="uc-check"><span class="uc-label">Term scan</span> <span class="uc-val err">"refund guaranteed" → blocked</span></div>
+          <div class="uc-check"><span class="uc-label">Result</span> <span class="uc-val err">proposal.status = "blocked"</span></div>
+          <div class="uc-check"><span class="uc-label">Audit</span> <span class="uc-val ok">logged — reason recorded</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="use-case-row">
+      <div class="use-case-scenario">
+        <div class="use-case-tag tag-pending">Human required</div>
+        <div class="use-case-title">Legal intake packet</div>
+        <div class="use-case-what">Agent assembles a legal packet and proposes delivery to a law firm. Policy: always require paralegal approval. One-time link. 2-hour expiry. Full audit for discovery.</div>
+      </div>
+      <div class="use-case-arrow">→</div>
+      <div class="use-case-gate">
+        <div class="use-case-checks">
+          <div class="uc-check"><span class="uc-label">Destination</span> <span class="uc-val ok">named allowlist ✓</span></div>
+          <div class="uc-check"><span class="uc-label">Policy</span> <span class="uc-val warn">require_approval: always</span></div>
+          <div class="uc-check"><span class="uc-label">Paralegal approves</span> <span class="uc-val ok">signed manifest issued</span></div>
+          <div class="uc-check"><span class="uc-label">Delivery</span> <span class="uc-val ok">one-time link, 2h expiry</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- COMPETITIVE -->
+<section class="section">
+  <div class="section-label">Competitive landscape</div>
+  <h2>Everyone is solving a different problem.<br>Nobody owns the write-path.</h2>
+  <p class="lead">The tools that exist today cover observability, content safety, and model routing. None of them are the governed commit layer between agent output and downstream action. That's the gap Gate owns.</p>
+
+  <div class="compare-wrapper" style="overflow-x:auto">
+    <table class="compare-table" style="min-width:700px">
+      <thead>
+        <tr>
+          <th>Tool</th>
+          <th>What it actually does</th>
+          <th>Approval queue</th>
+          <th>Write-path control</th>
+          <th>Immutable audit</th>
+          <th>Cross-framework</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>LangSmith</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Traces and evals for LangChain/LangGraph. Human feedback is for labeling runs, not blocking writes.</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--amber);text-align:center">Partial</td>
+          <td style="color:var(--red);text-align:center">LangChain only</td>
+        </tr>
+        <tr>
+          <td><strong>Humanloop</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Prompt management, evals, and human feedback tasks. Approval logic lives in your app code, not Humanloop.</td>
+          <td style="color:var(--amber);text-align:center">Eval only</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--amber);text-align:center">Partial</td>
+          <td style="color:var(--amber);text-align:center">Partial</td>
+        </tr>
+        <tr>
+          <td><strong>Portkey</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">LLM gateway for routing and observability. Monitors what goes to the model. Doesn't govern what agents do after.</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--amber);text-align:center">Request logs</td>
+          <td style="color:var(--green);text-align:center">✓</td>
+        </tr>
+        <tr>
+          <td><strong>Guardrails AI</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Validates LLM output for content safety, PII, toxicity. Pre-delivery content filtering, not post-output commit control.</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--amber);text-align:center">Partial</td>
+        </tr>
+        <tr>
+          <td><strong>NeMo Guardrails</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Programmable conversation rails — topic control, jailbreak prevention, RAG grounding. Not a write-path governance layer.</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--amber);text-align:center">Partial</td>
+        </tr>
+        <tr>
+          <td><strong>Lakera Guard</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Prompt injection and adversarial input detection at inference time. Secures the model, not the downstream commit.</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--green);text-align:center">✓</td>
+        </tr>
+        <tr>
+          <td><strong>AgentOps</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Agent reliability and regression testing. Surfaces failures for review. Not a governed delivery pipeline.</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--red);text-align:center">✗</td>
+          <td style="color:var(--amber);text-align:center">Run logs</td>
+          <td style="color:var(--amber);text-align:center">Partial</td>
+        </tr>
+        <tr style="background:rgba(99,102,241,0.06)">
+          <td><strong style="color:var(--purple)">Zehrava Gate</strong></td>
+          <td style="color:var(--muted);font-size:0.82rem">Governed commit layer. Propose → policy → approve → one-time delivery → immutable audit. Sits outside every framework.</td>
+          <td style="color:var(--green);text-align:center;font-weight:700">✓</td>
+          <td style="color:var(--green);text-align:center;font-weight:700">✓</td>
+          <td style="color:var(--green);text-align:center;font-weight:700">✓</td>
+          <td style="color:var(--green);text-align:center;font-weight:700">✓ All</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:0.85rem;color:var(--muted);margin-top:1.5rem;text-align:center">The right stack: LangSmith for traces + Guardrails AI for content safety + <strong style="color:var(--text)">Gate for write-path governance</strong>. They're not competing — Gate fills the gap they all leave open.</p>
+</section>
+
+<hr class="divider">
+
+<!-- POLICY -->
+<section class="section">
+  <div class="section-label">Policy model</div>
+  <h2>YAML. Simple. Shared across every agent.</h2>
+  <p class="lead">No DSL. No rule engine. Declarative configs that any engineer can read, any compliance team can audit, and any agent can reference.</p>
+
+  <div class="policy-grid">
+    <div class="policy-card">
+      <h4>crm-low-risk</h4>
+      <div class="rule">allow: only CSV, JSON</div>
+      <div class="rule">destinations: salesforce, hubspot</div>
+      <div class="rule">auto_approve_under: 100 records</div>
+      <div class="rule">require_approval_over: 100 records</div>
+      <div class="rule">expiry: 60 minutes</div>
+    </div>
+    <div class="policy-card">
+      <h4>finance-high-risk</h4>
+      <div class="rule">require_approval: always</div>
+      <div class="rule">destinations: netsuite, stripe, quickbooks</div>
+      <div class="rule">delivery: one_time_only</div>
+      <div class="rule">expiry: 30 minutes</div>
+    </div>
+    <div class="policy-card">
+      <h4>legal-packet</h4>
+      <div class="rule">require_approval: always</div>
+      <div class="rule">recipients: named_list_only</div>
+      <div class="rule">delivery: one_time_only</div>
+      <div class="rule">expiry: 120 minutes</div>
+    </div>
+    <div class="policy-card">
+      <h4>support-reply</h4>
+      <div class="rule">destinations: zendesk, intercom</div>
+      <div class="rule">auto_approve_under: 1 message</div>
+      <div class="rule">block_if_terms: [refund guaranteed, legal action]</div>
+      <div class="rule">expiry: 30 minutes</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ARCHITECTURE -->
+<section class="section">
+  <div class="section-label">The architecture</div>
+  <h2>Gate becomes the control plane<br>for agent commits.</h2>
+  <p class="lead">Gate sits outside every framework. It governs every agent regardless of stack. One commit checkpoint. One approval queue. One audit trail.</p>
+
+  <div style="max-width:560px;margin:2.5rem auto;text-align:center">
+    <div style="display:flex;flex-direction:column;gap:0.75rem;align-items:center">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem 2rem;width:100%">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.75rem">Agent frameworks</div>
+        <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap">
+          <span class="fw-tag">LangGraph</span>
+          <span class="fw-tag">CrewAI</span>
+          <span class="fw-tag">AutoGen</span>
+          <span class="fw-tag">Custom agents</span>
+        </div>
+      </div>
+      <div style="color:var(--purple);font-size:1.5rem;line-height:1">↓</div>
+      <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:1.25rem 2rem;width:100%">
+        <div style="font-weight:800;font-size:1rem;margin-bottom:0.4rem">Zehrava Gate</div>
+        <div style="font-size:0.82rem;color:var(--muted)">proposal → policy → approval → deliver → audit</div>
+      </div>
+      <div style="color:var(--purple);font-size:1.5rem;line-height:1">↓</div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1rem 2rem;width:100%">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.75rem">Production systems</div>
+        <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap">
+          <span class="fw-tag">CRM</span>
+          <span class="fw-tag">Email</span>
+          <span class="fw-tag">Payments</span>
+          <span class="fw-tag">Databases</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- CATEGORY -->
+<section class="section" style="text-align:center">
+  <div class="section-label">The category</div>
+  <h2>The ecosystem already has<br>observability, evaluation, and guardrails.<br><span style="color:var(--purple)">The commit checkpoint is missing.</span></h2>
+  <p class="lead" style="max-width:540px;margin:0 auto 2rem">Agents are about to start writing to production everywhere. The missing layer is the commit checkpoint. That is the category Zehrava Gate owns.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;max-width:720px;margin:0 auto">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--green);margin-bottom:0.4rem">✓ Exists</div>
+      <div style="font-size:0.875rem;font-weight:600">Observability</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:0.25rem">LangSmith, AgentOps</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--green);margin-bottom:0.4rem">✓ Exists</div>
+      <div style="font-size:0.875rem;font-weight:600">Guardrails</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:0.25rem">Guardrails AI, Lakera</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--green);margin-bottom:0.4rem">✓ Exists</div>
+      <div style="font-size:0.875rem;font-weight:600">LLM Gateway</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:0.25rem">Portkey, Helicone</div>
+    </div>
+    <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.4);border-radius:8px;padding:1rem;text-align:center">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--purple);margin-bottom:0.4rem">⬡ Gate owns this</div>
+      <div style="font-size:0.875rem;font-weight:600">Commit checkpoint</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-top:0.25rem">Write-path governance</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- DEMO CTA -->
+<section class="section" style="text-align:center;padding:3rem 2rem">
+  <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:3rem 2rem;max-width:640px;margin:0 auto">
+    <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--purple);font-weight:600;margin-bottom:1rem">See it live</div>
+    <h2 style="font-size:1.75rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:0.75rem">Run the demo against the real API.</h2>
+    <p style="color:var(--muted);font-size:0.95rem;margin-bottom:2rem;line-height:1.7">Four scenarios. All live. Watch Gate block a finance payout, approve a safe support reply, and hold a 847-record CRM import for human review — then approve it yourself from the dashboard.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="/demo" class="btn-primary" style="font-size:1rem">▶ Run live demo</a>
+      <a href="/dashboard" class="btn-secondary" style="font-size:1rem">Open approval queue</a>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- QUICKSTART -->
+<section class="section" id="get-started">
+  <div class="section-label">Quickstart</div>
+  <h2>Running in 5 minutes.<br>The first "aha" is seeing Gate block a write.</h2>
+
+  <div class="code-block">
+    <div class="cb-header"><span>Install + run local server</span></div>
+    <pre>npm install @zehrava/gate
+npx zehrava-gate --port 4000</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="cb-header">
+      <span>Your first proposal</span>
+      <button class="copy-btn" onclick="navigator.clipboard.writeText(this.closest('.code-block').querySelector('pre').innerText)">Copy</button>
+    </div>
+    <pre>
+<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>
+
+<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ <span class="v">endpoint</span>: <span class="s">"http://localhost:4000"</span> })
+
+<span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({
+  <span class="v">payload</span>:     <span class="s">"./leads.csv"</span>,
+  <span class="v">destination</span>: <span class="s">"salesforce.import"</span>,
+  <span class="v">policy</span>:      <span class="s">"crm-low-risk"</span>,
+  <span class="v">recordCount</span>: <span class="v">847</span>
+})
+
+<span class="fn">console</span>.<span class="fn">log</span>(p.status)
+<span class="cm">// "pending_approval" — over the 100-record threshold</span>
+<span class="cm">// Change recordCount to 50 → "approved" immediately</span>
+<span class="cm">// Change destination to "unknown.system" → "blocked"</span>
+    </pre>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <div class="section-label">Pricing</div>
+  <h2>Priced on governed writes.<br>Not storage. Not tokens.</h2>
+  <p class="lead">You pay for the writes that actually reach production — the thing that actually matters.</p>
+
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="plan-name">Free</div>
+      <div class="plan-price">$0</div>
+      <div class="plan-desc">Local dev and small teams. No credit card.</div>
+      <ul>
+        <li>Local dev server</li>
+        <li>1 workspace</li>
+        <li>500 proposals/mo</li>
+        <li>7-day audit retention</li>
+      </ul>
+    </div>
+    <div class="pricing-card featured">
+      <div class="pricing-badge">Most popular</div>
+      <div class="plan-name">Team</div>
+      <div class="plan-price">$149 <span>/mo</span></div>
+      <div class="plan-desc">Teams running agents in production workflows.</div>
+      <ul>
+        <li>5 workspaces</li>
+        <li>10,000 proposals/mo</li>
+        <li>Approval queue UI</li>
+        <li>Signed delivery + webhooks</li>
+        <li>90-day audit retention</li>
+        <li>Slack/email approval hooks</li>
+      </ul>
+    </div>
+    <div class="pricing-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price">Custom</div>
+      <div class="plan-desc">Full control. Compliance. Self-hosted option.</div>
+      <ul>
+        <li>Self-hosted control plane</li>
+        <li>SSO + SCIM</li>
+        <li>Audit export</li>
+        <li>Custom policy packs</li>
+        <li>Managed connectors</li>
+        <li>SLA + dedicated support</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="self-deploy-note">
+    Self-hosting is free forever. MIT license. <a href="https://github.com/cgallic/zehrava-gate" target="_blank">Deploy from GitHub →</a>
+  </div>
+</section>
+
+<hr class="divider">
+
+<footer>
+  <div class="footer-brand" style="font-size:0.95rem;color:var(--text);font-weight:600;margin-bottom:0.5rem">Frameworks generate actions.<br>Gate governs whether those actions reach production systems.</div>
+  <div class="footer-brand" style="margin-top:0.5rem">Zehrava Gate · Zehrava Trace · Zehrava Policy — agent infrastructure by MeetKai</div>
+  <div class="footer-links">
+    <a href="/demo" style="color:var(--purple);font-weight:600">Live Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="https://meetkai.xyz">MeetKai</a>
+    <a href="mailto:connor@kaicalls.com">Contact</a>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'))
+      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+    })
+  })
+</script>
+</body>
+</html>
