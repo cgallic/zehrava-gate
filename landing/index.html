@@ -556,11 +556,11 @@
     <span>gate.propose({ destination: "salesforce.import", policy: "crm-low-risk", recordCount: 847 })</span>
     <span>destination: salesforce.import ✓ — record_count: 847 → threshold exceeded → pending_approval</span>
     <span>idempotency_key: "batch-2026-03-08" — duplicate intent blocked with 409</span>
-    <span>gate.execute({ intentId: "prop_K9x2mF4j" }) → execution_token: gex_•••• (15min TTL)</span>
+    <span>gate.execute({ intentId: "int_K9x2mF4j" }) → execution_token: gex_•••• (15min TTL)</span>
     <span>require_approval_over: 100 — finance-high-risk: require_approval: always</span>
     <span>audit: immutable · append-only · every state transition logged · queryable by intent ID</span>
     <span>intent.status = "blocked" — reason_code: destination_not_allowed ✗</span>
-    <span>gate.verify({ intentId: p.intentId }) → proposed → policy_checked → approved → succeeded</span>
+    <span>gate.verify({ intentId: p.intentId }) → intent → policy_checked → approved → execution_requested → execution_succeeded</span>
     <span>execution_token: 15min TTL · runner_exec: worker runs in your VPC · credentials never leave</span>
     <span>on_behalf_of: "agt_orchestrator_abc" · sensitivity_tags: ["pii", "financial"]</span>
     <span>// No agent write reaches production without an authorized execution order</span>
@@ -1088,7 +1088,7 @@
           </div>
           <div style="display:flex;gap:.75rem;align-items:flex-start">
             <code style="min-width:180px;font-size:.75rem">expiry_minutes</code>
-            <span style="font-size:.82rem;color:var(--muted)">How long a pending proposal can wait. Expired proposals cannot be approved.</span>
+            <span style="font-size:.82rem;color:var(--muted)">How long a pending proposal can wait. Expired intents cannot be approved.</span>
           </div>
         </div>
       </div>

@@ -609,7 +609,7 @@ zehrava-gate --port 4000</pre>
         </tbody>
       </table></div>
       <pre><span class="val">{
-  "intentId":       "prop_a1b2c3d4e5f6",
+  "intentId":       "int_a1b2c3d4e5f6",
   "status":         "approved",          </span><span class="com">// approved | blocked | pending_approval</span><span class="val">
   "risk_score":     0.42,                </span><span class="com">// 0–1 composite risk signal</span><span class="val">
   "risk_level":     "medium",            </span><span class="com">// low | medium | high | critical</span><span class="val">
@@ -676,7 +676,7 @@ zehrava-gate --port 4000</pre>
       <pre><span class="val">{
   "executionId":    "exec_a1b2c3d4",
   "execution_token": "gex_••••••••••••",  </span><span class="com">// one-time, 15min TTL</span><span class="val">
-  "intent_id":      "prop_a1b2c3d4e5f6",
+  "intent_id":      "int_a1b2c3d4e5f6",
   "expires_at":     "2026-03-08T12:15:00.000Z",
   "mode":           "runner_exec"
 }</span></pre>
@@ -691,7 +691,7 @@ zehrava-gate --port 4000</pre>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <pre><span class="val">{
   "executionId":  "exec_a1b2c3d4",
-  "intent_id":    "prop_a1b2c3d4e5f6",
+  "intent_id":   "int_a1b2c3d4e5f6",
   "mode":         "runner_exec",
   "status":       "succeeded",          </span><span class="com">// pending | executing | succeeded | failed | expired</span><span class="val">
   "worker_report": { "note": "Imported 847 records" },
@@ -727,7 +727,7 @@ zehrava-gate --port 4000</pre>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <pre><span class="val">{
-  "intent_id":    "prop_a1b2c3d4e5f6",
+  "intent_id":   "int_a1b2c3d4e5f6",
   "decision":     "approved",
   "reason_code":  "approved_by_policy",
   "risk_score":   0.42,
@@ -745,7 +745,7 @@ zehrava-gate --port 4000</pre>
       <pre><span class="val">[
   { "eventType": "proposed",       "actor": "my-crm-agent", "createdAt": "..." },
   { "eventType": "policy_checked", "actor": "system",       "metadata": { "result": "approved", "risk_score": 0.42 } },
-  { "eventType": "auto_approved",  "actor": "system",       "createdAt": "..." },
+  { "eventType": "approved",        "actor": "system",       "createdAt": "..." },
   { "eventType": "execution_requested", "actor": "my-crm-agent", "createdAt": "..." },
   { "eventType": "succeeded",      "actor": "worker",       "createdAt": "..." }
 ]</span></pre>
@@ -856,7 +856,7 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
     <span class="k">return</span> {**state, <span class="s">"sent"</span>: <span class="k">True</span>}</pre>
 
     <h2 id="webhooks">Webhooks</h2>
-    <p>Instead of polling, register a webhook URL. Gate fires a <code>POST</code> to your URL on any terminal state transition: approved, rejected, succeeded, failed, expired, or duplicate_blocked.</p>
+    <p>Instead of polling, register a webhook URL. Gate fires once per terminal lifecycle event: <code>approved</code>, <code>rejected</code>, <code>succeeded</code>, <code>failed</code>, <code>expired</code>, <code>duplicate_blocked</code>.</p>
     <pre><span class="cm">// JavaScript</span>
 <span class="k">const</span> p = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
 
@@ -873,7 +873,7 @@ gate.<span class="fn">register_webhook</span>(
 )</pre>
     <p>Gate fires once — on the first approve or reject event. The webhook payload:</p>
     <pre><span class="val">{
-  "intentId":   "prop_a1b2c3",
+  "intentId":   "int_a1b2c3d4",
   "event":      "approved",        </span><span class="com">// approved | rejected | succeeded | failed | expired | duplicate_blocked</span><span class="val">
   "execution_token": "gex_••••",   </span><span class="com">// only on approved</span><span class="val">
   "execution_id":   "exec_a1b2c3",  </span><span class="com">// only on succeeded | failed</span><span class="val">
@@ -904,36 +904,35 @@ gate.<span class="fn">register_webhook</span>(
     <p>Event types in order:</p>
     <ul>
       <li><strong>proposed</strong> — agent submitted the intent</li>
-      <li><strong>policy_checked</strong> — Gate evaluated policy and risk score</li>
-      <li><strong>auto_approved</strong> — passed all rules within auto-approve threshold</li>
-      <li><strong>blocked</strong> — violated a policy rule (includes reason_code)</li>
-      <li><strong>approved</strong> — human approved in dashboard</li>
+      <li><strong>policy_checked</strong> — Gate evaluated YAML policy + risk score</li>
+      <li><strong>approved</strong> — auto-approved by policy, or human approved in dashboard</li>
       <li><strong>rejected</strong> — human rejected (includes reason)</li>
-      <li><strong>execution_requested</strong> — execution order issued (15-min token)</li>
-      <li><strong>succeeded</strong> — worker reported successful execution</li>
-      <li><strong>failed</strong> — worker reported execution failure</li>
-      <li><strong>expired</strong> — intent passed its approval window without action</li>
-      <li><strong>duplicate_blocked</strong> — idempotency_key matched an existing intent</li>
+      <li><strong>blocked</strong> — policy blocked it (includes reason_code). Terminal.</li>
+      <li><strong>expired</strong> — approval window elapsed. Terminal.</li>
+      <li><strong>duplicate_blocked</strong> — idempotency_key matched. Terminal.</li>
+      <li><strong>execution_requested</strong> — execution order issued (gex_ token, 15min TTL)</li>
+      <li><strong>execution_succeeded</strong> — worker reported success</li>
+      <li><strong>execution_failed</strong> — worker reported failure</li>
     </ul>
 
     <!-- ── CONCEPTS ── -->
     <h2 id="intent-lifecycle">Intent lifecycle</h2>
     <pre>POST /v1/intents
   ↓
-policy evaluation + risk scoring
-  ├── blocked              → terminal. Cannot be approved.
-  ├── duplicate_blocked    → terminal. Idempotency key matched.
-  ├── approved (auto)      → ready for execution
-  └── pending_approval     → waits in dashboard for human action
+intent → policy_checked
+  ├── blocked              → terminal
+  ├── duplicate_blocked    → terminal (idempotency key matched)
+  ├── approved             → auto-approved, ready for execution
+  └── pending_approval     → human review required
         ├── approved        → ready for execution
-        ├── rejected        → terminal (status: blocked)
-        └── expired         → terminal. Cannot be approved.
+        ├── rejected        → terminal
+        └── expired         → terminal
 
 approved
   ↓
-POST /v1/intents/:id/execute → execution order (15-min token)
+execution_requested (POST /v1/intents/:id/execute)
   ↓
-worker executes in your VPC
+worker executes in your VPC (runner_exec)
   ↓
 POST /v1/executions/:id/report
   ├── succeeded  → terminal

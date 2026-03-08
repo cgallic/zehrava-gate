@@ -20,7 +20,7 @@ router.post('/propose', authenticate, (req, res) => {
     return res.status(400).json({ error: 'destination and policy are required' });
   }
 
-  const proposalId = generateId('prop');
+  const proposalId = generateId('int');
   const now = Date.now();
   const expirySeconds = parseExpiry(expiresIn || '1h');
   const expiresAt = now + (expirySeconds * 1000);
