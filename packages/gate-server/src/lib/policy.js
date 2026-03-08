@@ -61,14 +61,14 @@ function listPolicies() {
  * Evaluate a proposal against a policy.
  * Returns { status: 'approved' | 'blocked' | 'pending_approval', reason? }
  */
-function evaluatePolicy(policyId, { destination, payloadType, payloadContent, recordCount, metadata }) {
+function evaluatePolicy(policyId, { destination, payloadType, payloadContent, recordCount, metadata, agentId }) {
   const policy = loadPolicy(policyId);
 
   if (!policy) {
     return { status: 'blocked', reason: `Policy '${policyId}' not found` };
   }
 
-  // Destination check
+  // 1. Destination check
   if (policy.destinations && !policy.destinations.includes(destination)) {
     return {
       status: 'blocked',
@@ -76,7 +76,7 @@ function evaluatePolicy(policyId, { destination, payloadType, payloadContent, re
     };
   }
 
-  // Type check — only enforce if payloadType is a simple extension (not a full content string)
+  // 2. Type check
   if (policy.allowed_types && payloadType && payloadType.length < 20 && !payloadType.includes(' ')) {
     const ext = payloadType.toLowerCase().replace('.', '');
     if (!policy.allowed_types.includes(ext)) {
@@ -87,10 +87,40 @@ function evaluatePolicy(policyId, { destination, payloadType, payloadContent, re
     }
   }
 
-  // Sensitive term check — normalized matching defeats simple obfuscation
-  if (policy.block_if_terms && payloadContent) {
-    const normalizedContent = normalizeText(payloadContent);
-    for (const term of policy.block_if_terms) {
+  // 3. Environment-aware thresholds overrides
+  let activePolicy = { ...policy };
+  if (policy.environments && metadata?.environment) {
+    const envConfig = policy.environments[metadata.environment];
+    if (envConfig) {
+      activePolicy = { ...activePolicy, ...envConfig };
+    }
+  }
+
+  // 4. Rate limiting (requires agentId)
+  if (activePolicy.rate_limits && agentId) {
+    const rl = evaluateRateLimits(activePolicy.rate_limits, agentId);
+    if (rl.blocked) return { status: 'blocked', reason: rl.reason };
+  }
+
+  // 5. Schema/Field checks (JSON payloads only)
+  if (activePolicy.field_checks && payloadContent) {
+    try {
+      const json = typeof payloadContent === 'string' ? JSON.parse(payloadContent) : payloadContent;
+      const fieldResult = evaluateFieldChecks(activePolicy.field_checks, json);
+      if (fieldResult.blocked) {
+        return { status: 'blocked', reason: fieldResult.reason };
+      }
+    } catch (e) {
+      // Not JSON or parse error — ignore field checks if payload isn't valid JSON
+      // Unless policy strictly requires JSON? For now, we skip.
+    }
+  }
+
+  // 6. Sensitive term check
+  if (activePolicy.block_if_terms && payloadContent) {
+    const contentStr = typeof payloadContent === 'string' ? payloadContent : JSON.stringify(payloadContent);
+    const normalizedContent = normalizeText(contentStr);
+    for (const term of activePolicy.block_if_terms) {
       const normalizedTerm = normalizeText(term);
       if (normalizedContent.includes(normalizedTerm)) {
         return { status: 'blocked', reason: `Payload contains blocked term: "${term}"` };
@@ -98,31 +128,107 @@ function evaluatePolicy(policyId, { destination, payloadType, payloadContent, re
     }
   }
 
-  // Always require approval
-  if (policy.require_approval === 'always') {
+  // 7. Always require approval
+  if (activePolicy.require_approval === 'always') {
     return { status: 'pending_approval', reason: 'Policy requires human approval' };
   }
 
-  // Record count thresholds
+  // 8. Record count thresholds
   if (recordCount !== undefined) {
-    if (policy.require_approval_over && recordCount > policy.require_approval_over) {
+    if (activePolicy.require_approval_over && recordCount > activePolicy.require_approval_over) {
       return {
         status: 'pending_approval',
-        reason: `Record count ${recordCount} exceeds auto-approve threshold (${policy.require_approval_over})`
+        reason: `Record count ${recordCount} exceeds auto-approve threshold (${activePolicy.require_approval_over})`
       };
     }
-    if (policy.auto_approve_under && recordCount <= policy.auto_approve_under) {
+    if (activePolicy.auto_approve_under && recordCount <= activePolicy.auto_approve_under) {
       return { status: 'approved' };
     }
   }
 
-  // Org-wide check
-  if (policy.require_approval_for === 'org_wide' && metadata?.scope === 'org_wide') {
+  // 9. Org-wide check
+  if (activePolicy.require_approval_for === 'org_wide' && metadata?.scope === 'org_wide') {
     return { status: 'pending_approval', reason: 'Org-wide publish requires approval' };
   }
 
-  // Default: pending approval (safe default)
+  // Default
   return { status: 'pending_approval', reason: 'Awaiting review' };
+}
+
+/**
+ * Validate JSON fields against policy rules
+ */
+function evaluateFieldChecks(checks, json) {
+  for (const check of checks) {
+    // Resolve dot notation path
+    const parts = check.path.split('.');
+    let val = json;
+    for (const part of parts) {
+      val = (val && val[part] !== undefined) ? val[part] : undefined;
+    }
+
+    // Required check
+    if (check.required && (val === undefined || val === null || val === '')) {
+      return { blocked: true, reason: `Field '${check.path}' is required but missing/empty` };
+    }
+
+    if (val === undefined) continue; // Skip other checks if field missing (unless required)
+
+    // Max/Min (numeric)
+    if (typeof val === 'number') {
+      if (check.max !== undefined && val > check.max) {
+        return { blocked: true, reason: `Field '${check.path}' value ${val} exceeds max ${check.max}` };
+      }
+      if (check.min !== undefined && val < check.min) {
+        return { blocked: true, reason: `Field '${check.path}' value ${val} is below min ${check.min}` };
+      }
+    }
+
+    // Max Length (string/array)
+    if (check.max_length !== undefined) {
+      const len = val && val.length;
+      if (len !== undefined && len > check.max_length) {
+        return { blocked: true, reason: `Field '${check.path}' length ${len} exceeds max ${check.max_length}` };
+      }
+    }
+
+    // Pattern (regex)
+    if (check.pattern && typeof val === 'string') {
+      const regex = new RegExp(check.pattern);
+      if (!regex.test(val)) {
+        return { blocked: true, reason: `Field '${check.path}' format invalid` };
+      }
+    }
+  }
+  return { blocked: false };
+}
+
+function evaluateRateLimits(rateLimits, agentId) {
+  try {
+    const db = require('./db');
+    const now = Date.now();
+
+    if (rateLimits.per_agent_per_hour) {
+      const since = now - 60 * 60 * 1000;
+      const row = db.prepare('SELECT COUNT(*) AS c FROM proposals WHERE sender_agent_id = ? AND created_at >= ?').get(agentId, since);
+      if ((row?.c || 0) >= rateLimits.per_agent_per_hour) {
+        return { blocked: true, reason: `Rate limit exceeded: ${rateLimits.per_agent_per_hour}/hour for agent ${agentId}` };
+      }
+    }
+
+    if (rateLimits.per_agent_per_day) {
+      const since = now - 24 * 60 * 60 * 1000;
+      const row = db.prepare('SELECT COUNT(*) AS c FROM proposals WHERE sender_agent_id = ? AND created_at >= ?').get(agentId, since);
+      if ((row?.c || 0) >= rateLimits.per_agent_per_day) {
+        return { blocked: true, reason: `Rate limit exceeded: ${rateLimits.per_agent_per_day}/day for agent ${agentId}` };
+      }
+    }
+
+    return { blocked: false };
+  } catch (e) {
+    // Fail-closed on rate limit evaluation errors
+    return { blocked: true, reason: `Rate limit check failed: ${e.message}` };
+  }
 }
 
 module.exports = { loadPolicy, listPolicies, evaluatePolicy };

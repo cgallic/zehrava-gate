@@ -57,7 +57,8 @@ router.post('/propose', authenticate, (req, res) => {
     payloadType,
     payloadContent,
     recordCount: recordCount ? parseInt(recordCount) : undefined,
-    metadata
+    metadata,
+    agentId: req.agent?.id
   });
 
   // Idempotency check — block duplicate intents

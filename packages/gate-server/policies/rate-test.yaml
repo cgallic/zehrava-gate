@@ -1,0 +1,6 @@
+id: rate-test
+destinations: [loops.send]
+rate_limits:
+  per_agent_per_hour: 1
+require_approval: never
+auto_approve_under: 10

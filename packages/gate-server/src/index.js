@@ -62,6 +62,15 @@ app.get('/v1/proxy/ca.crt', (req, res) => {
   res.sendFile(caPath);
 });
 
+// GET /v1/proxy/held — list held connections (auth required)
+app.get('/v1/proxy/held', authenticate, (req, res) => {
+  if (!process.env.PROXY_API_KEY) {
+    return res.status(404).json({ error: 'Proxy not enabled' });
+  }
+  const holdQueue = require('./proxy/hold-queue');
+  res.json({ held: holdQueue.list(), count: holdQueue.size() });
+});
+
 // Legacy agent endpoints now handled by agentsRouter
 // (keeping this comment for backward compat)
 app.post('/v1/agents/register_DISABLED', (req, res) => {

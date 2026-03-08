@@ -125,6 +125,16 @@ router.post('/approve', authenticate, (req, res) => {
   const { executeIntent }  = require('../proxy/executor');
   const isGateExec = hasCredential(proposal.destination) && process.env.PROXY_API_KEY;
 
+  // Release any held proxy connection (HTTP or HTTPS) for this intent
+  try {
+    const holdQueue = require('../proxy/hold-queue');
+    const held = holdQueue.release(proposalId);
+    if (held) {
+      console.log(`[hold-queue] release ${proposalId} (${held.request?.type || 'http'})`);
+      try { held.resolve(); } catch (e) { console.error('[hold-queue] resolve error:', e.message); }
+    }
+  } catch {}
+
   if (isGateExec) {
     // Fire async — don't block the approval response
     setImmediate(async () => {
@@ -175,6 +185,12 @@ router.post('/reject', authenticate, (req, res) => {
 
   db.prepare("UPDATE proposals SET status = 'blocked', block_reason = ? WHERE id = ?")
     .run(reason || 'Rejected by reviewer', proposalId);
+
+  // If proxy is holding a live connection, cancel it now.
+  try {
+    const holdQueue = require('../proxy/hold-queue');
+    holdQueue.cancel(proposalId, reason || 'rejected');
+  } catch {}
 
   logEvent(proposalId, 'rejected', req.agent.name, { reason, rejector: req.agent.name });
   fireWebhook(proposalId, 'rejected', { reason, rejector: req.agent.name });

@@ -302,18 +302,54 @@ async function handleRequest(clientReq, clientRes) {
   }
 
   if (intentStatus === 'pending_approval') {
-    clientRes.writeHead(202, {
-      'Content-Type': 'application/json',
-      'X-Gate-Intent-Id': intentId,
-      'Retry-After': '30',
+    const wait = (clientReq.headers['x-gate-wait'] || '').toString().toLowerCase() === 'true';
+
+    // Default behavior stays async (202) unless caller explicitly asks to wait.
+    if (!wait) {
+      clientRes.writeHead(202, {
+        'Content-Type': 'application/json',
+        'X-Gate-Intent-Id': intentId,
+        'Retry-After': '30',
+      });
+      clientRes.end(JSON.stringify({
+        status: 'pending_approval',
+        intentId,
+        message: 'Intent queued for human approval. Resend request with X-Gate-Intent-Id header after approval, or set X-Gate-Wait: true to hold connection.',
+        dashboard: `http://localhost:${GATE_PORT}/dashboard`,
+        retryAfterSeconds: 30,
+      }));
+      return;
+    }
+
+    // Hold connection open and auto-replay on approval.
+    const holdQueue = require('./hold-queue');
+    const ttlMs = parseInt(process.env.GATE_HOLD_TIMEOUT_MS || String(15 * 60 * 1000));
+
+    // If client disconnects, cancel the held entry.
+    clientRes.on('close', () => {
+      holdQueue.cancel(intentId, 'client_disconnected');
     });
-    clientRes.end(JSON.stringify({
-      status: 'pending_approval',
+
+    holdQueue.add(
       intentId,
-      message: 'Intent queued for human approval. Resend request with X-Gate-Intent-Id header after approval.',
-      dashboard: `http://localhost:${GATE_PORT}/dashboard`,
-      retryAfterSeconds: 30,
-    }));
+      { type: 'http', hostname, path: urlPath, method: clientReq.method, targetUrl, rawBody, clientReq, clientRes, ttlMs },
+      () => {
+        // Approved — proxy now
+        proxyRequest(clientReq, clientRes, targetUrl, rawBody);
+      },
+      (err) => {
+        if (clientRes.headersSent) return;
+        clientRes.writeHead(408, { 'Content-Type': 'application/json' });
+        clientRes.end(JSON.stringify({
+          status: 'expired',
+          intentId,
+          error: err.message || 'timeout',
+        }));
+      },
+      ttlMs
+    );
+
+    // Do not end response — keep socket open.
     return;
   }
 
@@ -358,6 +394,10 @@ function handleConnect(req, clientSocket, head) {
 function startProxy() {
   const server = http.createServer(handleRequest);
   server.on('connect', handleConnect);
+
+  // Hold-queue sweeper
+  const holdQueue = require('./hold-queue');
+  setInterval(() => holdQueue.sweep(), 30_000).unref();
 
   server.listen(PROXY_PORT, () => {
     console.log(`[gate] Proxy listening on port ${PROXY_PORT}`);

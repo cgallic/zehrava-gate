@@ -92,7 +92,14 @@ function forwardToReal(hostname, port, parsed, tlsSocket) {
 
 function sendTlsResponse(tlsSocket, statusCode, body, extraHeaders = {}) {
   const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
-  const statusText = { 200: 'OK', 202: 'Accepted', 403: 'Forbidden', 503: 'Service Unavailable', 502: 'Bad Gateway' }[statusCode] || 'Unknown';
+  const statusText = {
+    200: 'OK',
+    202: 'Accepted',
+    403: 'Forbidden',
+    408: 'Request Timeout',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+  }[statusCode] || 'Unknown';
   let response = `HTTP/1.1 ${statusCode} ${statusText}\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(bodyStr)}\r\n`;
   for (const [k, v] of Object.entries(extraHeaders)) response += `${k}: ${v}\r\n`;
   response += '\r\n' + bodyStr;
@@ -251,10 +258,40 @@ function handleConnectMitm(req, clientSocket, head) {
         { status, intentId, blockReason: intent.blockReason, destination: destConfig.destination }
       );
     } else if (status === 'pending_approval') {
-      sendTlsResponse(tlsSocket, 202,
-        { status: 'pending_approval', intentId, message: 'Queued for human approval.', dashboard: `http://localhost:${GATE_PORT}/dashboard`, retryAfterSeconds: 30 },
-        { 'X-Gate-Intent-Id': intentId, 'Retry-After': '30' }
+      const wait = (parsed.headers['x-gate-wait'] || '').toString().toLowerCase() === 'true';
+      if (!wait) {
+        sendTlsResponse(tlsSocket, 202,
+          { status: 'pending_approval', intentId, message: 'Queued for human approval.', dashboard: `http://localhost:${GATE_PORT}/dashboard`, retryAfterSeconds: 30 },
+          { 'X-Gate-Intent-Id': intentId, 'Retry-After': '30' }
+        );
+        return;
+      }
+
+      // Hold connection and auto-forward on approval.
+      const holdQueue = require('./hold-queue');
+      const ttlMs = parseInt(process.env.GATE_HOLD_TIMEOUT_MS || String(15 * 60 * 1000));
+
+      tlsSocket.on('close', () => {
+        holdQueue.cancel(intentId, 'client_disconnected');
+      });
+
+      holdQueue.add(
+        intentId,
+        { type: 'https', hostname, port, path: parsed.urlPath, method: parsed.method, parsed, tlsSocket, ttlMs },
+        () => {
+          forwardToReal(hostname, port, parsed, tlsSocket);
+        },
+        (err) => {
+          sendTlsResponse(tlsSocket, 408, { status: 'expired', intentId, error: err.message || 'timeout' });
+          try { tlsSocket.end(); } catch {}
+        },
+        ttlMs
       );
+
+      // Stop processing more data for this socket until resolved.
+      tlsSocket.removeAllListeners('data');
+      return;
+
     } else {
       sendTlsResponse(tlsSocket, 502, { error: 'unexpected_status', status, intentId });
     }
