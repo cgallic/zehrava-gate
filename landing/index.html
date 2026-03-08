@@ -1309,13 +1309,6 @@ npx zehrava-gate --port 4000</pre>
       </div>
     </details>
 
-    <details class="faq-item">
-      <summary class="faq-q">You have three execution modes listed but gate_exec doesn't exist yet. Why advertise what isn't built?</summary>
-      <div class="faq-a">
-        <p>Fair. runner_exec is the only mode that's fully implemented today. external_pull (worker fetches a signed payload ref) is partially built. gate_exec (Gate holds the connector and executes directly) is not built.</p>
-        <p style="margin-top:.75rem">The three modes reflect the architecture we're building toward, not what shipped today. runner_exec works, handles the enterprise use case cleanly (credentials stay in your VPC), and is what you should use right now. The others will land in order of customer demand.</p>
-      </div>
-    </details>
 
     <details class="faq-item">
       <summary class="faq-q">What's the actual insight here? Why does this company exist?</summary>

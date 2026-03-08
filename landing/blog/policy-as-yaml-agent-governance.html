@@ -134,7 +134,7 @@
     <li><strong>Versionable.</strong> Tag <code>finance-high-risk@v1.2</code> the same way you tag a library release. Pin agents to specific versions. Roll back without a deploy.</li>
   </ul>
 
-  <p>Zehrava Gate implements this pattern natively. Policies are YAML files loaded at runtime, evaluated against every <code>gate.propose()</code> call before the proposal hits the approval queue.</p>
+  <p>Zehrava Gate implements this pattern natively. Policies are YAML files loaded at runtime, evaluated against every <code>gate.propose()</code> call before the intent hits the approval queue.</p>
 
   <h2>Three Real Policy Examples</h2>
 
@@ -150,7 +150,7 @@ destinations: [salesforce.import, hubspot.contacts]
 auto_approve_under: 100        # rows under 100 approve instantly
 require_approval_over: 100     # rows at or above 100 queue for review
 expiry_minutes: 60             # proposal expires if not actioned in 1 hour
-delivery: one_time             # payload delivered once; no retries without re-approval</code></pre>
+# execution: runner_exec (worker runs in your VPC) (worker runs in your VPC, 15min token TTL)</code></pre>
 
   <p>This is the baseline. Small CRM syncs clear automatically. A 50-row contact upload at 2am doesn't wake anyone up. A 10,000-row export does.</p>
 
@@ -158,17 +158,17 @@ delivery: one_time             # payload delivered once; no retries without re-a
 
   <pre><code># finance-high-risk.yaml
 # For agents that touch payment data, invoices, or financial records.
-# Every proposal requires human sign-off. No exceptions.
+# Every intent requires human sign-off. No exceptions.
 
 id: finance-high-risk
 allowed_types: [json]
 destinations: [quickbooks.journal, stripe.payout, internal.finance-db]
 auto_approve_under: 0          # 0 disables auto-approval entirely
-require_approval_over: 0       # every proposal goes to queue
+require_approval_over: 0       # every intent goes to queue
 require_fields: [amount, currency, reason, requested_by]
 block_if_terms: [DELETE, TRUNCATE, DROP]  # SQL-like guards on payload text
 expiry_minutes: 30             # tighter window; stale finance ops are dangerous
-delivery: one_time</code></pre>
+# execution: runner_exec (worker runs in your VPC)</code></pre>
 
   <p><code>require_fields</code> forces agents to include context. An approver sees amount, currency, reason, and who requested it — not a raw JSON blob. <code>block_if_terms</code> catches destructive operations before they reach the queue at all.</p>
 
@@ -186,13 +186,13 @@ require_approval_over: 0
 require_fields: [recipient, subject, body, sender]
 block_if_terms: [unsubscribe all, click here now, limited time offer]
 expiry_minutes: 120            # emails can wait longer; 2-hour review window
-delivery: one_time</code></pre>
+# execution: runner_exec (worker runs in your VPC)</code></pre>
 
   <p>The <code>block_if_terms</code> list catches spam-pattern language before a human even sees the draft. Your compliance team maintains this list. They don't need to touch agent code to update it.</p>
 
   <h2>How Gate Loads and Applies Policies</h2>
 
-  <p>Every proposal runs through the same pipeline. The agent calls <code>gate.propose()</code> with a <code>policy</code> parameter. Gate loads the named policy, evaluates the payload against it, and routes accordingly.</p>
+  <p>Every intent runs through the same pipeline. The agent calls <code>gate.propose()</code> with a <code>policy</code> parameter. Gate loads the named policy, evaluates the payload against it, and routes accordingly.</p>
 
   <p><strong>TypeScript:</strong></p>
 
@@ -261,7 +261,7 @@ elif result["status"] == "blocked":
     <li>Route: auto-approve, queue for review, or block</li>
   </ol>
 
-  <p>No proposal reaches a human until it clears steps 1–5. Reviewers see clean, validated proposals — not raw agent output.</p>
+  <p>No intent reaches a human until it clears steps 1–5. Reviewers see clean, validated intents — not raw agent output.</p>
 
   <h2>Versioning Policies with Git</h2>
 
@@ -310,7 +310,7 @@ require_approval_over: 0
 require_fields: [data_region, gdpr_basis, retention_days]
 require_region: eu-west          # custom extension: Gate checks payload.data_region
 expiry_minutes: 60
-delivery: one_time</code></pre>
+# execution: runner_exec (worker runs in your VPC)</code></pre>
 
   <p>Need to gate on dollar amount, not row count? Use <code>auto_approve_under_amount</code>:</p>
 
@@ -321,7 +321,7 @@ auto_approve_under_amount: 5000    # POs under $5k auto-approve
 require_approval_over_amount: 5000
 require_fields: [vendor, amount, currency, po_number]
 expiry_minutes: 480               # 8-hour window for procurement reviews
-delivery: one_time</code></pre>
+# execution: runner_exec (worker runs in your VPC)</code></pre>
 
   <p>Extensions register in Gate's config, not in each agent. One registration, used everywhere.</p>
 
@@ -348,7 +348,7 @@ const gate = new Gate({
   policyDir: './policies',   // local YAML files; or omit to use Gate's hosted registry
 });</code></pre>
 
-  <p><strong>Call your first proposal:</strong></p>
+  <p><strong>Submit your first intent:</strong></p>
 
   <pre><code>const result = await gate.propose({
   policy: 'crm-low-risk',

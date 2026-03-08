@@ -139,10 +139,10 @@
     <li><strong>Propose.</strong> The agent calls <code>gate.propose()</code> with its intended action. The action is described, not executed. It includes what, where, and how many.</li>
     <li><strong>Policy check.</strong> The gate evaluates the proposal against rules. Is the destination allowed? Is the volume within approved limits? Is this action type permitted for this agent?</li>
     <li><strong>Approval.</strong> If policy passes, the action is approved. Automated for low-risk operations. Human-in-the-loop for anything above a defined threshold.</li>
-    <li><strong>Deliver.</strong> <code>gate.deliver()</code> executes the action — once. The delivery token is consumed. Retries don't re-execute.</li>
+    <li><strong>Execute.</strong> <code>gate.execute()</code> issues a signed execution order. Worker runs inside your VPC. Retries don't re-execute — token is one-time.</li>
   </ol>
 
-  <p>The critical design constraint: <strong>deliver is one-time</strong>. The token expires after use. If the agent retries due to a timeout, the gate rejects the duplicate. The write doesn't happen twice.</p>
+  <p>The critical design constraint: <strong>execution is one-time</strong>. The token expires after use. If the agent retries due to a timeout, the gate rejects the duplicate. The write doesn't happen twice.</p>
 
   <h2>Before and After: Code Example</h2>
 
@@ -189,13 +189,13 @@ def send_campaign(agent_output):
     # If recipient_count > 10,000, it routes to human approval
     # If destination is on blocklist, it rejects immediately
 
-    if not proposal.approved:
-        print(f"Blocked: {proposal.rejection_reason}")
+    if not intent['status'] == 'approved':
+        print(f"Blocked: {intent['blockReason']}")
         return
 
     # Step 3: Execute — exactly once
-    # gate.deliver() uses a one-time token; retries are safe
-    result = gate.deliver(proposal.token, executor=lambda: [
+    # gate.execute() uses a one-time token; retries are safe
+    result = gate.execute(proposal.token, executor=lambda: [
         mailer.send(to=email, subject=subject, body=body)
         for email in emails
     ])
@@ -231,7 +231,7 @@ def send_campaign(agent_output):
 
   <ul>
     <li><strong>Deploy the gate.</strong> Run it on your infrastructure. Docker image available. Takes five minutes.</li>
-    <li><strong>Wrap your writes.</strong> Replace direct API calls with <code>gate.propose()</code> and <code>gate.deliver()</code>. Start with your highest-risk operations: email sends, database writes, external API calls.</li>
+    <li><strong>Wrap your writes.</strong> Replace direct API calls with <code>gate.propose()</code> and <code>gate.execute()</code>. Start with your highest-risk operations: email sends, database writes, external API calls.</li>
     <li><strong>Define your policies.</strong> Set volume limits, allowed destinations, and approval thresholds. Low-risk operations auto-approve. High-risk operations route to human review.</li>
   </ul>
 

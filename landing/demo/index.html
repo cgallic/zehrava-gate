@@ -472,7 +472,7 @@ async function runScenario() {
     });
     const data = await res.json();
 
-    currentIntentId = data.intentId || data.proposalId;
+    currentIntentId = data.intentId;
 
     // Update badge
     document.getElementById('responseBadge').innerHTML = statusBadge(data.status);
@@ -481,7 +481,7 @@ async function runScenario() {
     const valClass = { pending_approval: 'rl-val-pending', approved: 'rl-val-approved', blocked: 'rl-val-blocked' }[data.status] || 'rl-val';
 
     let html = `<div class="result-block">
-      <div class="result-line"><span class="rl-key">intentId</span><span class="rl-val" style="font-size:.75rem">${data.intentId || data.proposalId}</span></div>
+      <div class="result-line"><span class="rl-key">intentId</span><span class="rl-val" style="font-size:.75rem">${data.intentId}</span></div>
       <div class="result-line"><span class="rl-key">status</span><span class="${valClass}">"${data.status}"</span></div>
       ${data.riskScore != null ? `<div class="result-line"><span class="rl-key">risk_score</span><span class="rl-val">${data.riskScore} <span style="color:var(--muted);font-size:.75rem">(${data.riskLevel})</span></span></div>` : ''}
       ${data.blockReason ? `<div class="result-line"><span class="rl-key">blockReason</span><span class="rl-val" style="color:var(--red)">"${data.blockReason}"</span></div>` : ''}
@@ -495,7 +495,7 @@ async function runScenario() {
 
     // Fetch and show audit trail
     await new Promise(r => setTimeout(r, 300));
-    const auditRes = await fetch(`/v1/intents/${data.intentId || data.proposalId}/audit`, {
+    const auditRes = await fetch(`/v1/intents/${data.intentId}/audit`, {
       headers: { 'Authorization': `Bearer ${API_KEY}` }
     });
     const auditData = await auditRes.json();

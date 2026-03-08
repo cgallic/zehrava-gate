@@ -77,7 +77,7 @@
     .badge-pending { background: rgba(245,158,11,0.15); color: var(--amber); }
     .badge-approved { background: rgba(34,197,94,0.15); color: var(--green); }
     .badge-blocked { background: rgba(239,68,68,0.15); color: var(--red); }
-    .badge-delivered { background: rgba(99,102,241,0.15); color: var(--purple); }
+    .badge-succeeded { background: rgba(99,102,241,0.15); color: var(--purple); }
     .badge-expired { background: rgba(136,136,136,0.15); color: var(--muted2); }
 
     /* ACTION BUTTONS */
@@ -279,7 +279,7 @@
 <div class="tabs">
   <div class="tab active" onclick="switchTab('pending_approval')">Pending <span class="tab-count zero" id="count-pending">0</span></div>
   <div class="tab" onclick="switchTab('approved')">Approved <span class="tab-count zero" id="count-approved">0</span></div>
-  <div class="tab" onclick="switchTab('delivered')">Delivered <span class="tab-count zero" id="count-delivered">0</span></div>
+  <div class="tab" onclick="switchTab('succeeded')">Succeeded <span class="tab-count zero" id="count-succeeded">0</span></div>
   <div class="tab" onclick="switchTab('blocked')">Blocked <span class="tab-count zero" id="count-blocked">0</span></div>
   <div class="tab" onclick="switchTab('')">All</div>
 </div>
@@ -291,11 +291,11 @@
 <!-- Reject modal -->
 <div class="modal-overlay" id="rejectModal">
   <div class="modal">
-    <h3>Reject proposal</h3>
+    <h3>Reject intent</h3>
     <textarea id="rejectReason" placeholder="Reason for rejection (optional)"></textarea>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-confirm-reject" onclick="confirmReject()">Reject proposal</button>
+      <button class="btn-confirm-reject" onclick="confirmReject()">Reject intent</button>
     </div>
   </div>
 </div>
@@ -339,11 +339,11 @@ function statusBadge(status) {
     pending_approval: 'badge-pending',
     approved: 'badge-approved',
     blocked: 'badge-blocked',
-    delivered: 'badge-delivered',
+    succeeded: 'badge-succeeded',
     expired: 'badge-expired',
     scheduled: 'badge-approved',
     executing: 'badge-approved',
-    succeeded: 'badge-delivered',
+    succeeded: 'badge-succeeded',
     failed: 'badge-blocked',
     duplicate_blocked: 'badge-blocked',
     replay_blocked: 'badge-blocked'
@@ -381,18 +381,18 @@ function shortId(id) {
 async function loadProposals() /* loadIntents */ {
   const url = currentTab ? `/intents?status=${currentTab}&limit=100` : '/intents?limit=100';
   const data = await api('GET', url);
-  const proposals = data.intents || data.proposals || [];
+  const intents = data.intents || [];
 
   // Update counts (fetch all tabs in background)
   updateCounts();
 
   const container = document.getElementById('tableContainer');
-  if (!proposals.length) {
+  if (!intents.length) {
     container.innerHTML = `<div class="empty-state"><h3>No ${currentTab || ''} intents</h3><p style="margin-top:.5rem;font-size:.85rem">Intents will appear here when agents submit them.</p><p style="margin-top:1rem"><a href="/demo">Run a demo scenario →</a></p></div>`;
     return;
   }
 
-  const tableRows = proposals.map(p => {
+  const tableRows = intents.map(p => {
     const isExpanded = expandedRows.has(p.id);
     const actions = p.status === 'pending_approval'
       ? `<div class="actions"><button class="btn-approve" onclick="approve('${p.id}',event)">✓ Approve</button><button class="btn-reject" onclick="openReject('${p.id}',event)">✗ Reject</button></div>`
@@ -423,7 +423,7 @@ async function loadProposals() /* loadIntents */ {
       </tr>`;
   }).join('');
 
-  const cards = proposals.map(p => {
+  const cards = intents.map(p => {
     const isPending = p.status === 'pending_approval';
     const auditEl = expandedRows.has(p.id)
       ? `<div class="prop-card-audit" id="audit-content-mobile-${p.id}"><div class="audit-title">Audit trail</div><div id="audit-events-mobile-${p.id}">Loading…</div></div>`
@@ -469,9 +469,9 @@ async function loadProposals() /* loadIntents */ {
   }
 }
 
-async function loadAudit(proposalId) {
-  const data = await api('GET', `/intents/${proposalId}/audit`);
-  const el = document.getElementById(`audit-events-${proposalId}`);
+async function loadAudit(intentId) {
+  const data = await api('GET', `/intents/${intentId}/audit`);
+  const el = document.getElementById(`audit-events-${intentId}`);
   if (!el) return;
   if (!data.events || !data.events.length) {
     el.innerHTML = '<span style="color:var(--muted);font-size:.78rem">No events</span>';
@@ -520,12 +520,12 @@ async function toggleAuditMobile(id) {
   ).join('');
 }
 
-async function execute(proposalId, e) {
+async function execute(intentId, e) {
   if (e) e.stopPropagation();
   const btn = e ? e.target : null;
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
   try {
-    const res = await api('POST', `/intents/${proposalId}/execute`, {});
+    const res = await api('POST', `/intents/${intentId}/execute`, {});
     if (res.execution_id) {
       showToast(`▶ Execution order issued — ${res.mode}`, 'success');
     } else {
@@ -551,14 +551,14 @@ async function loadMetrics() {
   } catch {}
 }
 
-async function approve(proposalId, e) {
+async function approve(intentId, e) {
   if (e) e.stopPropagation();
   const btn = e ? e.target : null;
   if (btn) btn.textContent = '…';
   try {
-    const res = await api('POST', `/intents/${proposalId}/approve`, {});
+    const res = await api('POST', `/intents/${intentId}/approve`, {});
     if (res.status === 'approved') {
-      showToast(`✓ Approved — delivery token issued`, 'success');
+      showToast(`✓ Approved — execution order ready`, 'success');
     } else {
       showToast(res.error || 'Unexpected response', 'error');
     }
@@ -568,9 +568,9 @@ async function approve(proposalId, e) {
   loadProposals();
 }
 
-function openReject(proposalId, e) {
+function openReject(intentId, e) {
   if (e) e.stopPropagation();
-  pendingRejectId = proposalId;
+  pendingRejectId = intentId;
   document.getElementById('rejectReason').value = '';
   document.getElementById('rejectModal').classList.add('open');
 }
@@ -593,11 +593,11 @@ async function confirmReject() {
 }
 
 async function updateCounts() {
-  const statuses = ['pending_approval', 'approved', 'delivered', 'blocked'];
+  const statuses = ['pending_approval', 'approved', 'succeeded', 'failed', 'blocked'];
   for (const s of statuses) {
     try {
       const data = await api('GET', `/intents?status=${s}&limit=100`);
-      const count = (data.intents || data.proposals || []).length;
+      const count = (data.intents || []).length;
       const el = document.getElementById(`count-${s.replace('pending_approval','pending')}`);
       if (el) {
         el.textContent = count;
@@ -611,7 +611,7 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach((t, i) => {
     t.classList.toggle('active', [
-      'pending_approval','approved','delivered','blocked',''
+      'pending_approval','approved','succeeded','failed','blocked',''
     ][i] === tab);
   });
   expandedRows.clear();
