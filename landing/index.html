@@ -739,7 +739,7 @@
       <div class="incident-gate">
         <div class="incident-checks">
           <div class="ic-row"><span class="ic-label">Gate policy</span><span class="ic-val purple">idempotency_key: matched</span></div>
-          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val ok">✓ Duplicate intent blocked (409)</span></div>
+          <div class="ic-row"><span class="ic-label">Result</span><span class="ic-val ok">✓ Duplicate intent blocked (status: duplicate_blocked)</span></div>
         </div>
       </div>
     </div>
@@ -890,7 +890,7 @@
       <div class="flow-num" aria-label="Step 5">5</div>
       <div class="flow-body">
         <h3>Action ledger sealed</h3>
-        <p>Every state transition is logged — intent_proposed, policy_checked, approval_granted, execution_scheduled, execution_succeeded. Queryable by intent ID. Not deletable. The record of everything your agents have ever done.</p>
+        <p>Every state transition is logged — proposed, policy_checked, approved, execution_requested, execution_succeeded. Queryable by intent ID. Not deletable. The record of everything your agents have ever done.</p>
         <span class="flow-tag tag-audit">Ledger sealed</span>
       </div>
     </div>
@@ -1009,7 +1009,7 @@
           <div class="ic-row"><span class="ic-label">Destination</span><span class="ic-val ok">zendesk.reply ✓</span></div>
           <div class="ic-row"><span class="ic-label">Term scan</span><span class="ic-val ok">no blocked terms</span></div>
           <div class="ic-row"><span class="ic-label">Policy</span><span class="ic-val ok">auto-approved instantly</span></div>
-          <div class="ic-row"><span class="ic-label">Delivery</span><span class="ic-val ok">one-time · audit logged</span></div>
+          <div class="ic-row"><span class="ic-label">Execution</span><span class="ic-val ok">signed order issued · outcome logged</span></div>
         </div>
       </div>
     </div>
