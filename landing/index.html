@@ -1264,85 +1264,85 @@ npx zehrava-gate --port 4000</pre>
 <!-- FAQ -->
 <section class="section" id="faq">
   <div class="section-label reveal">FAQ</div>
-  <h2 class="section-h2 reveal">Honest answers.<br>No marketing spin.</h2>
+  <h2 class="section-h2 reveal">The hard questions.<br>Straight answers.</h2>
 
   <div class="faq-list reveal" style="max-width:780px;margin:3rem auto 0">
 
     <details class="faq-item">
-      <summary class="faq-q">Does Gate have the same context drift problem as the agent?</summary>
+      <summary class="faq-q">Agents opt in by calling Gate. A rogue agent just skips it. So what are you actually protecting against?</summary>
       <div class="faq-a">
-        <p>No. Gate has no context window. Policy evaluation is pure YAML — deterministic, stateless, identical on call one and call ten thousand. Your agent's reasoning can drift across 128k tokens of session state. Gate's evaluation doesn't. The policy was written by a human when they were thinking clearly. Gate enforces it mechanically forever.</p>
-        <p style="margin-top:.75rem">This is the core architectural bet: move trust from the runtime (LLM reasoning) to the policy layer (YAML). The policy can be read, audited, and version-controlled. Agent reasoning can't.</p>
+        <p>Well-intentioned agents with bad data, stale context, or instructions that violate policy. That's 99% of what goes wrong in production.</p>
+        <p style="margin-top:.75rem">The rogue agent threat model is real but it's rare — and it's a different product category that requires OS-level or network-level enforcement. Gate doesn't claim to solve that today. What it solves is the CRM overwrite at 2am because the enrichment agent had a stale record count. The duplicate emails because the retry loop fired twice. The payout that went out because nobody set a threshold.</p>
+        <p style="margin-top:.75rem">Reverse proxy architecture — Gate as a network layer that agents can't skip — is on the roadmap. Until then, Gate is a mandatory convention for teams that want structured accountability. Same reason you have code review: a determined developer could push to prod anyway. Most don't.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">The agent still calls Gate voluntarily. Can't it skip the call?</summary>
+      <summary class="faq-q">LangGraph has HITL. LangSmith has tracing. Why doesn't every team just use that?</summary>
       <div class="faq-a">
-        <p>Yes — and we say so plainly. Gate is middleware, not a kernel-level intercept. An agent that intentionally skips the SDK call bypasses Gate entirely. We're not going to pretend otherwise.</p>
-        <p style="margin-top:.75rem">What Gate protects against is the 99% case: agents trying to do the right thing with bad data, stale state, or instructions that violate policy. That's the real threat surface in production. Fully rogue agents that intentionally subvert your infrastructure are a different problem category — one that requires network-level enforcement.</p>
-        <p style="margin-top:.75rem">The reverse proxy architecture — Gate as a network layer between agents and destination systems, no SDK call required — is on the roadmap. Until then, Gate is a convention-plus-enforcement layer for teams building responsible systems, not adversarial protection.</p>
+        <p>LangGraph's HITL is per-graph. LangSmith's tracing is per-LangSmith. Neither governs the agent built by the other team on a different framework.</p>
+        <p style="margin-top:.75rem">The real problem isn't that any one framework lacks approval logic. It's that every framework ships its own version, none of them talk to each other, and the result is five different approval patterns across five different repos — none of which your compliance team can audit.</p>
+        <p style="margin-top:.75rem">Gate sits outside every framework. One policy directory. One queue. One audit trail. Whether the agent is CrewAI, LangGraph, AutoGen, or a raw API call doesn't matter. The governance layer is the same.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Can an agent craft a payload that bypasses the term scan?</summary>
+      <summary class="faq-q">OpenAI ships <code style="font-size:.85em">require_human_approval=True</code> and you're done. Why won't that happen?</summary>
       <div class="faq-a">
-        <p>Simple obfuscation is blocked. Gate normalizes before scanning: strips punctuation, collapses whitespace, maps leet substitutions (r3fund → refund, refund-guaranteed → refund guaranteed). A determined adversarial agent using synonyms or paraphrasing can still get through. We're clear about that.</p>
-        <p style="margin-top:.75rem">Gate's term scan stops accidental violations and basic evasion. It is not designed to stop a maximally adversarial agent — that's a semantic understanding problem, not a string matching problem.</p>
-        <p style="margin-top:.75rem">For high-risk destinations: pair term scanning with <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code>. Every write gets human eyes regardless of what the scan found.</p>
+        <p>It might. That's a real risk and we're not going to pretend otherwise.</p>
+        <p style="margin-top:.75rem">But OpenAI's version would only govern OpenAI agents. The company running CrewAI, LangGraph, and a custom Python agent against the same Salesforce org would still have three different approval systems. Gate's value is cross-framework centralization, not per-model guardrails.</p>
+        <p style="margin-top:.75rem">The more honest answer: the companies that survive in infrastructure are the ones that become the standard before the platform players notice the category. Stripe built payments before Visa built an API. Datadog built observability before AWS shipped CloudWatch Insights. The window is real. We're moving.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">What if Gate goes down? Does the agent fail open?</summary>
+      <summary class="faq-q">Who actually pays for this?</summary>
       <div class="faq-a">
-        <p>Gate doesn't decide — your code does, based on how it handles a failed HTTP call. The only safe default: fail closed. If Gate is unreachable, treat it as a block. Throw and halt the write. Do not proceed silently.</p>
-        <p style="margin-top:.75rem">We document this as a required implementation pattern, not optional guidance. An SDK that fails open when Gate is unreachable has defeated the point of Gate. The fail-closed pattern has to be wired in at integration time, not assumed.</p>
+        <p>The VP of Engineering who just watched an AI agent overwrite 12,000 CRM records and has to explain it to the CTO at 9am.</p>
+        <p style="margin-top:.75rem">More precisely: any company shipping AI agents that write to production systems — CRM, payments, email, databases — where a mistake has a real cost. That's not a niche. That's every enterprise that's moving past AI demos into AI operations.</p>
+        <p style="margin-top:.75rem">The indie dev isn't the buyer. The team that just got approval to put agents in the write path, and now needs to tell their security team how it's governed — that's the buyer.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Can a human approver be fooled by what the agent writes in the proposal?</summary>
+      <summary class="faq-q">YAML policy is a blocklist. What about everything that isn't on the list?</summary>
       <div class="faq-a">
-        <p>Yes — the agent controls the payload and the description. A capable agent could describe a destructive action in benign terms. Gate doesn't independently verify the agent's description of its own intent.</p>
-        <p style="margin-top:.75rem">The V2 dashboard mitigates this: approvers now see the risk score, estimated record count, financial value, and sensitivity tags alongside the payload — not just a free-text description. Surface area for deception is smaller, but not zero.</p>
-        <p style="margin-top:.75rem">For high-risk approvals: show the raw payload to reviewers, not just the description. Use short expiry windows. Require multiple approvers for critical destinations.</p>
+        <p>Fair. The term scan catches what you explicitly blocked. Everything else passes if it fits the destination and threshold rules.</p>
+        <p style="margin-top:.75rem">This is why <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">require_approval: always</code> exists. For high-risk destinations, don't rely on the blocklist — require a human for everything. The YAML policy is composable: auto-approve low-risk bulk writes under 100 records, require approval over 100, block anything touching sensitive fields entirely.</p>
+        <p style="margin-top:.75rem">The risk engine adds a second layer — score based on destination, record count, financial value, and sensitivity tags. High-risk score triggers approval regardless of terms. It's not semantic understanding, but it catches the things a blocklist misses in practice.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">What about multi-agent pipelines? Who's accountable?</summary>
+      <summary class="faq-q">Your audit log isn't cryptographically signed. A DBA could modify it. How do you sell this to compliance?</summary>
       <div class="faq-a">
-        <p>The audit trail logs whichever agent made the Gate call. If a leaf agent calls Gate after receiving instructions from an orchestrator, only the leaf agent appears by default. The orchestrator's role is invisible unless you wire it in.</p>
-        <p style="margin-top:.75rem">Use <code style="font-family:var(--mono);font-size:.8em;color:var(--purple-b)">on_behalf_of</code> to pass the orchestrating agent's ID — the audit will record both. Best practice: wire Gate at the orchestrator level, not just at the leaves. If the decision-making layer calls Gate before dispatching sub-agents, the accountability chain is complete.</p>
+        <p>You don't, yet — not for SOC 2 Type II or regulated industries where tamper-proof immutability is a hard requirement.</p>
+        <p style="margin-top:.75rem">For most production deployments today, server-side append-only is sufficient. The audit trail logs every state transition — proposed, evaluated, approved, executed — and agents have no API route to write or modify it. That's meaningfully better than what most teams have, which is nothing.</p>
+        <p style="margin-top:.75rem">Cryptographic signing and export to an external immutable log store (CloudTrail, Datadog, a WORM bucket) is on the roadmap. If your compliance requirement is hard today, that's a blocker we'll acknowledge.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">What does Gate not protect against?</summary>
+      <summary class="faq-q">Idempotency is just a Redis cache. Why is this a product?</summary>
       <div class="faq-a">
-        <p>Four things, clearly stated:</p>
-        <ul style="margin-top:.75rem;color:var(--muted2)">
-          <li style="margin-bottom:.5rem"><strong style="color:var(--text)">Rogue agents that skip the SDK call.</strong> Gate is middleware. An agent that doesn't call Gate isn't governed by Gate.</li>
-          <li style="margin-bottom:.5rem"><strong style="color:var(--text)">Adversarial prompt injection.</strong> An attacker who manipulates the agent into crafting policy-compliant payloads that are still harmful in context. Gate evaluates the payload, not the intent behind it.</li>
-          <li style="margin-bottom:.5rem"><strong style="color:var(--text)">Destinations outside Gate's policy scope.</strong> If the agent accesses a system not in the policy allowlist through other means, Gate isn't in that path.</li>
-          <li><strong style="color:var(--text)">Compliance-grade immutability.</strong> The audit log is append-only and server-side. It is not cryptographically signed. Someone with direct DB access could tamper with it. Cryptographic signing is on the roadmap.</li>
-        </ul>
+        <p>The dedup logic isn't the product. The combination is.</p>
+        <p style="margin-top:.75rem">Yes, a competent dev can implement idempotency in an afternoon. They can also implement approval logic, an audit trail, a policy engine, a risk scorer, a delivery token system, and a dashboard in a week. Some do. Then they maintain it forever, it doesn't span frameworks, and the next team builds their own version from scratch.</p>
+        <p style="margin-top:.75rem">Gate is the infrastructure that already exists. The same reason you don't write your own auth: it's not that you can't, it's that you shouldn't have to.</p>
       </div>
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Why deterministic YAML instead of an LLM guardrail?</summary>
+      <summary class="faq-q">What's the 10x version? If this works, where does it go?</summary>
       <div class="faq-a">
-        <p>LLM guardrails reason about intent. Gate enforces rules. They're solving different problems.</p>
-        <p style="margin-top:.75rem">An LLM guardrail can catch nuanced harmful content that a string rule would miss. It can also hallucinate, be jailbroken, produce different outputs for identical inputs, and cost money per evaluation. None of that is acceptable in an enforcement layer.</p>
-        <p style="margin-top:.75rem">Gate's job is to be boring: same input, same output, every time, fast, cheap, auditable. YAML policy files can be read by engineers and compliance teams alike. They can be version-controlled, diff'd, rolled back. You know exactly what they do. That's the point.</p>
+        <p>Every real-world action an AI agent takes anywhere goes through Gate. Not because companies are required to — because not using Gate means flying blind on what your agents are doing in production.</p>
+        <p style="margin-top:.75rem">The 3-year version: Gate is the CI/CD for agent actions. Just like no serious engineering team ships code without a pipeline, no serious team ships agents without a governance layer. Gate is the standard for what that looks like.</p>
+        <p style="margin-top:.75rem">The infrastructure play: Gate accumulates the action ledger. Every approved action, every blocked action, every risk score. That dataset, across companies and frameworks, is the ground truth for what agents do in the real world. Nothing else has it.</p>
       </div>
     </details>
 
   </div>
 </section>
+
 
 <!-- EMAIL CAPTURE -->
 <section class="section" style="padding-bottom:1rem">
