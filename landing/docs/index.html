@@ -401,7 +401,7 @@ zehrava-gate --port 4000</pre>
 
     <!-- ── POLICY OVERVIEW ── -->
     <h2 id="policy-overview">Policy overview</h2>
-    <p>Policies are YAML files stored in your <code>--policy-dir</code>. Gate loads them on startup and caches them. Each policy has an <code>id</code> that your agent passes to <code>gate.propose()</code>.</p>
+    <p>Policies are YAML files stored in your <code>--policy-dir</code>. Gate loads them on startup and caches them. Each policy has an <code>id</code> that your agent references when submitting an intent via <code>gate.propose()</code>.</p>
     <p>Evaluation runs top-to-bottom through these checks — the first match wins:</p>
     <div class="steps">
       <div class="step">
@@ -463,7 +463,7 @@ zehrava-gate --port 4000</pre>
         <tr>
           <td>id <span class="req">*</span></td>
           <td>string</td>
-          <td>Unique identifier. Must match the filename (without <code>.yaml</code>). Referenced in <code>propose</code> calls.</td>
+          <td>Unique identifier. Must match the filename (without <code>.yaml</code>). Referenced in intent submissions (<code>gate.propose()</code>).</td>
         </tr>
         <tr>
           <td>destinations</td>
@@ -881,7 +881,7 @@ gate.<span class="fn">register_webhook</span>(
     <pre><span class="val">{
   "intentId":   "int_a1b2c3d4",
   "event":      "approved",        </span><span class="com">// approved | rejected</span><span class="val">
-  "approver":   "system",          </span><span class="com">// agent name that triggered the event</span><span class="val">
+  "actor":      "system",           </span><span class="com">// system or reviewer that approved/rejected</span><span class="val">
   "firedAt":    "2026-03-08T11:30:00.000Z"
 }</span></pre>
     <div class="callout callout-info">
@@ -926,7 +926,7 @@ gate.<span class="fn">register_webhook</span>(
 intent → policy_checked
   ├── blocked              → terminal
   ├── duplicate_blocked    → terminal (idempotency key matched)
-  ├── approved             → auto-approved, ready for execution
+  ├── approved             → auto-approved by policy or human approval; eligible for execution
   └── pending_approval     → human review required
         ├── approved        → ready for execution
         ├── rejected        → terminal
