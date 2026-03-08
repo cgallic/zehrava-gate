@@ -108,7 +108,7 @@
     .callout-tip p { color: #4ade80; }
 
     /* ── FIELD TABLE ── */
-    .field-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; font-size: .875rem; }
+    .field-table { width: 100%; border-collapse: collapse; margin: 0; font-size: .875rem; }
     .field-table th { text-align: left; padding: .625rem .875rem; border-bottom: 1px solid var(--border2); color: var(--muted2); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; background: rgba(255,255,255,0.02); }
     .field-table td { padding: .75rem .875rem; border-bottom: 1px solid var(--border); vertical-align: top; }
     .field-table td:first-child { font-family: var(--mono); font-size: .8rem; color: var(--purple-b); width: 28%; font-weight: 600; }
@@ -175,10 +175,14 @@
 
     /* ── FIELD TABLE SCROLL WRAPPER ── */
     .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.25rem 0; border-radius: 8px; }
-    .table-scroll .field-table { margin: 0; min-width: 560px; }
+    .table-scroll .field-table { margin: 0; min-width: 520px; width: max-content; max-width: 100%; }
 
     /* ── MOBILE ── */
     @media (max-width: 768px) {
+      .field-table td:first-child { width: auto; min-width: 110px; }
+      .field-table td:nth-child(2) { width: auto; min-width: 70px; }
+      .field-table td { font-size: .78rem; padding: .5rem .625rem; }
+      .table-scroll { border: 1px solid var(--border); border-radius: 8px; }
       .sidebar { display: none; }
       .mob-nav-btn { display: flex; }
       .mob-drawer { display: block; }
@@ -324,7 +328,7 @@ zehrava-gate --port 4000</pre>
         <tr><td>--data-dir</td><td>./data</td><td>Directory for SQLite database and stored payloads</td></tr>
         <tr><td>--policy-dir</td><td>./policies</td><td>Directory containing your YAML policy files</td></tr>
       </tbody>
-    </table></div></div>
+    </table></div>
     <div class="callout callout-tip">
       <p>✓ <strong>Self-hosting:</strong> Gate stores all data locally in SQLite. Nothing leaves your infrastructure. No cloud dependency, no API keys for the server itself.</p>
     </div>
@@ -480,7 +484,7 @@ zehrava-gate --port 4000</pre>
           <td>How long a pending proposal can wait for approval before it expires. Expired proposals cannot be approved. Default: 60.</td>
         </tr>
       </tbody>
-    </table></div></div>
+    </table></div>
     <!-- ── POLICY EXAMPLES ── -->
     <h2 id="policy-examples">Policy examples</h2>
 
@@ -528,7 +532,7 @@ zehrava-gate --port 4000</pre>
           <tr><td>name <span class="req">*</span></td><td>string</td><td>Human-readable agent name. Appears in audit logs and the dashboard.</td></tr>
           <tr><td>riskTier</td><td>string</td><td><code>standard</code> | <code>elevated</code> | <code>restricted</code>. Default: <code>standard</code>.</td></tr>
         </tbody>
-      </table></div></div>
+      </table></div>
       <pre><span class="val">{
   "agentId":  "agt_a1b2c3d4",
   "apiKey":   "gate_sk_••••••••••••",
@@ -554,7 +558,7 @@ zehrava-gate --port 4000</pre>
           <tr><td>on_behalf_of</td><td>string</td><td>Agent ID of the orchestrating agent in multi-agent pipelines. Logged in the audit trail for accountability.</td></tr>
           <tr><td>metadata</td><td>object</td><td>Arbitrary key/value pairs. Stored with the proposal and included in audit events.</td></tr>
         </tbody>
-      </table></div></div>
+      </table></div>
       <pre><span class="val">{
   "proposalId": "prop_a1b2c3d4e5f6",
   "status":     "approved",          </span><span class="com">// approved | blocked | pending_approval</span><span class="val">
@@ -574,7 +578,7 @@ zehrava-gate --port 4000</pre>
         <tbody>
           <tr><td>proposalId <span class="req">*</span></td><td>string</td><td>The proposal ID returned from <code>/v1/propose</code>.</td></tr>
         </tbody>
-      </table></div></div>
+      </table></div>
       <pre><span class="val">{ "status": "approved", "deliveryToken": "dlv_••••••••••••" }</span></pre>
       <p style="margin-top:.75rem">Blocked proposals cannot be approved — the endpoint returns <code>409</code>.</p>
     </div>
