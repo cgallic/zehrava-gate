@@ -130,7 +130,7 @@
 
   <div class="version-row">
     <span class="v-badge">Gate V3</span>
-    <span class="status-badge">In Design</span>
+    <span class="status-badge" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);color:#22c55e">Phase 1 Live</span>
   </div>
 
   <h1>Enforcement, not cooperation.<br><em>The proxy architecture.</em></h1>
@@ -304,7 +304,7 @@ Gate Audit Log:
       </div>
     </div>
     <div class="phase">
-      <span class="phase-num next">Phase 1</span>
+      <span class="phase-num shipped">Phase 1 — live</span>
       <div>
         <div class="phase-title">Forward proxy — HTTP enforcement</div>
         <div class="phase-desc">HTTP (non-TLS) forward proxy on port 4001. Destination registry maps host → policy. Pass-through for auto-approved (&lt;5ms). 403 for blocked. 202 + hold for pending approval. X-Gate-Intent-Id header injected. No code change required in agent.</div>
@@ -331,6 +331,34 @@ Gate Audit Log:
         <div class="phase-desc">Envoy filter or standalone sidecar. Intercepts pod egress at the network layer. Agent can't bypass even by ignoring HTTP_PROXY. Deploys alongside existing service mesh. Enforced governance with zero application changes.</div>
       </div>
     </div>
+  </div>
+
+  
+  <div style="background:#0d1117;border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:1.25rem 1.5rem;margin:1.5rem 0;">
+    <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#22c55e;margin-bottom:1rem;">Phase 1 — verified live</div>
+<pre style="background:none;border:none;padding:0;margin:0;"><code style="font-size:0.78rem;line-height:1.9;color:#e2e8f0;">
+<span style="color:#6b7280;"># Start the proxy (PROXY_API_KEY enables it)</span>
+npx zehrava-gate --port 3001 --proxy-port 4001
+
+<span style="color:#6b7280;"># Route your agent through Gate — zero code change</span>
+export HTTP_PROXY=http://localhost:4001
+
+<span style="color:#6b7280;"># 1/ Auto-approved (under threshold) → proxied immediately</span>
+curl -x http://localhost:4001 -X POST http://api.sendgrid.com/v3/mail/send ...
+<span style="color:#22c55e;">→ forwarded to SendGrid</span>
+
+<span style="color:#6b7280;"># 2/ Blocked (policy term match) → 403 immediately</span>
+curl -x http://localhost:4001 -X POST http://api.sendgrid.com/v3/mail/send   -d '{"body":"Refund guaranteed within 24h"}'
+<span style="color:#ef4444;">→ {"status":"blocked","blockReason":"Payload contains blocked term: "refund guaranteed""}</span>
+
+<span style="color:#6b7280;"># 3/ Pending (require_approval: always) → 202 + intentId</span>
+curl -x http://localhost:4001 -X POST http://api.stripe.com/v1/refunds   -d '{"charge":"ch_xxx","amount":5000}'
+<span style="color:#f59e0b;">→ {"status":"pending_approval","intentId":"int_b209…","retryAfterSeconds":30}</span>
+
+<span style="color:#6b7280;"># 4/ After human approves at /dashboard → resend with intent header</span>
+curl -x http://localhost:4001 -H "X-Gate-Intent-Id: int_b209…"   -X POST http://api.stripe.com/v1/refunds -d '{"charge":"ch_xxx","amount":5000}'
+<span style="color:#22c55e;">→ forwarded to Stripe (approved)</span>
+</code></pre>
   </div>
 
   <h2><span class="num">—</span> What changes between V2 and V3</h2>
