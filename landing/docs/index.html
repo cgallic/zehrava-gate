@@ -383,7 +383,7 @@ zehrava-gate --port 4000</pre>
 })
 
 <span class="fn">console</span>.<span class="fn">log</span>(p.status) <span class="cm">// "approved" | "blocked" | "pending_approval"</span>
-<span class="fn">console</span>.<span class="fn">log</span>(p.proposalId)
+<span class="fn">console</span>.<span class="fn">log</span>(p.intentId)
 <span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// set if status === "blocked"</span></pre>
     <p>Gate evaluates the policy immediately and returns one of three statuses:</p>
     <ul>
@@ -429,7 +429,7 @@ zehrava-gate --port 4000</pre>
         <div class="step-num">5</div>
         <div class="step-body">
           <h4>require_approval: always</h4>
-          <p>If set, every proposal goes to pending regardless of other rules.</p>
+          <p>If set, every intent goes to pending_approval regardless of other rules.</p>
         </div>
       </div>
       <div class="step">
@@ -481,17 +481,17 @@ zehrava-gate --port 4000</pre>
         <tr>
           <td>auto_approve_under</td>
           <td>number</td>
-          <td>If <code>recordCount</code> is ≤ this value, the proposal is auto-approved. Useful for single-record operations that don't need review.</td>
+          <td>If <code>recordCount</code> is ≤ this value, the intent is auto-approved. Useful for single-record operations that don't need review.</td>
         </tr>
         <tr>
           <td>require_approval_over</td>
           <td>number</td>
-          <td>If <code>recordCount</code> exceeds this value, the proposal goes to pending. Use alongside <code>auto_approve_under</code> to define a safe/unsafe threshold.</td>
+          <td>If <code>recordCount</code> exceeds this value, the intent goes to pending_approval. Use alongside <code>auto_approve_under</code> to define a safe/unsafe threshold.</td>
         </tr>
         <tr>
           <td>expiry_minutes</td>
           <td>number</td>
-          <td>How long a pending proposal can wait for approval before it expires. Expired proposals cannot be approved. Default: 60.</td>
+          <td>How long a pending intent can wait for approval before it expires. Expired intents cannot be approved. Default: 60.</td>
         </tr>
       </tbody>
     </table></div>
@@ -535,6 +535,7 @@ zehrava-gate --port 4000</pre>
     </div>
 
     <h2 id="api-agents">API — Register agent</h2>
+    <div class="callout callout-warn" style="margin-bottom:1rem"><strong>⚠ Production note:</strong> <code>/v1/agents/register</code> is unauthenticated — intentional for local dev bootstrapping. In production, firewall this endpoint or put it behind a VPN. Anyone who can reach it can mint agent credentials.</div>
     <div class="endpoint-block">
       <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/agents/register</span></div>
       <div class="endpoint-desc">Bootstrap endpoint — no authentication required. Returns an API key for all subsequent calls.</div>
@@ -596,7 +597,7 @@ zehrava-gate --port 4000</pre>
         <tbody>
           <tr><td>destination <span class="req">*</span></td><td>string</td><td>Target system (e.g. <code>salesforce.import</code>). Must match your policy's <code>destinations</code> allowlist.</td></tr>
           <tr><td>policy <span class="req">*</span></td><td>string</td><td>Policy ID to evaluate (matches YAML filename without extension).</td></tr>
-          <tr><td>payload</td><td>string</td><td>Content being proposed. Text, JSON string, or file path. Term scanning applies to text content.</td></tr>
+          <tr><td>payload</td><td>string</td><td>Content being proposed. Pass the actual text or JSON string. File paths are only meaningful when Gate and the submitting process share a filesystem — in distributed deployments, serialize content before submitting.</td></tr>
           <tr><td>recordCount</td><td>number</td><td>Batch size. Used for threshold evaluation (<code>auto_approve_under</code>, <code>require_approval_over</code>).</td></tr>
           <tr><td>estimated_value_usd</td><td>number</td><td>Estimated financial value. Contributes to risk score.</td></tr>
           <tr><td>sensitivity_tags</td><td>string[]</td><td>Data sensitivity labels: <code>pii</code>, <code>financial</code>, <code>health</code>, <code>legal</code>. Contributes to risk score.</td></tr>
@@ -615,7 +616,8 @@ zehrava-gate --port 4000</pre>
   "blockReason":    null,
   "expiresAt":      "2026-03-08T12:00:00.000Z"
 }</span></pre>
-      <p style="margin-top:.75rem"><strong>Status values:</strong> <code>approved</code> · <code>blocked</code> · <code>pending_approval</code> · <code>duplicate_blocked</code></p>
+      <p style="margin-top:.75rem"><strong>Risk score:</strong> Composite 0–1 signal. Factors: destination category (0.2–0.4), record count vs threshold (0–0.3), estimated_value_usd &gt; $1,000 (+0.2), sensitivity_tags (+0.1 each). The score informs the approver but does not override policy — <code>require_approval: always</code> wins regardless of score. Auto-approve policy ignores score. Use the score to triage the approval queue.</p>
+    <p style="margin-top:.5rem"><strong>Status values:</strong> <code>approved</code> · <code>blocked</code> · <code>pending_approval</code> · <code>duplicate_blocked</code></p>
       <p style="margin-top:.5rem"><strong>Reason codes:</strong> <code>approved_by_policy</code> · <code>record_threshold_exceeded</code> · <code>blocked_term_detected</code> · <code>destination_not_allowed</code> · <code>sensitive_data_detected</code> · <code>manual_review_required</code></p>
     </div>
 
@@ -792,23 +794,23 @@ zehrava-gate --port 4000</pre>
 })
 <span class="cm">// p.intentId, p.status, p.risk_score, p.risk_level, p.blockReason, p.expiresAt</span></pre>
 
-    <h3>gate.approve({ proposalId })</h3>
+    <h3>gate.approve({ intentId })</h3>
     <p>Calls <code>POST /v1/intents/:id/approve</code>.</p>
-    <pre><span class="k">await</span> gate.<span class="fn">approve</span>({ proposalId: p.intentId })</pre>
+    <pre><span class="k">await</span> gate.<span class="fn">approve</span>({ intentId: p.intentId })</pre>
 
-    <h3>gate.reject({ proposalId, reason })</h3>
+    <h3>gate.reject({ intentId, reason })</h3>
     <p>Calls <code>POST /v1/intents/:id/reject</code>.</p>
-    <pre><span class="k">await</span> gate.<span class="fn">reject</span>({ proposalId: p.intentId, reason: <span class="s">'Flagged for review'</span> })</pre>
+    <pre><span class="k">await</span> gate.<span class="fn">reject</span>({ intentId: p.intentId, reason: <span class="s">'Flagged for review'</span> })</pre>
 
-    <h3>gate.execute({ proposalId })</h3>
+    <h3>gate.execute({ intentId })</h3>
     <p>Calls <code>POST /v1/intents/:id/execute</code>. Returns a signed execution order with a 15-minute token.</p>
-    <pre><span class="k">const</span> <span class="v">order</span> = <span class="k">await</span> gate.<span class="fn">execute</span>({ proposalId: p.intentId })
+    <pre><span class="k">const</span> <span class="v">order</span> = <span class="k">await</span> gate.<span class="fn">execute</span>({ intentId: p.intentId })
 <span class="cm">// order.executionId, order.execution_token, order.expires_at</span></pre>
 
-    <h3>gate.verify({ proposalId })</h3>
-    <p>Fetch full proposal details including audit trail.</p>
-    <pre><span class="k">const</span> <span class="v">detail</span> = <span class="k">await</span> gate.<span class="fn">verify</span>({ proposalId: p.intentId })
-<span class="cm">// detail.status, detail.decision, detail.risk_score, ...</span></pre>
+    <h3>gate.verify({ intentId })</h3>
+    <p>Fetch full intent details including decision record and audit trail.</p>
+    <pre><span class="k">const</span> <span class="v">detail</span> = <span class="k">await</span> gate.<span class="fn">verify</span>({ intentId: p.intentId })
+<span class="cm">// detail.intentId, detail.status, detail.risk_score, detail.decision ...</span></pre>
 
 
     <h2 id="sdk-python">Python SDK</h2>
@@ -853,27 +855,28 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
     <span class="k">return</span> {**state, <span class="s">"sent"</span>: <span class="k">True</span>}</pre>
 
     <h2 id="webhooks">Webhooks</h2>
-    <p>Instead of polling for approval status, register a webhook URL. Gate fires a <code>POST</code> to your URL when the proposal is approved or rejected.</p>
+    <p>Instead of polling, register a webhook URL. Gate fires a <code>POST</code> to your URL on any terminal state transition: approved, rejected, succeeded, failed, expired, or duplicate_blocked.</p>
     <pre><span class="cm">// JavaScript</span>
 <span class="k">const</span> p = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
 
 <span class="k">await</span> gate.<span class="fn">registerWebhook</span>({   <span class="cm">// JS SDK — coming in next release</span>
-  proposalId: p.intentId,
+  intentId: p.intentId,
   url: <span class="s">'https://your-app.com/gate-callback'</span>,
   secret: <span class="s">'your-secret'</span>           <span class="cm">// sent as X-Gate-Secret header</span>
 })</pre>
     <pre><span class="cm"># Python</span>
 gate.<span class="fn">register_webhook</span>(
-    proposal_id=p[<span class="s">"intentId"</span>],
+    intent_id=p[<span class="s">"intentId"</span>],
     url=<span class="s">"https://your-app.com/gate-callback"</span>,
     secret=<span class="s">"your-secret"</span>
 )</pre>
     <p>Gate fires once — on the first approve or reject event. The webhook payload:</p>
     <pre><span class="val">{
   "intentId":   "prop_a1b2c3",
-  "event":      "approved",        </span><span class="com">// or "rejected"</span><span class="val">
-  "execution_order": "gex_••••",   </span><span class="com">// execution token — only on approved</span><span class="val">
-  "approver":   "agent-name",
+  "event":      "approved",        </span><span class="com">// approved | rejected | succeeded | failed | expired | duplicate_blocked</span><span class="val">
+  "execution_token": "gex_••••",   </span><span class="com">// only on approved</span><span class="val">
+  "execution_id":   "exec_a1b2c3",  </span><span class="com">// only on succeeded | failed</span><span class="val">
+  "actor":      "system",
   "firedAt":    "2026-03-08T11:30:00.000Z"
 }</span></pre>
     <div class="callout callout-info">
@@ -882,8 +885,8 @@ gate.<span class="fn">register_webhook</span>(
 
     <!-- ── DASHBOARD ── -->
     <h2 id="dashboard">Dashboard</h2>
-    <p>The dashboard at <code>/dashboard</code> on your Gate server shows every pending proposal. No code required to review and approve — it's the interface for humans in the loop.</p>
-    <p>For each proposal you can see:</p>
+    <p>The dashboard at <code>/dashboard</code> on your Gate server shows every pending intent. No code required to review and approve — it's the interface for humans in the loop.</p>
+    <p>For each intent you can see:</p>
     <ul>
       <li>Agent name, destination, policy, record count</li>
       <li>Time remaining before expiry</li>
@@ -896,7 +899,7 @@ gate.<span class="fn">register_webhook</span>(
     </div>
 
     <h2 id="audit-trail">Audit trail</h2>
-    <p>Every proposal generates an immutable sequence of audit events, written server-side. Agents have no API route to write or modify audit events.</p>
+    <p>Every intent generates an immutable sequence of audit events, written server-side. Agents have no API route to write or modify audit events.</p>
     <p>Event types in order:</p>
     <ul>
       <li><strong>proposed</strong> — agent submitted the intent</li>

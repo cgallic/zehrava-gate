@@ -550,18 +550,18 @@
 <!-- HERO -->
 <div class="hero-wrapper">
   <div class="hero-ghost" aria-hidden="true">
-    <span>proposal.status = "pending_approval"</span>
-    <span>gate.propose({ sender: "kai-crm-agent", policy: "crm-low-risk" })</span>
-    <span>destination: salesforce.import ✓ — record_count: 847 → threshold exceeded</span>
-    <span>block_duplicate_proposals: true — second execution blocked at proposal stage</span>
-    <span>gate.deliver({ proposalId: "prp_K9x2mF4j" }) → one-time signed link</span>
+    <span>intent.status = "pending_approval" — risk_score: 0.74 — risk_level: high</span>
+    <span>gate.propose({ destination: "salesforce.import", policy: "crm-low-risk", recordCount: 847 })</span>
+    <span>destination: salesforce.import ✓ — record_count: 847 → threshold exceeded → pending_approval</span>
+    <span>idempotency_key: "batch-2026-03-08" — duplicate intent blocked with 409</span>
+    <span>gate.execute({ intentId: "prop_K9x2mF4j" }) → execution_token: gex_•••• (15min TTL)</span>
     <span>require_approval_over: 100 — finance-high-risk: require_approval: always</span>
-    <span>audit: immutable · signed · not deletable · queryable by proposal ID</span>
-    <span>proposal.status = "blocked" — unknown.system ✗ — destination not in allowlist</span>
-    <span>gate.verify({ proposalId: p.id }) → every event: proposed → policy_checked → approved → delivered</span>
-    <span>expiry: 60 min · delivery: one_time_only · second request → 410 Gone</span>
-    <span>sender: verified · identity: signed manifest · accountability: confirmed</span>
-    <span>// No agent writes to production without passing through this checkpoint</span>
+    <span>audit: immutable · append-only · every state transition logged · queryable by intent ID</span>
+    <span>intent.status = "blocked" — reason_code: destination_not_allowed ✗</span>
+    <span>gate.verify({ intentId: p.intentId }) → proposed → policy_checked → approved → succeeded</span>
+    <span>execution_token: 15min TTL · runner_exec: worker runs in your VPC · credentials never leave</span>
+    <span>on_behalf_of: "agt_orchestrator_abc" · sensitivity_tags: ["pii", "financial"]</span>
+    <span>// No agent write reaches production without an authorized execution order</span>
   </div>
 
   <div class="hero-cols">
@@ -814,7 +814,7 @@
         <tr>
           <td>Delivery</td>
           <td>Agent writes directly. No expiry. No one-time enforcement.</td>
-          <td class="win">One-time signed delivery. Expired links return 410.</td>
+          <td class="win">Signed execution order. Worker runs in your VPC. 15-min token TTL.</td>
         </tr>
         <tr>
           <td>Policy</td>
@@ -888,8 +888,8 @@
 <!-- API -->
 <section class="section" id="api">
   <div class="section-label reveal">API</div>
-  <h2 class="section-h2 reveal">Three calls. That's the whole API.</h2>
-  <p class="section-lead reveal">Propose the intent. Get a decision back in milliseconds. Execute when Gate says go. If you need more than this, you're building the wrong thing.</p>
+  <h2 class="section-h2 reveal">Intent in. Decision out.<br>Execute when authorized.</h2>
+  <p class="section-lead reveal">Submit intent, get a policy decision in milliseconds. Approved? Request an execution order. Worker runs it in your VPC. Reports back. Ledger sealed. The surface area is intentionally small — complexity lives in the policy file.</p>
 
   <div class="code-block reveal">
     <div class="cb-header">
@@ -901,25 +901,26 @@
 
 <span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ <span class="v">endpoint</span>: <span class="s">"https://gate.yourco.com"</span>, <span class="v">apiKey</span>: <span class="s">"gate_sk_..."</span> })
 
-<span class="cm">// 1. Agent proposes</span>
+<span class="cm">// 1. Submit intent — get policy decision immediately</span>
 <span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({
-  <span class="v">payload</span>:     <span class="s">"./leads.csv"</span>,
-  <span class="v">destination</span>: <span class="s">"salesforce.import"</span>,
-  <span class="v">policy</span>:      <span class="s">"crm-low-risk"</span>,
-  <span class="v">recordCount</span>: <span class="v">847</span>
+  <span class="v">payload</span>:          <span class="s">"./leads.csv"</span>,
+  <span class="v">destination</span>:      <span class="s">"salesforce.import"</span>,
+  <span class="v">policy</span>:           <span class="s">"crm-low-risk"</span>,
+  <span class="v">recordCount</span>:      <span class="v">847</span>,
+  <span class="v">idempotency_key</span>:  <span class="s">"batch-2026-03-08"</span>
 })
-<span class="cm">// p.status → "pending_approval" | "approved" | "blocked"</span>
+<span class="cm">// p.intentId, p.status, p.risk_score, p.risk_level, p.blockReason</span>
 
-<span class="cm">// 2. Human approves (from queue, Slack, or API)</span>
-<span class="k">await</span> <span class="v">gate</span>.<span class="fn">approve</span>({ <span class="v">proposalId</span>: p.id })
+<span class="cm">// 2. Human approves (dashboard, Slack, or API)</span>
+<span class="k">await</span> <span class="v">gate</span>.<span class="fn">approve</span>({ <span class="v">intentId</span>: p.intentId })
 
-<span class="cm">// 3. One-time delivery</span>
-<span class="k">const</span> <span class="v">d</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">deliver</span>({ <span class="v">proposalId</span>: p.id })
-<span class="cm">// d.url → one-time signed link, expires, 410 on second request</span>
+<span class="cm">// 3. Get signed execution order (15-min TTL)</span>
+<span class="k">const</span> <span class="v">order</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">execute</span>({ <span class="v">intentId</span>: p.intentId })
+<span class="cm">// order.execution_token → worker runs in your VPC</span>
 
 <span class="cm">// 4. Full audit trail</span>
-<span class="k">const</span> <span class="v">audit</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">verify</span>({ <span class="v">proposalId</span>: p.id })
-<span class="cm">// every event: proposed → policy_checked → approved → delivered</span>
+<span class="k">const</span> <span class="v">audit</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">verify</span>({ <span class="v">intentId</span>: p.intentId })
+<span class="cm">// proposed → policy_checked → approved → execution_requested → succeeded</span>
     </pre>
   </div>
 
@@ -952,7 +953,7 @@
       <div class="incident-scenario">
         <div class="itag itag-pending">Human required</div>
         <div class="incident-title">CRM bulk update</div>
-        <div class="incident-desc">Agent enriches 847 leads and proposes a Salesforce import. Record count exceeds auto-approve threshold. Proposal is held for manager review.</div>
+        <div class="incident-desc">Agent enriches 847 leads and proposes a Salesforce import. Record count exceeds auto-approve threshold. Intent is held for manager review. Approved → signed execution order issued.</div>
       </div>
       <div class="incident-arrow" aria-hidden="true">→</div>
       <div class="incident-gate">
@@ -960,7 +961,7 @@
           <div class="ic-row"><span class="ic-label">Sender</span><span class="ic-val ok">verified</span></div>
           <div class="ic-row"><span class="ic-label">Destination</span><span class="ic-val ok">salesforce.import ✓</span></div>
           <div class="ic-row"><span class="ic-label">Record count</span><span class="ic-val warn">847 → pending approval</span></div>
-          <div class="ic-row"><span class="ic-label">Manager</span><span class="ic-val ok">one-time delivery issued</span></div>
+          <div class="ic-row"><span class="ic-label">Execution</span><span class="ic-val ok">signed order issued on approval</span></div>
         </div>
       </div>
     </div>
@@ -986,7 +987,7 @@
       <div class="incident-scenario">
         <div class="itag itag-ok">Auto-approved</div>
         <div class="incident-title">Support reply</div>
-        <div class="incident-desc">Routine support reply, no flagged terms. Policy: auto-approve single messages below threshold. Gate approves instantly, delivers once, logs the event.</div>
+        <div class="incident-desc">Routine support reply, no flagged terms. Policy: auto-approve single messages below threshold. Gate auto-approves, execution order issued immediately, outcome logged.</div>
       </div>
       <div class="incident-arrow" aria-hidden="true">→</div>
       <div class="incident-gate">
@@ -1234,7 +1235,7 @@ npx zehrava-gate --port 4000</pre>
         <li>5 workspaces</li>
         <li>10,000 proposals/mo</li>
         <li>Approval queue UI</li>
-        <li>Signed delivery + webhooks</li>
+        <li>Execution orders + webhooks</li>
         <li>90-day audit retention</li>
         <li>Slack/email approval hooks</li>
       </ul>
