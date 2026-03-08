@@ -61,10 +61,7 @@ app.post('/v1/agents/register_DISABLED', (req, res) => {
 });
 
 // List agents
-app.get('/v1/agents', authenticate, (req, res) => {
-  const agents = db.prepare('SELECT id, name, risk_tier, created_at FROM agents').all();
-  res.json({ agents });
-});
+// /v1/agents handled by agentsRouter below
 
 // List policies
 app.get('/v1/policies', authenticate, (req, res) => {

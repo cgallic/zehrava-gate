@@ -49,8 +49,8 @@ router.post('/agents/register', (req, res) => {
 router.get('/agents', authenticate, (req, res) => {
   const agents = db.prepare('SELECT id, name, owner, risk_tier, status, framework, allowed_policies, allowed_destinations, created_at FROM agents').all();
   res.json({
-    agents: agents.map(a => ({
-      ...a,
+    agents: agents.map(a => ({ status: a.status || 'active',
+      ...a, status: a.status || 'active',
       allowed_policies: tryParse(a.allowed_policies, []),
       allowed_destinations: tryParse(a.allowed_destinations, []),
       created_at: new Date(a.created_at).toISOString()
