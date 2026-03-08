@@ -257,7 +257,7 @@
 </div>
 
 <div class="demo-area">
-  <div class="scenario-desc" id="scenarioDesc">Agent enriches 847 leads and proposes a Salesforce CRM import. Record count exceeds the auto-approve threshold — Gate holds it for human review.</div>
+  <div class="scenario-desc" id="scenarioDesc">Agent submits a Salesforce CRM import with 847 records. Threshold exceeded — Gate holds for human review.</div>
 
   <button class="run-btn" id="runBtn" onclick="runScenario()">▶ Run Scenario</button>
 
@@ -292,13 +292,13 @@
 const API_KEY = 'gate_sk_1e03e5dd975da4edde747eb5a3de95a22fb0d70e346eb0af';
 let currentScenario = 'crm';
 let running = false;
-let currentProposalId = null;
+let currentIntentId = null;
 
 const SCENARIOS = {
   crm: {
-    desc: 'Agent enriches 847 leads and proposes a Salesforce CRM import. Record count exceeds the auto-approve threshold (100) — Gate holds it for human review.',
+    desc: 'Agent submits a Salesforce CRM import intent with 847 records. Record count exceeds auto-approve threshold (100) — Gate holds it for human review.',
     code: [
-      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"zehrava-gate"</span>',
       '',
       '<span class="cm">// Agent has finished enriching leads...</span>',
       '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
@@ -323,9 +323,9 @@ const SCENARIOS = {
     showApprove: true
   },
   finance: {
-    desc: 'Agent generates a payout batch and proposes delivery to an unrecognized destination. Gate blocks it immediately — destination is not in the policy allowlist. Nothing moves.',
+    desc: 'Agent submits a payout intent to an unrecognized destination. Gate blocks it immediately — destination not in policy allowlist. Nothing moves.',
     code: [
-      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"zehrava-gate"</span>',
       '',
       '<span class="cm">// Agent proposes payout to an unrecognized system...</span>',
       '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
@@ -349,9 +349,9 @@ const SCENARIOS = {
     showApprove: false
   },
   'support-safe': {
-    desc: 'Agent drafts a routine customer support reply. No blocked terms, single message — policy auto-approves it instantly. Delivered once. Logged.',
+    desc: 'Agent submits a routine support reply. No blocked terms, single message — policy auto-approves immediately. Execution order issued. Logged.',
     code: [
-      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"zehrava-gate"</span>',
       '',
       '<span class="cm">// Agent drafts a support reply...</span>',
       '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
@@ -378,7 +378,7 @@ const SCENARIOS = {
   'support-risky': {
     desc: 'Same agent, different draft — this reply contains "refund guaranteed". Policy scans the payload and blocks it before it ever reaches Zendesk. Agent sees the block reason.',
     code: [
-      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"@zehrava/gate"</span>',
+      '<span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"zehrava-gate"</span>',
       '',
       '<span class="cm">// Agent drafts a reply with a risky commitment...</span>',
       '<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint, apiKey })',
@@ -407,7 +407,7 @@ const SCENARIOS = {
 
 function setScenario(key) {
   currentScenario = key;
-  currentProposalId = null;
+  currentIntentId = null;
   document.querySelectorAll('.stab').forEach((t, i) => {
     t.classList.toggle('active', ['crm','finance','support-safe','support-risky'][i] === key);
   });
@@ -465,14 +465,14 @@ async function runScenario() {
   out.innerHTML = '<div class="output-placeholder">Calling Gate API…</div>';
 
   try {
-    const res = await fetch('/v1/propose', {
+    const res = await fetch('/v1/intents', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(s.propose)
     });
     const data = await res.json();
 
-    currentProposalId = data.proposalId;
+    currentIntentId = data.intentId || data.proposalId;
 
     // Update badge
     document.getElementById('responseBadge').innerHTML = statusBadge(data.status);
@@ -481,20 +481,21 @@ async function runScenario() {
     const valClass = { pending_approval: 'rl-val-pending', approved: 'rl-val-approved', blocked: 'rl-val-blocked' }[data.status] || 'rl-val';
 
     let html = `<div class="result-block">
-      <div class="result-line"><span class="rl-key">proposalId</span><span class="rl-val" style="font-size:.75rem">${data.proposalId}</span></div>
+      <div class="result-line"><span class="rl-key">intentId</span><span class="rl-val" style="font-size:.75rem">${data.intentId || data.proposalId}</span></div>
       <div class="result-line"><span class="rl-key">status</span><span class="${valClass}">"${data.status}"</span></div>
+      ${data.riskScore != null ? `<div class="result-line"><span class="rl-key">risk_score</span><span class="rl-val">${data.riskScore} <span style="color:var(--muted);font-size:.75rem">(${data.riskLevel})</span></span></div>` : ''}
       ${data.blockReason ? `<div class="result-line"><span class="rl-key">blockReason</span><span class="rl-val" style="color:var(--red)">"${data.blockReason}"</span></div>` : ''}
-      ${data.expiresAt ? `<div class="result-line"><span class="rl-key">expiresAt</span><span class="rl-val">"${data.expiresAt}"</span></div>` : ''}
+      ${data.expiresAt ? `<div class="result-line"><span class="rl-key">expiresAt</span><span class="rl-val" style="font-size:.75rem">"${data.expiresAt}"</span></div>` : ''}
     </div>`;
 
     // Approve button for pending
     if (data.status === 'pending_approval' && s.showApprove) {
-      html += `<button class="approve-btn" id="approveBtn" onclick="approveCurrent()">✓ Approve this proposal</button>`;
+      html += `<button class="approve-btn" id="approveBtn" onclick="approveCurrent()">✓ Approve — issue execution order</button>`;
     }
 
     // Fetch and show audit trail
     await new Promise(r => setTimeout(r, 300));
-    const auditRes = await fetch(`/v1/audit/${data.proposalId}`, {
+    const auditRes = await fetch(`/v1/intents/${data.intentId || data.proposalId}/audit`, {
       headers: { 'Authorization': `Bearer ${API_KEY}` }
     });
     const auditData = await auditRes.json();
@@ -529,25 +530,25 @@ async function runScenario() {
 }
 
 async function approveCurrent() {
-  if (!currentProposalId) return;
+  if (!currentIntentId) return;
   const btn = document.getElementById('approveBtn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Approving…'; }
 
-  const res = await fetch('/v1/approve', {
+  const res = await fetch(`/v1/intents/${currentIntentId}/approve`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ proposalId: currentProposalId })
+    body: JSON.stringify({})
   });
   const data = await res.json();
 
   if (data.status === 'approved') {
     document.getElementById('responseBadge').innerHTML = statusBadge('approved');
     if (btn) {
-      btn.textContent = '✓ Approved — delivery token issued';
+      btn.textContent = '✓ Approved — execution order ready';
       btn.style.background = 'rgba(34,197,94,0.2)';
     }
     // Refresh audit trail
-    const auditRes = await fetch(`/v1/audit/${currentProposalId}`, {
+    const auditRes = await fetch(`/v1/intents/${currentIntentId}/audit`, {
       headers: { 'Authorization': `Bearer ${API_KEY}` }
     });
     const auditData = await auditRes.json();
