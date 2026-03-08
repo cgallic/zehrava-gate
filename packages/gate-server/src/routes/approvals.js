@@ -120,7 +120,32 @@ router.post('/approve', authenticate, (req, res) => {
   logEvent(proposalId, 'approved', req.agent.name, { approver: req.agent.name });
   fireWebhook(proposalId, 'approved', { approver: req.agent.name });
 
-  if (AUTO_DELIVER_DESTINATIONS.includes(proposal.destination)) {
+  // gate_exec: if vault has a credential for this destination, Gate executes the call itself
+  const { hasCredential } = require('../proxy/vault');
+  const { executeIntent }  = require('../proxy/executor');
+  const isGateExec = hasCredential(proposal.destination) && process.env.PROXY_API_KEY;
+
+  if (isGateExec) {
+    // Fire async — don't block the approval response
+    setImmediate(async () => {
+      try {
+        // Read payload content from disk if stored as file
+        let payloadContent = null;
+        if (proposal.payload_path) {
+          const fs = require('fs');
+          try { payloadContent = fs.readFileSync(proposal.payload_path, 'utf8'); } catch {}
+        }
+        const result = await executeIntent({
+          id: proposalId,
+          destination: proposal.destination,
+          payloadContent,
+        });
+        console.log(`[gate_exec] ${proposalId} → ${result.succeeded ? 'succeeded' : 'failed'} (HTTP ${result.httpStatus})`);
+      } catch (e) {
+        console.error(`[gate_exec] Error executing ${proposalId}:`, e.message);
+      }
+    });
+  } else if (AUTO_DELIVER_DESTINATIONS.includes(proposal.destination)) {
     autoDeliver(proposalId, proposal.destination, deliveryToken);
   }
 
@@ -129,7 +154,8 @@ router.post('/approve', authenticate, (req, res) => {
     approvedAt: new Date().toISOString(),
     intentId: proposalId,
     deliveryToken,
-    autoDeliver: AUTO_DELIVER_DESTINATIONS.includes(proposal.destination)
+    autoDeliver: isGateExec ? false : AUTO_DELIVER_DESTINATIONS.includes(proposal.destination),
+    gate_exec: isGateExec,
   });
 });
 

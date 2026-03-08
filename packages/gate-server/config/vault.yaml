@@ -1,0 +1,112 @@
+# Gate V3 — Credential Vault Configuration
+#
+# Gate fetches credentials from this config at execution time.
+# Credentials are never stored in Gate's database — fetched, used, discarded.
+#
+# Providers:
+#   env         — process environment variables (local dev, no external dep)
+#   1password   — 1Password Service Account SDK (production recommended)
+#   hashicorp   — HashiCorp Vault AppRole (enterprise)
+#   aws         — AWS Secrets Manager (AWS-native teams)
+#
+# gate_exec destinations: when an intent is approved and destination is in this
+# vault config, Gate performs the actual HTTP call itself. The agent only gets
+# the outcome. Production credentials never touch the agent process.
+
+provider: env   # switch to "1password" for production
+
+# ── 1Password config (used when provider: 1password) ─────────────────────────
+# 1password:
+#   service_account_token_env: OP_SERVICE_ACCOUNT_TOKEN
+#   vault: AI-Agents
+
+# ── HashiCorp Vault config (used when provider: hashicorp) ───────────────────
+# hashicorp:
+#   address: https://vault.internal:8200
+#   role_id_env: VAULT_ROLE_ID
+#   secret_id_env: VAULT_SECRET_ID
+#   mount: secret
+
+# ── AWS Secrets Manager config (used when provider: aws) ─────────────────────
+# aws:
+#   region: us-east-1
+#   # uses standard AWS env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+# ── Credential definitions ────────────────────────────────────────────────────
+credentials:
+
+  sendgrid.send:
+    # env provider: reads from process.env
+    secret_env: SENDGRID_API_KEY
+    # 1password provider: ref: "op://AI-Agents/SendGrid/api_key"
+    inject: header
+    header_name: Authorization
+    header_format: "Bearer {secret}"
+    execute:
+      method: POST
+      url: https://api.sendgrid.com/v3/mail/send
+      content_type: application/json
+
+  loops.send:
+    secret_env: LOOPS_API_KEY
+    inject: header
+    header_name: Authorization
+    header_format: "Bearer {secret}"
+    execute:
+      method: POST
+      url: https://app.loops.so/api/v1/contacts/create
+      content_type: application/json
+
+  salesforce.api:
+    secret_env: SALESFORCE_TOKEN
+    inject: header
+    header_name: Authorization
+    header_format: "Bearer {secret}"
+    execute:
+      method: POST
+      url: https://api.salesforce.com/services/data/v58.0/composite/sobjects
+      content_type: application/json
+
+  stripe.charge:
+    secret_env: STRIPE_SECRET_KEY
+    inject: basic_auth    # Stripe uses: Authorization: Basic base64(key:)
+    execute:
+      method: POST
+      url: https://api.stripe.com/v1/charges
+      content_type: application/x-www-form-urlencoded
+
+  stripe.refund:
+    secret_env: STRIPE_SECRET_KEY
+    inject: basic_auth
+    execute:
+      method: POST
+      url: https://api.stripe.com/v1/refunds
+      content_type: application/x-www-form-urlencoded
+
+  slack.webhook:
+    secret_env: SLACK_WEBHOOK_URL    # full URL is the credential
+    inject: url                       # credential IS the URL, not a header
+    execute:
+      method: POST
+      url: "{secret}"                 # expanded from credential value
+      content_type: application/json
+
+  bluesky.post:
+    secret_env: BSKY_APP_PASSWORD
+    inject: header
+    header_name: Authorization
+    header_format: "Bearer {secret}"
+    execute:
+      method: POST
+      url: https://bsky.social/xrpc/com.atproto.repo.createRecord
+      content_type: application/json
+
+  gmail.send:
+    secret_env: GMAIL_OAUTH_TOKEN
+    inject: header
+    header_name: Authorization
+    header_format: "Bearer {secret}"
+    execute:
+      method: POST
+      url: https://gmail.googleapis.com/gmail/v1/users/me/messages/send
+      content_type: application/json

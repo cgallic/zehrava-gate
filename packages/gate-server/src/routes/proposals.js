@@ -145,6 +145,22 @@ router.post('/propose', authenticate, (req, res) => {
     logEvent(proposalId, 'blocked', 'system', { reason: result.reason });
   } else if (result.status === 'approved') {
     logEvent(proposalId, 'approved', 'system', { policy, auto: true });
+
+    // gate_exec: auto-approved + vault credential → Gate executes immediately
+    const { hasCredential } = require('../proxy/vault');
+    const { executeIntent }  = require('../proxy/executor');
+    if (hasCredential(destination) && process.env.PROXY_API_KEY) {
+      const payloadContent = payloadPath && require('fs').existsSync(payloadPath)
+        ? require('fs').readFileSync(payloadPath, 'utf8') : payload || null;
+      setImmediate(async () => {
+        try {
+          const r = await executeIntent({ id: proposalId, destination, payloadContent });
+          console.log(`[gate_exec] ${proposalId} auto-exec → ${r.succeeded ? 'succeeded' : 'failed'} (HTTP ${r.httpStatus})`);
+        } catch (e) {
+          console.error(`[gate_exec] Auto-exec error ${proposalId}:`, e.message);
+        }
+      });
+    }
   }
 
   res.json({

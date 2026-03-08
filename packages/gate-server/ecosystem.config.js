@@ -19,6 +19,7 @@ module.exports = {
       DATA_DIR: '/opt/zehrava-gate/data',
       POLICY_DIR: '/opt/zehrava-gate/policies',
       PORT: '3001',
+      VAULT_CONFIG: '/opt/zehrava-gate/config/vault.yaml',
     }
   }]
 };
