@@ -664,7 +664,7 @@
 <section class="section" id="problem">
   <div class="section-label reveal">The problem</div>
   <h2 class="section-h2 reveal">An agent just wrote to your database.<br>Who approved it?</h2>
-  <p class="section-lead reveal">Was it the first run or the fifth? What policy did it follow? If you can't answer those in 30 seconds, you don't have write-path governance. Every company shipping agents to production will need it. Most are building it from scratch, per-team, badly. Gate is the infrastructure.</p>
+  <p class="section-lead reveal">Was it the first run or the fifth? What policy did it follow? If you can't answer those in 30 seconds, you don't have write-path governance. Every company shipping agents to production will need it. Most teams are rebuilding it from scratch — badly. Gate is the infrastructure.</p>
 
   <div class="problem-grid">
     <div class="problem-card reveal">
@@ -934,7 +934,7 @@
 
 <span class="cm">// 4. Full audit trail</span>
 <span class="k">const</span> <span class="v">audit</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">verify</span>({ <span class="v">intentId</span>: p.intentId })
-<span class="cm">// proposed → policy_checked → approved → execution_requested → succeeded</span>
+<span class="cm">// proposed → policy_checked → approved → execution_requested → execution_succeeded</span>
     </pre>
   </div>
 
