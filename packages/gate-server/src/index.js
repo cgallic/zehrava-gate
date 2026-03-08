@@ -7,6 +7,8 @@ const { listPolicies } = require('./lib/policy');
 const { authenticate } = require('./middleware/auth');
 
 const proposalsRouter = require('./routes/proposals');
+const agentsRouter = require('./routes/agents');
+const executionsRouter = require('./routes/executions');
 const subscribeRouter = require('./routes/subscribe');
 const approvalsRouter = require('./routes/approvals');
 const deliveryRouter = require('./routes/delivery');
@@ -37,8 +39,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'zehrava-gate', version: '0.1.0' });
 });
 
-// Agent registration (no auth)
-app.post('/v1/agents/register', (req, res) => {
+// Legacy agent endpoints now handled by agentsRouter
+// (keeping this comment for backward compat)
+app.post('/v1/agents/register_DISABLED', (req, res) => {
   const { name, riskTier } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
 
@@ -88,6 +91,8 @@ app.get('/v1/proposals', authenticate, (req, res) => {
 });
 
 // Mount all routers at /v1
+app.use('/v1', agentsRouter);
+app.use('/v1', executionsRouter);
 app.use('/v1', proposalsRouter);
 
 // V2 API: /v1/intents aliases for spec-compliant clients
@@ -103,6 +108,11 @@ app.post('/v1/intents/:id/approve', (req, res, next) => { req.body.proposalId = 
 app.post('/v1/intents/:id/reject', (req, res, next) => { req.body.proposalId = req.params.id; next(); }, (req, res, next) => { req.url = '/reject'; next(); }, require('./routes/approvals'));
 app.get('/v1/intents/:id', (req, res, next) => { req.url = `/proposals/${req.params.id}`; next(); }, proposalsRouter);
 app.get('/v1/intents/:id/audit', (req, res, next) => { req.url = `/${req.params.id}`; next(); }, require('./routes/audit'));
+app.get('/v1/intents/:id/decision', authenticate, (req, res) => {
+  const d = db.prepare('SELECT * FROM policy_decisions WHERE intent_id = ?').get(req.params.id);
+  if (!d) return res.status(404).json({ error: 'No decision found for this intent' });
+  res.json({ ...d, evaluated_at: new Date(d.evaluated_at).toISOString() });
+});
 app.use('/v1', subscribeRouter);
 app.use('/v1', approvalsRouter);
 app.use('/v1', deliveryRouter);
@@ -143,6 +153,33 @@ app.get('/v1/public/feed', (req, res) => {
     LIMIT ?
   `).all(limit);
   res.json({ proposals: rows.map(scrubProposal), count: rows.length });
+});
+
+// GET /v1/metrics
+app.get('/v1/metrics', authenticate, (req, res) => {
+  const s = (q) => db.prepare(q).get();
+  const total   = s("SELECT COUNT(*) as n FROM proposals").n;
+  const blocked = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'blocked'").n;
+  const pending = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'pending_approval'").n;
+  const approved = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'approved'").n;
+  const scheduled = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'scheduled'").n;
+  const succeeded = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'succeeded'").n;
+  const failed  = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'failed'").n;
+  const dupes   = s("SELECT COUNT(*) as n FROM proposals WHERE status = 'duplicate_blocked'").n;
+  const latency = db.prepare("SELECT AVG(approved_at - created_at) as avg FROM proposals WHERE approved_at IS NOT NULL AND created_at IS NOT NULL").get();
+  res.json({
+    actions_attempted: total,
+    actions_blocked: blocked,
+    actions_pending: pending,
+    actions_approved: approved,
+    actions_scheduled: scheduled,
+    actions_succeeded: succeeded,
+    actions_failed: failed,
+    duplicate_actions: dupes,
+    policy_violations: blocked,
+    avg_approval_latency_ms: latency?.avg ? Math.round(latency.avg) : null,
+    period: 'all_time'
+  });
 });
 
 // 404

@@ -87,8 +87,8 @@ router.post('/propose', authenticate, (req, res) => {
 
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -104,7 +104,37 @@ router.post('/propose', authenticate, (req, res) => {
     on_behalf_of || null,
     idempotencyKey,
     risk.risk_score,
-    risk.risk_level
+    risk.risk_level,
+    JSON.stringify(req.body.sensitivity_tags || []),
+    recordCount ? parseInt(recordCount) : null,
+    req.body.estimated_value_usd ? parseFloat(req.body.estimated_value_usd) : null,
+    req.body.action || destination
+  );
+
+  // Store policy decision
+  const decisionId = generateId('dec');
+  const reasonCode = result.status === 'blocked'
+    ? (result.reason?.includes('threshold') ? 'record_threshold_exceeded'
+      : result.reason?.includes('term') ? 'blocked_term_detected'
+      : result.reason?.includes('destination') ? 'destination_not_allowed'
+      : result.reason?.includes('sensitive') ? 'sensitive_data_detected'
+      : 'manual_review_required')
+    : result.status === 'approved' ? 'approved_by_policy'
+    : 'manual_review_required';
+
+  db.prepare(`
+    INSERT INTO policy_decisions (id, intent_id, status, reason_code, reason_detail, risk_score, risk_level, policy_snapshot, required_approvals, evaluated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    decisionId, proposalId,
+    result.status === 'approved' ? 'approved' : result.status === 'blocked' ? 'blocked' : 'pending_approval',
+    reasonCode,
+    result.reason || null,
+    risk.risk_score,
+    risk.risk_level,
+    JSON.stringify({ policy, destination }),
+    result.status === 'pending_approval' ? 1 : 0,
+    now
   );
 
   // Log audit event

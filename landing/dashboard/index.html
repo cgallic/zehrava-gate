@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zehrava Gate — Approval Queue</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --purple-dim: #3730a3; --green: #22c55e;
+      --red: #ef4444; --amber: #f59e0b;
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --green-dark: #16a34a; --red: #f87171; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8;
+      --font: "Plus Jakarta Sans", -apple-system, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; }
+    code { font-family: var(--mono); font-size: 0.85em; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* HEADER */
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07); background: rgba(10,15,26,0.85); position: sticky; top: 0; z-index: 100; }
+    .header-logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .header-logo span { color: var(--purple); }
+    .header-logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+    .header-logo span { color: var(--purple); }
+    .header-right { display: flex; align-items: center; gap: 1.25rem; font-size: 0.8rem; }
+    .header-right a { color: var(--muted2); }
+    .header-right a:last-child { color: var(--purple); }
+    .refresh-indicator { color: var(--muted2); }
+    .refresh-dot { display: inline-block; width: 6px; height: 6px; background: var(--green); border-radius: 50%; margin-right: 4px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* API KEY BOX */
+    .api-key-box { margin: 1rem 1.5rem; background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; }
+    .api-key-label { color: var(--muted2); flex-shrink: 0; }
+    .api-key-value { font-family: monospace; color: var(--purple); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .copy-btn { background: rgba(255,255,255,0.02); border: 1px solid var(--border2); color: var(--muted2); padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: inherit; flex-shrink: 0; }
+    .copy-btn:hover { color: var(--text); }
+
+    /* TABS */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 0 1.5rem; margin-top: 0.5rem; }
+    .tab { padding: 0.65rem 1rem; font-size: 0.875rem; color: var(--muted2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--text); border-bottom-color: var(--purple); font-weight: 600; }
+    .tab-count { display: inline-block; background: var(--purple); color: #fff; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; margin-left: 0.4rem; vertical-align: middle; }
+    .tab-count.zero { background: rgba(255,255,255,0.02); color: var(--muted2); }
+
+    /* MAIN */
+    main { padding: 1.5rem; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted2); }
+    .empty-state h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
+
+    /* TABLE */
+    .table-wrap { background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; padding: 0.75rem 1rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); border-bottom: 1px solid rgba(255,255,255,0.07); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,0.07); transition: background 0.1s; cursor: pointer; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    tbody td { padding: 0.85rem 1rem; font-size: 0.85rem; vertical-align: middle; }
+    .td-mono { font-family: monospace; font-size: 0.78rem; color: var(--muted2); }
+    .td-agent { font-weight: 600; }
+    .td-dest { color: var(--muted2); font-family: monospace; font-size: 0.78rem; }
+
+    /* STATUS BADGES */
+    .badge { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-pending { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .badge-approved { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-blocked { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-delivered { background: rgba(99,102,241,0.15); color: var(--purple); }
+    .badge-expired { background: rgba(136,136,136,0.15); color: var(--muted2); }
+
+    /* ACTION BUTTONS */
+    .actions { display: flex; gap: 0.4rem; }
+    .btn-approve { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); padding: 0.3rem 0.75rem; border-radius: 5px; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+    .btn-approve:hover { background: rgba(34,197,94,0.25); }
+    .btn-reject { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.25); padding: 0.3rem 0.75rem; border-radius: 5px; font-size: 0.78rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+    .btn-reject:hover { background: rgba(239,68,68,0.2); }
+
+    /* AUDIT EXPAND */
+    .audit-row td { padding: 0; }
+    .audit-expand { background: rgba(255,255,255,0.02); padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: none; }
+    .audit-expand.open { display: block; }
+    .audit-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); margin-bottom: 0.75rem; }
+    .audit-event { display: flex; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.07); font-size: 0.78rem; }
+    .audit-event:last-child { border-bottom: none; }
+    .ae-time { color: var(--muted2); font-family: monospace; flex-shrink: 0; width: 200px; }
+    .ae-type { color: var(--purple); font-weight: 600; flex-shrink: 0; width: 160px; font-family: monospace; }
+    .ae-actor { color: var(--muted2); }
+    .block-reason { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--red); margin-top: 0.5rem; font-family: monospace; }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 0.75rem 1.25rem; font-size: 0.875rem; z-index: 999; transition: all 0.2s; opacity: 0; transform: translateY(8px); pointer-events: none; max-width: 320px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(34,197,94,0.4); color: var(--green); }
+    .toast.error { border-color: rgba(239,68,68,0.4); color: var(--red); }
+
+    /* REJECT MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 420px; }
+    .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .modal textarea { width: 100%; background: rgba(255,255,255,0.02); border: 1px solid var(--border2); color: var(--text); padding: 0.75rem; border-radius: 6px; font-size: 0.875rem; font-family: inherit; resize: vertical; min-height: 80px; margin-bottom: 1rem; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .btn-cancel { background: rgba(255,255,255,0.02); color: var(--muted2); border: 1px solid var(--border2); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.875rem; }
+    .btn-confirm-reject { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.875rem; font-weight: 700; }
+
+    /* MOBILE — card layout instead of table */
+    @media(max-width:768px) {
+      header { padding: 0.875rem 1rem; }
+      .header-logo { font-size: 0.875rem; }
+      .header-right { gap: 0.75rem; font-size: 0.75rem; }
+      .header-right a:first-of-type { display: none; } /* hide "Try demo" on mobile */
+      .api-key-box { margin: 0.75rem 1rem; flex-wrap: wrap; gap: 0.5rem; }
+      .api-key-value { width: 100%; font-size: 0.72rem; }
+      .tabs { padding: 0 0.75rem; overflow-x: auto; }
+      .tab { padding: 0.6rem 0.75rem; font-size: 0.8rem; }
+      main { padding: 0.75rem 1rem; }
+      /* Hide table on mobile */
+      .table-wrap table { display: none; }
+      /* Show cards instead */
+      .card-list { display: flex; flex-direction: column; gap: 0.75rem; }
+      .prop-card { background: var(--bg2); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1rem; }
+      .prop-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+      .prop-card-agent { font-weight: 700; font-size: 0.9rem; }
+      .prop-card-meta { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.78rem; color: var(--muted2); margin-bottom: 0.75rem; }
+      .prop-card-meta span { display: flex; gap: 0.4rem; }
+      .prop-card-meta .ml { min-width: 80px; }
+      .prop-card-actions { display: flex; gap: 0.5rem; }
+      .prop-card-actions .btn-approve,
+      .prop-card-actions .btn-reject { flex: 1; justify-content: center; padding: 0.55rem; font-size: 0.82rem; }
+      .prop-card-audit { margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
+      .modal { max-width: calc(100vw - 2rem); }
+    }
+    @media(min-width:769px) {
+      .card-list { display: none; }
+    }
+  
+    /* === SITE NAV (identical across all pages) === */
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-brand span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    .nav-cta:hover { opacity: 0.9; }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem; }
+      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .nav-links .nav-cta { display: inline-block; }
+    }
+    /* === END SITE NAV === */
+  
+    /* MOBILE MENU */
+    .menu-btn { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 6px; border-radius: 8px; transition: background 150ms ease-out; }
+    .menu-btn:hover { background: rgba(255,255,255,0.06); }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: var(--text); border-radius: 2px; transition: all 200ms ease-out; transform-origin: center; }
+    .menu-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .menu-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .menu-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+    .mobile-menu { display: none; position: fixed; inset: 0; top: 57px; z-index: 99; background: rgba(10,15,26,0.97); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 2rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.07); flex-direction: column; gap: 0; overflow-y: auto; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 1.125rem; font-weight: 600; color: var(--text); padding: 1rem 0; border-bottom: 1px solid rgba(255,255,255,0.07); display: block; transition: color 150ms ease-out; text-decoration: none; }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu a:hover { color: #818cf8; }
+    .mobile-menu .m-cta { margin-top: 1.5rem; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 1rem; text-align: center; border-bottom: none !important; }
+    @media (max-width: 768px) { .menu-btn { display: flex; } .hdr-right .btn-primary, .hdr-right .btn-secondary { display: none; } }
+
+
+    /* ─── METRICS BAR ─── */
+    .metrics-bar {
+      display: flex; gap: 0.75rem; padding: 1rem 2rem 0.25rem;
+      flex-wrap: wrap; border-bottom: 1px solid var(--border);
+    }
+    .metric-item {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.625rem 1.125rem; min-width: 80px;
+      gap: 0.2rem;
+    }
+    .metric-val { font-size: 1.375rem; font-weight: 800; color: var(--text); font-family: var(--mono); }
+    .metric-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .metric-green .metric-val { color: #22c55e; }
+    .metric-amber .metric-val { color: #f59e0b; }
+    .metric-blue .metric-val  { color: #818cf8; }
+    .metric-red .metric-val   { color: #f87171; }
+    .metric-muted .metric-val { color: var(--muted2); font-size: 0.9rem; }
+
+    /* ─── RISK BADGE ─── */
+    .risk-badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; font-weight: 700;
+      padding: 0.15rem 0.5rem; border-radius: 99px; border: 1px solid; font-family: var(--mono); }
+    .risk-low    { color: #22c55e; border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); }
+    .risk-medium { color: #f59e0b; border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); }
+    .risk-high   { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+    .risk-critical{ color: #ef4444; border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.12); font-weight: 900; }
+
+    /* ─── EXECUTE BUTTON ─── */
+    .btn-execute {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      color: #fff; border: none; border-radius: 7px;
+      padding: 0.3rem 0.75rem; font-size: 0.75rem; font-weight: 700;
+      cursor: pointer; font-family: var(--font);
+      transition: opacity 150ms ease-out;
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.3);
+    }
+    .btn-execute:hover { opacity: 0.85; }
+
+    /* ─── TAGS ─── */
+    .tag { display: inline-flex; align-items: center; font-size: 0.62rem; font-weight: 600;
+      padding: 0.1rem 0.4rem; border-radius: 5px; background: rgba(99,102,241,0.1);
+      color: #818cf8; border: 1px solid rgba(99,102,241,0.2); margin: 1px; }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava <span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/blog">Blog</a>
+    <a href="https://meetkai.xyz/gate-live.html">Live feed</a>
+    <a href="/demo">Demo</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/#get-started" class="nav-cta">Get started</a>
+  </div>
+</nav>
+
+<div class="api-key-box">
+  <span class="api-key-label">Demo API key</span>
+  <span class="api-key-value" id="apiKeyDisplay">gate_sk_1e03e5dd975da4edde747eb5a3de95a22fb0d70e346eb0af</span>
+  <button class="copy-btn" onclick="copyKey()">Copy</button>
+  <span style="color:var(--muted);font-size:0.75rem">Use this key to propose from the demo page or curl</span>
+</div>
+
+<div class="metrics-bar" id="metricsBar">
+  <div class="metric-item"><span class="metric-val" id="m-attempted">—</span><span class="metric-label">total</span></div>
+  <div class="metric-item metric-green"><span class="metric-val" id="m-succeeded">—</span><span class="metric-label">succeeded</span></div>
+  <div class="metric-item metric-amber"><span class="metric-val" id="m-pending">—</span><span class="metric-label">pending</span></div>
+  <div class="metric-item metric-blue"><span class="metric-val" id="m-approved">—</span><span class="metric-label">approved</span></div>
+  <div class="metric-item metric-red"><span class="metric-val" id="m-blocked">—</span><span class="metric-label">blocked</span></div>
+  <div class="metric-item metric-muted"><span class="metric-val" id="m-latency">—</span><span class="metric-label">avg approval</span></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('pending_approval')">Pending <span class="tab-count zero" id="count-pending">0</span></div>
+  <div class="tab" onclick="switchTab('approved')">Approved <span class="tab-count zero" id="count-approved">0</span></div>
+  <div class="tab" onclick="switchTab('delivered')">Delivered <span class="tab-count zero" id="count-delivered">0</span></div>
+  <div class="tab" onclick="switchTab('blocked')">Blocked <span class="tab-count zero" id="count-blocked">0</span></div>
+  <div class="tab" onclick="switchTab('')">All</div>
+</div>
+
+<main>
+  <div id="tableContainer"></div>
+</main>
+
+<!-- Reject modal -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal">
+    <h3>Reject proposal</h3>
+    <textarea id="rejectReason" placeholder="Reason for rejection (optional)"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm-reject" onclick="confirmReject()">Reject proposal</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_KEY = 'gate_sk_1e03e5dd975da4edde747eb5a3de95a22fb0d70e346eb0af';
+const API_BASE = '/v1';
+let currentTab = 'pending_approval';
+let pendingRejectId = null;
+let refreshTimer = null;
+let expandedRows = new Set();
+
+function headers() {
+  return { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' };
+}
+
+async function api(method, path, body) {
+  const res = await fetch(API_BASE + path, {
+    method, headers: headers(),
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res.json();
+}
+
+function copyKey() {
+  navigator.clipboard.writeText(API_KEY);
+  showToast('API key copied', 'success');
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+function statusBadge(status) {
+  const map = {
+    pending_approval: 'badge-pending',
+    approved: 'badge-approved',
+    blocked: 'badge-blocked',
+    delivered: 'badge-delivered',
+    expired: 'badge-expired',
+    scheduled: 'badge-approved',
+    executing: 'badge-approved',
+    succeeded: 'badge-delivered',
+    failed: 'badge-blocked',
+    duplicate_blocked: 'badge-blocked',
+    replay_blocked: 'badge-blocked'
+  };
+  const label = { pending_approval: 'pending', duplicate_blocked: 'duplicate', replay_blocked: 'replay blocked' }[status] || status;
+  return `<span class="badge ${map[status] || ''}">${label}</span>`;
+}
+
+function riskBadge(score, level) {
+  if (!score && score !== 0) return '';
+  const cls = `risk-${level || 'low'}`;
+  const pct = Math.round((score || 0) * 100);
+  return `<span class="risk-badge ${cls}">${pct}% ${level || ''}</span>`;
+}
+
+function renderTags(tags) {
+  if (!tags || !tags.length) return '';
+  const arr = Array.isArray(tags) ? tags : (typeof tags === 'string' ? JSON.parse(tags) : []);
+  return arr.map(t => `<span class="tag">${t}</span>`).join('');
+}
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+}
+
+function shortId(id) {
+  return id ? `<code>${id.slice(0, 16)}…</code>` : '—';
+}
+
+async function loadProposals() {
+  const url = currentTab ? `/proposals?status=${currentTab}&limit=100` : '/proposals?limit=100';
+  const data = await api('GET', url);
+  const proposals = data.proposals || [];
+
+  // Update counts (fetch all tabs in background)
+  updateCounts();
+
+  const container = document.getElementById('tableContainer');
+  if (!proposals.length) {
+    container.innerHTML = `<div class="empty-state"><h3>No ${currentTab || ''} proposals</h3><p style="margin-top:.5rem;font-size:.85rem">Proposals will appear here when agents submit them.</p><p style="margin-top:1rem"><a href="/demo">Run a demo scenario →</a></p></div>`;
+    return;
+  }
+
+  const tableRows = proposals.map(p => {
+    const isExpanded = expandedRows.has(p.id);
+    const actions = p.status === 'pending_approval'
+      ? `<div class="actions"><button class="btn-approve" onclick="approve('${p.id}',event)">✓ Approve</button><button class="btn-reject" onclick="openReject('${p.id}',event)">✗ Reject</button></div>`
+      : p.status === 'approved'
+      ? `<div class="actions"><button class="btn-execute" onclick="execute('${p.id}',event)">▶ Execute</button></div>`
+      : `<a href="#" onclick="toggleAudit('${p.id}',event)" style="font-size:.78rem;color:var(--muted)">Audit trail</a>`;
+    const recVal = p.estimated_records || p.record_count;
+    const tags = (() => { try { return Array.isArray(p.sensitivity_tags) ? p.sensitivity_tags : JSON.parse(p.sensitivity_tags||'[]'); } catch { return []; } })();
+    return `
+      <tr onclick="toggleAudit('${p.id}')">
+        <td class="td-mono">${shortId(p.id)}</td>
+        <td class="td-agent">${p.agent_name || 'unknown'}</td>
+        <td class="td-dest">${p.destination || '—'}</td>
+        <td class="td-mono">${p.policy_id || '—'}</td>
+        <td style="text-align:right;color:var(--muted)">${recVal || '—'}${p.estimated_value_usd ? `<br><span style="font-size:.68rem;color:var(--muted)">$${Number(p.estimated_value_usd).toLocaleString()}</span>` : ''}</td>
+        <td style="color:var(--muted)">${timeAgo(p.created_at)}</td>
+        <td>${statusBadge(p.status)}<br>${riskBadge(p.risk_score, p.risk_level)}<br>${renderTags(tags)}</td>
+        <td onclick="event.stopPropagation()">${actions}</td>
+      </tr>
+      <tr class="audit-row" id="audit-${p.id}">
+        <td colspan="8">
+          <div class="audit-expand ${isExpanded ? 'open' : ''}" id="audit-content-${p.id}">
+            <div class="audit-title">Audit trail — ${p.id}</div>
+            ${p.block_reason ? `<div class="block-reason">Blocked: ${p.block_reason}</div>` : ''}
+            <div id="audit-events-${p.id}" style="margin-top:.5rem">Loading…</div>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  const cards = proposals.map(p => {
+    const isPending = p.status === 'pending_approval';
+    const auditEl = expandedRows.has(p.id)
+      ? `<div class="prop-card-audit" id="audit-content-mobile-${p.id}"><div class="audit-title">Audit trail</div><div id="audit-events-mobile-${p.id}">Loading…</div></div>`
+      : '';
+    return `
+      <div class="prop-card" onclick="toggleAuditMobile('${p.id}')">
+        <div class="prop-card-top">
+          <span class="prop-card-agent">${p.agent_name || 'unknown'}</span>
+          ${statusBadge(p.status)}
+        </div>
+        <div class="prop-card-meta">
+          <span><span class="ml">Destination</span><code>${p.destination || '—'}</code></span>
+          <span><span class="ml">Policy</span><code>${p.policy_id || '—'}</code></span>
+          <span><span class="ml">Records</span>${p.record_count || '—'}</span>
+          <span><span class="ml">Time</span>${timeAgo(p.created_at)}</span>
+          ${p.block_reason ? `<span style="color:var(--red)"><span class="ml">Blocked</span>${p.block_reason}</span>` : ''}
+        </div>
+        ${isPending ? `<div class="prop-card-actions" onclick="event.stopPropagation()">
+          <button class="btn-approve" onclick="approve('${p.id}',event)">✓ Approve</button>
+          <button class="btn-reject" onclick="openReject('${p.id}',event)">✗ Reject</button>
+        </div>` : `<a href="#" onclick="event.stopPropagation();toggleAuditMobile('${p.id}')" style="font-size:.78rem;color:var(--muted)">View audit trail</a>`}
+        ${auditEl}
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Agent</th><th>Destination</th><th>Policy</th>
+            <th style="text-align:right">Records</th><th>Time</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="card-list">${cards}</div>
+    </div>`;
+
+  // Load audit for expanded rows
+  for (const id of expandedRows) {
+    loadAudit(id);
+  }
+}
+
+async function loadAudit(proposalId) {
+  const data = await api('GET', `/audit/${proposalId}`);
+  const el = document.getElementById(`audit-events-${proposalId}`);
+  if (!el) return;
+  if (!data.events || !data.events.length) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:.78rem">No events</span>';
+    return;
+  }
+  el.innerHTML = data.events.map(e =>
+    `<div class="audit-event">
+      <span class="ae-time">${e.created_at ? e.created_at.replace('T',' ').slice(0,19) : '—'}</span>
+      <span class="ae-type">${e.event_type}</span>
+      <span class="ae-actor">${e.actor || '—'}</span>
+    </div>`
+  ).join('');
+}
+
+function toggleAudit(id, e) {
+  if (e) e.stopPropagation();
+  const content = document.getElementById(`audit-content-${id}`);
+  if (!content) return;
+  if (expandedRows.has(id)) {
+    expandedRows.delete(id);
+    content.classList.remove('open');
+  } else {
+    expandedRows.add(id);
+    content.classList.add('open');
+    loadAudit(id);
+  }
+}
+
+async function toggleAuditMobile(id) {
+  const card = document.getElementById(`audit-content-mobile-${id}`);
+  if (card) {
+    card.remove();
+    expandedRows.delete(id);
+    return;
+  }
+  expandedRows.add(id);
+  // Re-render to show audit section
+  await loadProposals();
+  // Load events
+  const data = await api('GET', `/audit/${id}`);
+  const el = document.getElementById(`audit-events-mobile-${id}`);
+  if (!el) return;
+  if (!data.events || !data.events.length) { el.textContent = 'No events'; return; }
+  el.innerHTML = data.events.map(e =>
+    `<div class="audit-event"><span class="ae-type">${e.event_type}</span><span class="ae-actor">${e.actor || ''}</span></div>`
+  ).join('');
+}
+
+async function execute(proposalId, e) {
+  if (e) e.stopPropagation();
+  const btn = e ? e.target : null;
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const res = await api('POST', `/intents/${proposalId}/execute`, {});
+    if (res.execution_id) {
+      showToast(`▶ Execution order issued — ${res.mode}`, 'success');
+    } else {
+      showToast(res.error || 'Execute failed', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to execute', 'error');
+  }
+  loadProposals();
+}
+
+async function loadMetrics() {
+  try {
+    const m = await api('GET', '/metrics');
+    document.getElementById('m-attempted').textContent = m.actions_attempted ?? '—';
+    document.getElementById('m-succeeded').textContent = m.actions_succeeded ?? '—';
+    document.getElementById('m-pending').textContent = m.actions_pending ?? '—';
+    document.getElementById('m-approved').textContent = m.actions_approved ?? '—';
+    document.getElementById('m-blocked').textContent = m.actions_blocked ?? '—';
+    document.getElementById('m-latency').textContent = m.avg_approval_latency_ms
+      ? (m.avg_approval_latency_ms < 60000 ? Math.round(m.avg_approval_latency_ms/1000)+'s' : Math.round(m.avg_approval_latency_ms/60000)+'m')
+      : '—';
+  } catch {}
+}
+
+async function approve(proposalId, e) {
+  if (e) e.stopPropagation();
+  const btn = e ? e.target : null;
+  if (btn) btn.textContent = '…';
+  try {
+    const res = await api('POST', '/approve', { proposalId });
+    if (res.status === 'approved') {
+      showToast(`✓ Approved — delivery token issued`, 'success');
+    } else {
+      showToast(res.error || 'Unexpected response', 'error');
+    }
+  } catch (err) {
+    showToast('Failed to approve', 'error');
+  }
+  loadProposals();
+}
+
+function openReject(proposalId, e) {
+  if (e) e.stopPropagation();
+  pendingRejectId = proposalId;
+  document.getElementById('rejectReason').value = '';
+  document.getElementById('rejectModal').classList.add('open');
+}
+
+function closeModal() {
+  pendingRejectId = null;
+  document.getElementById('rejectModal').classList.remove('open');
+}
+
+async function confirmReject() {
+  const reason = document.getElementById('rejectReason').value || 'Rejected from dashboard';
+  try {
+    await api('POST', '/reject', { proposalId: pendingRejectId, reason });
+    showToast('Proposal rejected', 'error');
+  } catch (err) {
+    showToast('Failed to reject', 'error');
+  }
+  closeModal();
+  loadProposals();
+}
+
+async function updateCounts() {
+  const statuses = ['pending_approval', 'approved', 'delivered', 'blocked'];
+  for (const s of statuses) {
+    try {
+      const data = await api('GET', `/proposals?status=${s}&limit=100`);
+      const count = (data.proposals || []).length;
+      const el = document.getElementById(`count-${s.replace('pending_approval','pending')}`);
+      if (el) {
+        el.textContent = count;
+        el.className = `tab-count ${count === 0 ? 'zero' : ''}`;
+      }
+    } catch {}
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', [
+      'pending_approval','approved','delivered','blocked',''
+    ][i] === tab);
+  });
+  expandedRows.clear();
+  loadProposals();
+}
+
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => loadProposals(), 10000);
+}
+
+// Init
+loadProposals();
+loadMetrics();
+startAutoRefresh();
+setInterval(loadMetrics, 30000);
+
+  const _mb = document.getElementById('_menuBtn'), _mm = document.getElementById('_mobileMenu')
+  if (_mb && _mm) {
+    const _tog = o => { _mb.classList.toggle('open', o); _mm.classList.toggle('open', o); _mb.setAttribute('aria-expanded', o); document.body.style.overflow = o ? 'hidden' : '' }
+    _mb.addEventListener('click', () => _tog(!_mm.classList.contains('open')))
+    _mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => _tog(false)))
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') _tog(false) })
+  }
+
+</script>
+</body>
+</html>
