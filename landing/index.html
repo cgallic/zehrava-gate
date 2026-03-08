@@ -454,7 +454,8 @@
       .stats-inner { grid-template-columns: repeat(2, 1fr); padding: 0 1.25rem; }
     }
     @media (max-width: 480px) {
-      .hero-h1 { font-size: 2.5rem; }
+      .hero-h1 { font-size: 2rem; }
+      .hero-sub { font-size: .925rem; }
       .hero-actions { flex-direction: column; }
       .stats-inner { grid-template-columns: 1fr 1fr; }
       .stat-item { padding: 1.25rem 1rem; }
@@ -462,6 +463,17 @@
       .ht-stat { border-right: none; border-bottom: 1px solid var(--border); }
       .ht-stat:last-child { border-bottom: none; }
       .pricing-grid { grid-template-columns: 1fr; }
+      .hero-terminal { max-width: 100%; overflow-x: hidden; }
+      .ht-line { font-size: .72rem; }
+      .fw-row { flex-wrap: wrap; gap: .5rem; }
+      .compare-table { font-size: .8rem; }
+      .compare-table th, .compare-table td { padding: .625rem .75rem; }
+      .flow-step { grid-template-columns: 40px 1fr; gap: 1rem; }
+      .flow-num { width: 40px; height: 40px; font-size: .8rem; }
+      .ic-card { padding: 1.25rem; }
+      .section-lead { font-size: .975rem; }
+      .email-form { flex-direction: column; gap: .625rem; }
+      .email-input, .email-submit { width: 100%; box-sizing: border-box; }
       .email-form { flex-direction: column; }
       .email-input, .email-submit { width: 100%; }
     }

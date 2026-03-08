@@ -20,7 +20,8 @@
       --font: "Plus Jakarta Sans", -apple-system, sans-serif;
       --mono: "JetBrains Mono", "SF Mono", monospace;
     }
-    body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; }
+    html { overflow-x: hidden; }
+    body { overflow-x: hidden; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; }
     code { font-family: var(--mono); font-size: 0.85em; }
     a { color: var(--purple); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -174,7 +175,14 @@
     .mobile-menu a:last-child { border-bottom: none; }
     .mobile-menu a:hover { color: #818cf8; }
     .mobile-menu .m-cta { margin-top: 1.5rem; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; font-size: 1rem; text-align: center; border-bottom: none !important; }
-    @media (max-width: 768px) { .menu-btn { display: flex; } .hdr-right .btn-primary, .hdr-right .btn-secondary { display: none; } }
+    @media (max-width: 768px) { .menu-btn { display: flex; }
+      .hdr-right .btn-primary, .hdr-right .btn-secondary { display: none; }
+      .intent-card { padding: .875rem 1rem; }
+      .card-meta { flex-wrap: wrap; gap: .375rem; }
+      .card-actions { flex-wrap: wrap; gap: .5rem; }
+      .reject-modal-box { width: calc(100vw - 2rem); margin: 0 1rem; }
+      .exec-detail { font-size: .75rem; word-break: break-all; }
+      .audit-events { font-size: .75rem; } }
 
 
     /* ─── METRICS BAR ─── */
