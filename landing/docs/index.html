@@ -378,7 +378,7 @@ zehrava-gate --port 4000</pre>
   - <span class="val">"refund guaranteed"</span>
   - <span class="val">"legal action"</span>
 <span class="key">expiry_minutes</span>: <span class="val">30</span></pre>
-    <p>Then propose an action from your agent:</p>
+    <p>Then submit an intent from your agent:</p>
     <pre><span class="k">const</span> { <span class="v">Gate</span> } = <span class="fn">require</span>(<span class="s">'zehrava-gate'</span>)
 <span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint: <span class="s">'http://localhost:4000'</span>, apiKey: <span class="s">'gate_sk_...'</span> })
 
@@ -396,13 +396,13 @@ zehrava-gate --port 4000</pre>
     <ul>
       <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to request execution.</li>
       <li><span class="status status-blocked">blocked</span> — violated a policy rule. Do not proceed. Check <code>blockReason</code>.</li>
-      <li><span class="status status-pending">pending_approval</span> — within policy but requires human review. Poll or wait for webhook.</li>
+      <li><span class="status status-pending">pending_approval</span> — within policy but requires human review. Poll <code>/v1/intents/:id</code> for status updates, or register a webhook.</li>
     </ul>
 
     <!-- ── POLICY OVERVIEW ── -->
     <h2 id="policy-overview">Policy overview</h2>
     <p>Policies are YAML files stored in your <code>--policy-dir</code>. Gate loads them on startup and caches them. Each policy has an <code>id</code> that your agent references when submitting an intent via <code>gate.propose()</code>.</p>
-    <p>Evaluation runs top-to-bottom through these checks — the first match wins:</p>
+    <p>Rules are evaluated top-to-bottom; the first rule that produces a decision ends evaluation:</p>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
@@ -616,7 +616,7 @@ zehrava-gate --port 4000</pre>
       </table></div>
       <pre><span class="val">{
   "intentId":       "int_a1b2c3d4e5f6",
-  "status":         "approved",          </span><span class="com">// approved | blocked | pending_approval</span><span class="val">
+  "status":         "approved",          </span><span class="com">// approved | blocked | pending_approval | duplicate_blocked</span><span class="val">
   "risk_score":     0.42,                </span><span class="com">// 0–1 composite risk signal</span><span class="val">
   "risk_level":     "medium",            </span><span class="com">// low | medium | high | critical</span><span class="val">
   "reason_code":    "approved_by_policy",
