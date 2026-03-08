@@ -284,13 +284,18 @@
     </div>
     <div class="nav-group">
       <div class="nav-group-label">API reference</div>
-      <a href="#api-register" class="nav-link"><span class="tag tag-post">POST</span> Register agent</a>
-      <a href="#api-propose" class="nav-link"><span class="tag tag-post">POST</span> Propose</a>
-      <a href="#api-approve" class="nav-link"><span class="tag tag-post">POST</span> Approve</a>
-      <a href="#api-reject" class="nav-link"><span class="tag tag-post">POST</span> Reject</a>
-      <a href="#api-deliver" class="nav-link"><span class="tag tag-post">POST</span> Deliver</a>
-      <a href="#api-proposals" class="nav-link"><span class="tag tag-get">GET</span> Proposals</a>
-      <a href="#api-audit" class="nav-link"><span class="tag tag-get">GET</span> Audit trail</a>
+    <a href="#api-agents" class="nav-link"><span class="tag tag-post">POST</span> Register agent</a>
+    <a href="#api-agents-list" class="nav-link"><span class="tag tag-get">GET</span> Agents</a>
+    <a href="#api-intents" class="nav-link"><span class="tag tag-post">POST</span> Submit intent</a>
+    <a href="#api-intents-list" class="nav-link"><span class="tag tag-get">GET</span> List intents</a>
+    <a href="#api-approve" class="nav-link"><span class="tag tag-post">POST</span> Approve</a>
+    <a href="#api-reject" class="nav-link"><span class="tag tag-post">POST</span> Reject</a>
+    <a href="#api-execute" class="nav-link"><span class="tag tag-post">POST</span> Execute</a>
+    <a href="#api-executions" class="nav-link"><span class="tag tag-get">GET</span> Execution</a>
+    <a href="#api-report" class="nav-link"><span class="tag tag-post">POST</span> Report outcome</a>
+    <a href="#api-decision" class="nav-link"><span class="tag tag-get">GET</span> Policy decision</a>
+    <a href="#api-audit" class="nav-link"><span class="tag tag-get">GET</span> Audit trail</a>
+    <a href="#api-metrics" class="nav-link"><span class="tag tag-get">GET</span> Metrics</a>
     </div>
     <div class="nav-group">
       <div class="nav-group-label">SDK</div>
@@ -802,8 +807,8 @@ zehrava-gate --port 4000</pre>
 
     <h3>gate.verify({ proposalId })</h3>
     <p>Fetch full proposal details including audit trail.</p>
-    <pre><span class="k">const</span> <span class="v">detail</span> = <span class="k">await</span> gate.<span class="fn">verify</span>({ proposalId: p.proposalId })
-<span class="cm">// detail.status, detail.auditTrail, detail.blockReason, ...</span></pre>
+    <pre><span class="k">const</span> <span class="v">detail</span> = <span class="k">await</span> gate.<span class="fn">verify</span>({ proposalId: p.intentId })
+<span class="cm">// detail.status, detail.decision, detail.risk_score, ...</span></pre>
 
 
     <h2 id="sdk-python">Python SDK</h2>
@@ -844,7 +849,7 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
     <span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"blocked"</span>:
         <span class="k">return</span> {**state, <span class="s">"error"</span>: p[<span class="s">"blockReason"</span>]}
     <span class="k">if</span> p[<span class="s">"status"</span>] == <span class="s">"pending_approval"</span>:
-        <span class="k">return</span> {**state, <span class="s">"proposal_id"</span>: p[<span class="s">"proposalId"</span>], <span class="s">"waiting"</span>: <span class="k">True</span>}
+        <span class="k">return</span> {**state, <span class="s">"intent_id"</span>: p[<span class="s">"intentId"</span>], <span class="s">"waiting"</span>: <span class="k">True</span>}
     <span class="k">return</span> {**state, <span class="s">"sent"</span>: <span class="k">True</span>}</pre>
 
     <h2 id="webhooks">Webhooks</h2>
@@ -853,21 +858,21 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
 <span class="k">const</span> p = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
 
 <span class="k">await</span> gate.<span class="fn">registerWebhook</span>({   <span class="cm">// JS SDK — coming in next release</span>
-  proposalId: p.proposalId,
+  proposalId: p.intentId,
   url: <span class="s">'https://your-app.com/gate-callback'</span>,
   secret: <span class="s">'your-secret'</span>           <span class="cm">// sent as X-Gate-Secret header</span>
 })</pre>
     <pre><span class="cm"># Python</span>
 gate.<span class="fn">register_webhook</span>(
-    proposal_id=p[<span class="s">"proposalId"</span>],
+    proposal_id=p[<span class="s">"intentId"</span>],
     url=<span class="s">"https://your-app.com/gate-callback"</span>,
     secret=<span class="s">"your-secret"</span>
 )</pre>
     <p>Gate fires once — on the first approve or reject event. The webhook payload:</p>
     <pre><span class="val">{
-  "proposalId": "prop_a1b2c3",
+  "intentId":   "prop_a1b2c3",
   "event":      "approved",        </span><span class="com">// or "rejected"</span><span class="val">
-  "deliveryToken": "dlv_••••",     </span><span class="com">// only on approved</span><span class="val">
+  "execution_order": "gex_••••",   </span><span class="com">// execution token — only on approved</span><span class="val">
   "approver":   "agent-name",
   "firedAt":    "2026-03-08T11:30:00.000Z"
 }</span></pre>
