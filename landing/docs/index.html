@@ -235,13 +235,18 @@
   </div>
   <div class="nav-group">
     <div class="nav-group-label">API reference</div>
-    <a href="#api-register" class="nav-link"><span class="tag tag-post">POST</span> Register agent</a>
-    <a href="#api-propose" class="nav-link"><span class="tag tag-post">POST</span> Propose</a>
+    <a href="#api-agents" class="nav-link"><span class="tag tag-post">POST</span> Register agent</a>
+    <a href="#api-agents-list" class="nav-link"><span class="tag tag-get">GET</span> List agents</a>
+    <a href="#api-intents" class="nav-link"><span class="tag tag-post">POST</span> Submit intent</a>
+    <a href="#api-intents-list" class="nav-link"><span class="tag tag-get">GET</span> List intents</a>
     <a href="#api-approve" class="nav-link"><span class="tag tag-post">POST</span> Approve</a>
     <a href="#api-reject" class="nav-link"><span class="tag tag-post">POST</span> Reject</a>
-    <a href="#api-deliver" class="nav-link"><span class="tag tag-post">POST</span> Deliver</a>
-    <a href="#api-proposals" class="nav-link"><span class="tag tag-get">GET</span> Proposals</a>
+    <a href="#api-execute" class="nav-link"><span class="tag tag-post">POST</span> Execute</a>
+    <a href="#api-executions" class="nav-link"><span class="tag tag-get">GET</span> Execution</a>
+    <a href="#api-report" class="nav-link"><span class="tag tag-post">POST</span> Report outcome</a>
+    <a href="#api-decision" class="nav-link"><span class="tag tag-get">GET</span> Policy decision</a>
     <a href="#api-audit" class="nav-link"><span class="tag tag-get">GET</span> Audit trail</a>
+    <a href="#api-metrics" class="nav-link"><span class="tag tag-get">GET</span> Metrics</a>
   </div>
   <div class="nav-group">
     <div class="nav-group-label">SDK</div>
@@ -254,7 +259,7 @@
     <div class="nav-group-label">Concepts</div>
     <a href="#dashboard" class="nav-link">Dashboard</a>
     <a href="#audit-trail" class="nav-link">Audit trail</a>
-    <a href="#proposal-lifecycle" class="nav-link">Lifecycle</a>
+    <a href="#intent-lifecycle" class="nav-link">Intent lifecycle</a>
     <a href="#fail-closed" class="nav-link">Fail closed</a>
     <a href="#multi-agent" class="nav-link">Multi-agent</a>
   </div>
@@ -301,7 +306,7 @@
     </div>
     <div class="nav-group">
       <div class="nav-group-label">Concepts</div>
-      <a href="#proposal-lifecycle" class="nav-link">Proposal lifecycle</a>
+      <a href="#intent-lifecycle" class="nav-link">Proposal lifecycle</a>
       <a href="#fail-closed" class="nav-link">Fail closed</a>
       <a href="#multi-agent" class="nav-link">Multi-agent</a>
     </div>
@@ -520,124 +525,240 @@ zehrava-gate --port 4000</pre>
 <span class="key">expiry_minutes</span>: <span class="val">120</span></pre>
 
     <!-- ── API REFERENCE ── -->
-    <h2 id="api-register">API — Register agent</h2>
+    <div class="callout callout-info" style="margin-bottom:1.5rem">
+      <strong>V1 backward compat:</strong> <code>/v1/propose</code>, <code>/v1/approve</code>, <code>/v1/reject</code>, <code>/v1/deliver</code>, and <code>/v1/proposals</code> still work. V2 canonical routes are <code>/v1/intents</code> and <code>/v1/executions</code>.
+    </div>
+
+    <h2 id="api-agents">API — Register agent</h2>
     <div class="endpoint-block">
       <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/agents/register</span></div>
-      <div class="endpoint-desc">Register a new agent and receive an API key. No authentication required — this is the bootstrap endpoint.</div>
+      <div class="endpoint-desc">Bootstrap endpoint — no authentication required. Returns an API key for all subsequent calls.</div>
       <hr>
-      <p><strong>Request body</strong></p>
       <div class="table-scroll"><table class="field-table">
         <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td>name <span class="req">*</span></td><td>string</td><td>Human-readable agent name. Appears in audit logs and the dashboard.</td></tr>
           <tr><td>riskTier</td><td>string</td><td><code>standard</code> | <code>elevated</code> | <code>restricted</code>. Default: <code>standard</code>.</td></tr>
+          <tr><td>owner</td><td>string</td><td>Team or system that owns this agent. Stored in registry.</td></tr>
+          <tr><td>allowed_policies</td><td>string[]</td><td>Policy IDs this agent is permitted to invoke. Omit to allow all.</td></tr>
+          <tr><td>allowed_destinations</td><td>string[]</td><td>Destinations this agent is permitted to target. Omit to allow all.</td></tr>
+          <tr><td>framework</td><td>string</td><td>Agent framework: <code>langgraph</code>, <code>crewai</code>, <code>autogen</code>, <code>custom</code>, etc. Informational.</td></tr>
+          <tr><td>metadata</td><td>object</td><td>Arbitrary key/value pairs. Stored in registry.</td></tr>
         </tbody>
       </table></div>
       <pre><span class="val">{
   "agentId":  "agt_a1b2c3d4",
   "apiKey":   "gate_sk_••••••••••••",
-  "name":     "my-agent",
-  "riskTier": "standard"
+  "name":     "my-crm-agent",
+  "status":   "active"
 }</span></pre>
     </div>
 
-    <h2 id="api-propose">API — Propose</h2>
+    <h2 id="api-agents-list">API — Agent registry</h2>
     <div class="endpoint-block">
-      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/propose</span></div>
-      <div class="endpoint-desc">Submit an agent action for policy evaluation. Returns immediately with a status.</div>
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/agents</span></div>
+      <div class="endpoint-desc">List all registered agents and their status.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+    </div>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/agents/:id</span></div>
+      <div class="endpoint-desc">Get a single agent by ID, including registry metadata and allowed policies/destinations.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+    </div>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/agents/:id/revoke</span></div>
+      <div class="endpoint-desc">Permanently revoke an agent's API key. All subsequent requests from that agent will return <code>401</code>.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+    </div>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/agents/:id/suspend</span></div>
+      <div class="endpoint-desc">Temporarily suspend an agent. Suspended agents cannot submit intents. Reactivate by calling register again.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+    </div>
+
+    <h2 id="api-intents">API — Submit intent</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/intents</span></div>
+      <div class="endpoint-desc">Submit an agent action for policy evaluation. Gate evaluates synchronously and returns a decision immediately.</div>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <div class="table-scroll"><table class="field-table">
         <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td>destination <span class="req">*</span></td><td>string</td><td>Target system identifier (e.g. <code>zendesk.reply</code>). Must match your policy's <code>destinations</code> allowlist.</td></tr>
-          <tr><td>policy <span class="req">*</span></td><td>string</td><td>Policy ID to evaluate against (matches YAML filename without extension).</td></tr>
-          <tr><td>payload</td><td>string</td><td>The content being proposed. Text content, JSON string, or file path (detected by extension). Term scanning only applies to text content.</td></tr>
-          <tr><td>recordCount</td><td>number</td><td>Number of records in a batch operation. Used for threshold evaluation (<code>auto_approve_under</code>, <code>require_approval_over</code>).</td></tr>
-          <tr><td>expiresIn</td><td>string</td><td>Expiry duration: <code>30m</code>, <code>1h</code>, <code>2h</code>. Default: <code>1h</code>. Overrides policy <code>expiry_minutes</code>.</td></tr>
-          <tr><td>on_behalf_of</td><td>string</td><td>Agent ID of the orchestrating agent in multi-agent pipelines. Logged in the audit trail for accountability.</td></tr>
-          <tr><td>metadata</td><td>object</td><td>Arbitrary key/value pairs. Stored with the proposal and included in audit events.</td></tr>
+          <tr><td>destination <span class="req">*</span></td><td>string</td><td>Target system (e.g. <code>salesforce.import</code>). Must match your policy's <code>destinations</code> allowlist.</td></tr>
+          <tr><td>policy <span class="req">*</span></td><td>string</td><td>Policy ID to evaluate (matches YAML filename without extension).</td></tr>
+          <tr><td>payload</td><td>string</td><td>Content being proposed. Text, JSON string, or file path. Term scanning applies to text content.</td></tr>
+          <tr><td>recordCount</td><td>number</td><td>Batch size. Used for threshold evaluation (<code>auto_approve_under</code>, <code>require_approval_over</code>).</td></tr>
+          <tr><td>estimated_value_usd</td><td>number</td><td>Estimated financial value. Contributes to risk score.</td></tr>
+          <tr><td>sensitivity_tags</td><td>string[]</td><td>Data sensitivity labels: <code>pii</code>, <code>financial</code>, <code>health</code>, <code>legal</code>. Contributes to risk score.</td></tr>
+          <tr><td>idempotency_key</td><td>string</td><td>If set, duplicate submissions with the same key + agent return <code>409 duplicate_blocked</code> instead of re-evaluating.</td></tr>
+          <tr><td>on_behalf_of</td><td>string</td><td>Agent ID of the orchestrating agent. Logged in audit trail for multi-agent accountability.</td></tr>
+          <tr><td>expiresIn</td><td>string</td><td>Approval window: <code>30m</code>, <code>1h</code>, <code>2h</code>. Default: <code>1h</code>.</td></tr>
+          <tr><td>metadata</td><td>object</td><td>Arbitrary key/value pairs. Stored with the intent and included in audit events.</td></tr>
         </tbody>
       </table></div>
       <pre><span class="val">{
-  "proposalId": "prop_a1b2c3d4e5f6",
-  "status":     "approved",          </span><span class="com">// approved | blocked | pending_approval</span><span class="val">
-  "blockReason": null,               </span><span class="com">// set if blocked</span><span class="val">
-  "expiresAt":  "2026-03-08T12:00:00.000Z"
+  "intentId":       "prop_a1b2c3d4e5f6",
+  "status":         "approved",          </span><span class="com">// approved | blocked | pending_approval</span><span class="val">
+  "risk_score":     0.42,                </span><span class="com">// 0–1 composite risk signal</span><span class="val">
+  "risk_level":     "medium",            </span><span class="com">// low | medium | high | critical</span><span class="val">
+  "reason_code":    "approved_by_policy",
+  "blockReason":    null,
+  "expiresAt":      "2026-03-08T12:00:00.000Z"
 }</span></pre>
+      <p style="margin-top:.75rem"><strong>Status values:</strong> <code>approved</code> · <code>blocked</code> · <code>pending_approval</code> · <code>duplicate_blocked</code></p>
+      <p style="margin-top:.5rem"><strong>Reason codes:</strong> <code>approved_by_policy</code> · <code>record_threshold_exceeded</code> · <code>blocked_term_detected</code> · <code>destination_not_allowed</code> · <code>sensitive_data_detected</code> · <code>manual_review_required</code></p>
     </div>
 
-    <h2 id="api-approve">API — Approve</h2>
+    <h2 id="api-intents-list">API — List intents</h2>
     <div class="endpoint-block">
-      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/approve</span></div>
-      <div class="endpoint-desc">Approve a pending proposal. Returns a one-time delivery token.</div>
-      <hr>
-      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
-      <div class="table-scroll"><table class="field-table">
-        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td>proposalId <span class="req">*</span></td><td>string</td><td>The proposal ID returned from <code>/v1/propose</code>.</td></tr>
-        </tbody>
-      </table></div>
-      <pre><span class="val">{ "status": "approved", "deliveryToken": "dlv_••••••••••••" }</span></pre>
-      <p style="margin-top:.75rem">Blocked proposals cannot be approved — the endpoint returns <code>409</code>.</p>
-    </div>
-
-    <h2 id="api-reject">API — Reject</h2>
-    <div class="endpoint-block">
-      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/reject</span></div>
-      <div class="endpoint-desc">Reject a pending proposal. Sets status to <code>blocked</code>.</div>
-      <hr>
-      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
-      <div class="table-scroll"><table class="field-table">
-        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td>proposalId <span class="req">*</span></td><td>string</td><td>Proposal to reject.</td></tr>
-          <tr><td>reason</td><td>string</td><td>Rejection reason. Stored in audit trail.</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <h2 id="api-deliver">API — Deliver</h2>
-    <div class="endpoint-block">
-      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/deliver</span></div>
-      <div class="endpoint-desc">Get a one-time download URL for an approved proposal's payload. The URL can only be used once — subsequent calls return <code>410 Gone</code>.</div>
-      <hr>
-      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
-      <pre><span class="val">{
-  "url":           "https://your-gate-server/v1/download/dlv_••••",
-  "deliveryToken": "dlv_••••••••••••",
-  "expiresAt":     "2026-03-08T12:00:00.000Z"
-}</span></pre>
-    </div>
-
-    <h2 id="api-proposals">API — List proposals</h2>
-    <div class="endpoint-block">
-      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/proposals?status=pending_approval&amp;limit=50</span></div>
-      <div class="endpoint-desc">List proposals with optional status filter. Used by the dashboard.</div>
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/intents?status=pending_approval&amp;limit=50</span></div>
+      <div class="endpoint-desc">List intents with optional status filter. Used by the dashboard approval queue.</div>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <div class="table-scroll"><table class="field-table">
         <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td>status</td><td>string</td><td>Filter by: <code>pending_approval</code>, <code>approved</code>, <code>blocked</code>, <code>delivered</code>, <code>expired</code>. Omit for all.</td></tr>
+          <tr><td>status</td><td>string</td><td>Filter: <code>pending_approval</code> · <code>approved</code> · <code>blocked</code> · <code>scheduled</code> · <code>executing</code> · <code>succeeded</code> · <code>failed</code> · <code>expired</code>. Omit for all.</td></tr>
           <tr><td>limit</td><td>number</td><td>Max results. Default: 50.</td></tr>
         </tbody>
       </table></div>
     </div>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/intents/:id</span></div>
+      <div class="endpoint-desc">Fetch a single intent by ID including full policy decision fields.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+    </div>
+
+    <h2 id="api-approve">API — Approve</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/intents/:id/approve</span></div>
+      <div class="endpoint-desc">Approve a pending intent. Transitions state to <code>approved</code>. The intent can then be executed.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">{ "status": "approved", "approvedAt": "2026-03-08T12:00:00.000Z" }</span></pre>
+      <p style="margin-top:.75rem">Already-blocked intents return <code>409</code>.</p>
+    </div>
+
+    <h2 id="api-reject">API — Reject</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/intents/:id/reject</span></div>
+      <div class="endpoint-desc">Reject a pending intent. Sets status to <code>blocked</code>.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>reason</td><td>string</td><td>Rejection reason. Stored in audit trail.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <h2 id="api-execute">API — Execute</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/intents/:id/execute</span></div>
+      <div class="endpoint-desc">Request a signed execution order for an approved intent. The order authorizes a worker to perform the write inside your infrastructure. Token expires in 15 minutes.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">{
+  "executionId":    "exec_a1b2c3d4",
+  "execution_token": "gex_••••••••••••",  </span><span class="com">// one-time, 15min TTL</span><span class="val">
+  "intent_id":      "prop_a1b2c3d4e5f6",
+  "expires_at":     "2026-03-08T12:15:00.000Z",
+  "mode":           "runner_exec"
+}</span></pre>
+      <p style="margin-top:.75rem">Returns <code>409</code> if intent is not in <code>approved</code> state. Returns <code>409</code> if an active execution already exists for this intent.</p>
+    </div>
+
+    <h2 id="api-executions">API — Execution status</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/executions/:id</span></div>
+      <div class="endpoint-desc">Fetch an execution record including mode, worker report, and outcome.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">{
+  "executionId":  "exec_a1b2c3d4",
+  "intent_id":    "prop_a1b2c3d4e5f6",
+  "mode":         "runner_exec",
+  "status":       "succeeded",          </span><span class="com">// pending | executing | succeeded | failed | expired</span><span class="val">
+  "worker_report": { "note": "Imported 847 records" },
+  "created_at":   "2026-03-08T12:00:00.000Z",
+  "completed_at": "2026-03-08T12:00:04.000Z"
+}</span></pre>
+    </div>
+
+    <h2 id="api-report">API — Report outcome</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-post">POST</span> <span class="endpoint-path">/v1/executions/:id/report</span></div>
+      <div class="endpoint-desc">Worker calls this after executing the write. Transitions intent to <code>succeeded</code> or <code>failed</code>. Accepts either the one-time execution token or a valid API key.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;execution_token&gt;</code> or <code>Bearer &lt;apiKey&gt;</code></p>
+      <div class="table-scroll"><table class="field-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>status <span class="req">*</span></td><td>string</td><td><code>succeeded</code> or <code>failed</code></td></tr>
+          <tr><td>report</td><td>object</td><td>Arbitrary worker report data. Stored with execution record.</td></tr>
+        </tbody>
+      </table></div>
+      <pre><span class="cm">// Worker reports success</span>
+<span class="val">{
+  "status":  "succeeded",
+  "report":  { "records_written": 847, "duration_ms": 1240 }
+}</span></pre>
+    </div>
+
+    <h2 id="api-decision">API — Policy decision</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/intents/:id/decision</span></div>
+      <div class="endpoint-desc">Fetch the stored policy decision record for an intent — reason code, risk score, risk level, and matched factors.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">{
+  "intent_id":    "prop_a1b2c3d4e5f6",
+  "decision":     "approved",
+  "reason_code":  "approved_by_policy",
+  "risk_score":   0.42,
+  "risk_level":   "medium",
+  "evaluated_at": "2026-03-08T12:00:00.000Z"
+}</span></pre>
+    </div>
 
     <h2 id="api-audit">API — Audit trail</h2>
     <div class="endpoint-block">
-      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/audit/:proposalId</span></div>
-      <div class="endpoint-desc">Full audit trail for a proposal — every event in order: proposed, policy_checked, approved/blocked, delivered, expired.</div>
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/intents/:id/audit</span></div>
+      <div class="endpoint-desc">Full audit trail for an intent — every state transition in order.</div>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <pre><span class="val">[
   { "eventType": "proposed",       "actor": "my-crm-agent", "createdAt": "..." },
-  { "eventType": "policy_checked", "actor": "system",       "metadata": { "result": "approved" } },
+  { "eventType": "policy_checked", "actor": "system",       "metadata": { "result": "approved", "risk_score": 0.42 } },
   { "eventType": "auto_approved",  "actor": "system",       "createdAt": "..." },
-  { "eventType": "delivered",      "actor": "system",       "createdAt": "..." }
+  { "eventType": "execution_requested", "actor": "my-crm-agent", "createdAt": "..." },
+  { "eventType": "succeeded",      "actor": "worker",       "createdAt": "..." }
 ]</span></pre>
+    </div>
+
+    <h2 id="api-metrics">API — Metrics</h2>
+    <div class="endpoint-block">
+      <div><span class="method method-get">GET</span> <span class="endpoint-path">/v1/metrics</span></div>
+      <div class="endpoint-desc">Aggregated counters across all intents and executions. Used by the dashboard metrics bar.</div>
+      <hr>
+      <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
+      <pre><span class="val">{
+  "actions_attempted":    142,
+  "actions_blocked":      18,
+  "actions_pending":      3,
+  "actions_approved":     121,
+  "actions_succeeded":    115,
+  "actions_failed":       6,
+  "actions_duplicate":    4,
+  "avg_approval_latency_ms": 4320
+}</span></pre>
     </div>
 
     <!-- ── SDK ── -->
@@ -655,7 +776,7 @@ zehrava-gate --port 4000</pre>
 
     <h2 id="sdk-methods">SDK — Methods</h2>
     <h3>gate.propose(opts)</h3>
-    <p>Mirrors the <code>POST /v1/propose</code> endpoint. All fields from the API are supported.</p>
+    <p>Submits intent to <code>POST /v1/intents</code>. All V2 fields supported. The <code>/v1/propose</code> alias still works for backward compat.</p>
     <pre><span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({
   payload:      <span class="s">'./leads.csv'</span>,
   destination:  <span class="s">'salesforce.import'</span>,
@@ -664,17 +785,20 @@ zehrava-gate --port 4000</pre>
   on_behalf_of: <span class="s">'agt_orchestrator_id'</span>,  <span class="cm">// optional</span>
   expiresIn:    <span class="s">'2h'</span>                      <span class="cm">// optional</span>
 })
-<span class="cm">// p.proposalId, p.status, p.blockReason, p.expiresAt</span></pre>
+<span class="cm">// p.intentId, p.status, p.risk_score, p.risk_level, p.blockReason, p.expiresAt</span></pre>
 
     <h3>gate.approve({ proposalId })</h3>
-    <pre><span class="k">await</span> gate.<span class="fn">approve</span>({ proposalId: p.proposalId })</pre>
+    <p>Calls <code>POST /v1/intents/:id/approve</code>.</p>
+    <pre><span class="k">await</span> gate.<span class="fn">approve</span>({ proposalId: p.intentId })</pre>
 
     <h3>gate.reject({ proposalId, reason })</h3>
-    <pre><span class="k">await</span> gate.<span class="fn">reject</span>({ proposalId: p.proposalId, reason: <span class="s">'Flagged for review'</span> })</pre>
+    <p>Calls <code>POST /v1/intents/:id/reject</code>.</p>
+    <pre><span class="k">await</span> gate.<span class="fn">reject</span>({ proposalId: p.intentId, reason: <span class="s">'Flagged for review'</span> })</pre>
 
-    <h3>gate.deliver({ proposalId })</h3>
-    <pre><span class="k">const</span> { <span class="v">url</span> } = <span class="k">await</span> gate.<span class="fn">deliver</span>({ proposalId: p.proposalId })
-<span class="cm">// url is a one-time download link — use it once, then it's gone</span></pre>
+    <h3>gate.execute({ proposalId })</h3>
+    <p>Calls <code>POST /v1/intents/:id/execute</code>. Returns a signed execution order with a 15-minute token.</p>
+    <pre><span class="k">const</span> <span class="v">order</span> = <span class="k">await</span> gate.<span class="fn">execute</span>({ proposalId: p.intentId })
+<span class="cm">// order.executionId, order.execution_token, order.expires_at</span></pre>
 
     <h3>gate.verify({ proposalId })</h3>
     <p>Fetch full proposal details including audit trail.</p>
@@ -770,28 +894,41 @@ gate.<span class="fn">register_webhook</span>(
     <p>Every proposal generates an immutable sequence of audit events, written server-side. Agents have no API route to write or modify audit events.</p>
     <p>Event types in order:</p>
     <ul>
-      <li><strong>proposed</strong> — agent submitted the proposal</li>
-      <li><strong>policy_checked</strong> — Gate evaluated the policy</li>
+      <li><strong>proposed</strong> — agent submitted the intent</li>
+      <li><strong>policy_checked</strong> — Gate evaluated policy and risk score</li>
       <li><strong>auto_approved</strong> — passed all rules within auto-approve threshold</li>
-      <li><strong>blocked</strong> — violated a policy rule (includes reason)</li>
-      <li><strong>approved</strong> — human approved in dashboard (includes approver name)</li>
+      <li><strong>blocked</strong> — violated a policy rule (includes reason_code)</li>
+      <li><strong>approved</strong> — human approved in dashboard</li>
       <li><strong>rejected</strong> — human rejected (includes reason)</li>
-      <li><strong>delivery_url_issued</strong> — one-time download URL created</li>
-      <li><strong>delivered</strong> — payload downloaded (consumed)</li>
-      <li><strong>expired</strong> — proposal passed its expiry window</li>
+      <li><strong>execution_requested</strong> — execution order issued (15-min token)</li>
+      <li><strong>succeeded</strong> — worker reported successful execution</li>
+      <li><strong>failed</strong> — worker reported execution failure</li>
+      <li><strong>expired</strong> — intent passed its approval window without action</li>
+      <li><strong>duplicate_blocked</strong> — idempotency_key matched an existing intent</li>
     </ul>
 
     <!-- ── CONCEPTS ── -->
-    <h2 id="proposal-lifecycle">Proposal lifecycle</h2>
-    <pre>propose
+    <h2 id="intent-lifecycle">Intent lifecycle</h2>
+    <pre>POST /v1/intents
   ↓
-policy evaluation
-  ├── blocked        → terminal. Cannot be approved.
-  ├── approved       → delivery token issued. One-time download available.
-  └── pending        → waits in dashboard for human action
-                          ├── approved → delivery token issued
-                          ├── rejected → terminal (status: blocked)
-                          └── expired  → terminal. Cannot be approved.</pre>
+policy evaluation + risk scoring
+  ├── blocked              → terminal. Cannot be approved.
+  ├── duplicate_blocked    → terminal. Idempotency key matched.
+  ├── approved (auto)      → ready for execution
+  └── pending_approval     → waits in dashboard for human action
+        ├── approved        → ready for execution
+        ├── rejected        → terminal (status: blocked)
+        └── expired         → terminal. Cannot be approved.
+
+approved
+  ↓
+POST /v1/intents/:id/execute → execution order (15-min token)
+  ↓
+worker executes in your VPC
+  ↓
+POST /v1/executions/:id/report
+  ├── succeeded  → terminal
+  └── failed     → terminal</pre>
 
     <h2 id="fail-closed">Fail closed</h2>
     <p><strong>If Gate is unreachable, your agent must halt — not proceed.</strong></p>
