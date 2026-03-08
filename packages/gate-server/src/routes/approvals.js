@@ -36,7 +36,7 @@ router.post('/approve', authenticate, (req, res) => {
   if (proposal.status === 'approved') {
     // Already approved — return existing manifest token
     const manifest = db.prepare('SELECT * FROM manifests WHERE proposal_id = ?').get(proposalId);
-    return res.json({ status: 'approved', deliveryToken: manifest?.delivery_token });
+    return res.json({ status: 'approved', approvedAt: new Date().toISOString(), intentId: proposalId, deliveryToken: manifest?.delivery_token });
   }
 
   // Check expiry
@@ -65,7 +65,7 @@ router.post('/approve', authenticate, (req, res) => {
     autoDeliver(proposalId, proposal.destination, deliveryToken);
   }
 
-  res.json({ status: 'approved', deliveryToken, autoDeliver: AUTO_DELIVER_DESTINATIONS.includes(proposal.destination) });
+  res.json({ status: 'approved', approvedAt: new Date().toISOString(), intentId: proposalId, deliveryToken, autoDeliver: AUTO_DELIVER_DESTINATIONS.includes(proposal.destination) });
 });
 
 // POST /v1/reject
@@ -123,12 +123,13 @@ async function fireWebhook(proposalId, event, data) {
 
 // POST /v1/webhooks/register — register a callback URL for a proposal
 router.post('/webhooks/register', authenticate, (req, res) => {
-  const { proposalId, url, secret } = req.body;
-  if (!proposalId || !url) return res.status(400).json({ error: 'proposalId and url are required' });
-  const proposal = db.prepare('SELECT id FROM proposals WHERE id = ?').get(proposalId);
-  if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
-  registerWebhook(proposalId, url, secret);
-  res.json({ registered: true, proposalId, url });
+  const intentId = req.body.intentId || req.body.proposalId;
+  const { url, secret } = req.body;
+  if (!intentId || !url) return res.status(400).json({ error: 'intentId (or proposalId) and url are required' });
+  const proposal = db.prepare('SELECT id FROM proposals WHERE id = ?').get(intentId);
+  if (!proposal) return res.status(404).json({ error: 'Intent not found' });
+  registerWebhook(intentId, url, secret);
+  res.json({ registered: true, intentId, url });
 });
 
 module.exports.registerWebhook = registerWebhook;

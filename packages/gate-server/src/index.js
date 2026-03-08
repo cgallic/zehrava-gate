@@ -36,7 +36,7 @@ app.use((req, res, next) => {
 
 // Health
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'zehrava-gate', version: '0.1.0' });
+  res.json({ status: 'ok', service: 'zehrava-gate', version: '0.2.0' });
 });
 
 // Legacy agent endpoints now handled by agentsRouter
