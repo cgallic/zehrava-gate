@@ -352,7 +352,7 @@ zehrava-gate --port 4000</pre>
 
     <!-- ── REGISTER AGENT ── -->
     <h2 id="register-agent">Register an agent</h2>
-    <p>Before an agent can propose actions, it needs to be registered. Registration returns an API key — store this securely. It cannot be retrieved again.</p>
+    <p>Before an agent can submit intents, it needs to be registered. Registration returns an API key — store this securely. It cannot be retrieved again.</p>
     <pre>curl -X POST http://localhost:4000/v1/agents/register \
   -H "Content-Type: application/json" \
   -d '{"name": "my-crm-agent", "riskTier": "standard"}'</pre>
@@ -401,7 +401,7 @@ zehrava-gate --port 4000</pre>
 
     <!-- ── POLICY OVERVIEW ── -->
     <h2 id="policy-overview">Policy overview</h2>
-    <p>Policies are YAML files stored in your <code>--policy-dir</code>. Gate loads them on startup and caches them. Each policy has an <code>id</code> that your agent references in the <code>propose</code> call.</p>
+    <p>Policies are YAML files stored in your <code>--policy-dir</code>. Gate loads them on startup and caches them. Each policy has an <code>id</code> that your agent passes to <code>gate.propose()</code>.</p>
     <p>Evaluation runs top-to-bottom through these checks — the first match wins:</p>
     <div class="steps">
       <div class="step">
@@ -468,7 +468,7 @@ zehrava-gate --port 4000</pre>
         <tr>
           <td>destinations</td>
           <td>string[]</td>
-          <td>Allowlist of destination identifiers. Intents to any other destination are blocked. Omit to allowlow any destination.</td>
+          <td>Allowlist of destination identifiers. Intents to any other destination are blocked. Omit to allow any destination.</td>
         </tr>
         <tr>
           <td>allowed_types</td>
@@ -538,7 +538,7 @@ zehrava-gate --port 4000</pre>
 
     <!-- ── API REFERENCE ── -->
     <div class="callout callout-info" style="margin-bottom:1.5rem">
-      <strong>V1 backward compat:</strong> <code>/v1/propose</code>, <code>/v1/approve</code>, <code>/v1/reject</code>, <code>/v1/deliver</code>, and <code>/v1/intents</code> still work. V2 canonical routes are <code>/v1/intents</code> and <code>/v1/executions</code>.
+      <strong>V1 backward compat:</strong> <code>/v1/propose</code>, <code>/v1/approve</code>, <code>/v1/reject</code>, <code>/v1/deliver</code>, and <code>/v1/proposals</code> still work. Canonical routes are <code>/v1/intents</code> and <code>/v1/executions</code>.
     </div>
 
     <h2 id="api-agents">API — Register agent</h2>
@@ -877,7 +877,7 @@ gate.<span class="fn">register_webhook</span>(
     url=<span class="s">"https://your-app.com/gate-callback"</span>,
     secret=<span class="s">"your-secret"</span>
 )</pre>
-    <p>Gate fires once — on the first approve or reject event. The webhook payload:</p>
+    <p>The webhook payload:</p>
     <pre><span class="val">{
   "intentId":   "int_a1b2c3d4",
   "event":      "approved",        </span><span class="com">// approved | rejected | succeeded | failed | expired | duplicate_blocked</span><span class="val">
@@ -941,8 +941,8 @@ execution_requested (POST /v1/intents/:id/execute)
 worker executes in your VPC (runner_exec)
   ↓
 POST /v1/executions/:id/report
-  ├── succeeded  → terminal
-  └── failed     → terminal</pre>
+  ├── execution_succeeded  → terminal
+  └── execution_failed     → terminal</pre>
 
     <h2 id="fail-closed">Fail closed</h2>
     <p><strong>If Gate is unreachable, your agent must halt — not proceed.</strong></p>
