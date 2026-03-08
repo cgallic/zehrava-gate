@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gate V3 — Proxy Architecture & Credential Providers | Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Gate V3: network-level enforcement via forward proxy, per-destination reverse proxy, and credential vault integration with 1Password, HashiCorp Vault, and AWS Secrets Manager.">
+  <meta property="og:title" content="Gate V3 — Proxy Architecture & Credential Providers">
+  <meta property="og:url" content="https://zehrava.com/v3/">
+  <meta name="robots" content="index, follow">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --purple-b: #818cf8;
+      --green: #22c55e; --green-d: #16a34a;
+      --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #0d1117;
+      --border: rgba(255,255,255,0.07);
+      --text: #f0f0f0; --muted: #888; --muted2: #aaa;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple-b); text-decoration: none; } a:hover { text-decoration: underline; }
+
+    /* Header */
+    header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+    .logo span { color: var(--purple); }
+    .hdr-links { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .hdr-links a { color: var(--muted); }
+    .hdr-cta { background: var(--green-d); color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.82rem; }
+
+    /* Layout */
+    main { max-width: 800px; margin: 0 auto; padding: 4rem 1.5rem 7rem; }
+
+    /* Top badge */
+    .version-row { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; }
+    .v-badge { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); color: var(--purple-b); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; }
+    .status-badge { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: var(--amber); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; }
+
+    h1 { font-size: clamp(2rem, 4.5vw, 3.2rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem; }
+    h1 em { color: var(--green); font-style: normal; }
+    .lead { font-size: 1.1rem; color: var(--muted2); margin-bottom: 3rem; max-width: 660px; line-height: 1.85; }
+
+    /* Section headers */
+    h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.025em; margin: 3rem 0 1rem; }
+    h2 .num { color: var(--purple-b); font-variant-numeric: tabular-nums; margin-right: 6px; }
+    h3 { font-size: 1rem; font-weight: 700; color: var(--green); margin: 1.75rem 0 0.5rem; letter-spacing: -0.01em; }
+
+    p { color: var(--muted2); margin-bottom: 1rem; }
+    p strong { color: var(--text); }
+    ul, ol { color: var(--muted2); padding-left: 1.4rem; margin-bottom: 1rem; }
+    li { margin-bottom: 0.4rem; }
+    li strong { color: var(--text); }
+
+    code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.07); padding: 2px 7px; border-radius: 4px; font-size: 0.83em; color: #a5b4fc; }
+    pre { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; margin: 1rem 0 1.75rem; }
+    pre code { background: none; padding: 0; font-size: 0.8rem; color: #e2e8f0; line-height: 1.75; }
+    .cm { color: #6b7280; }
+    .k { color: #c084fc; }
+    .s { color: #86efac; }
+    .fn { color: #93c5fd; }
+    .kw { color: #fbbf24; }
+
+    /* Flow diagram */
+    .flow { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem 2rem; margin: 1.5rem 0; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 2; color: #ccc; overflow-x: auto; }
+    .flow .arrow { color: var(--muted); }
+    .flow .node { color: var(--text); font-weight: 600; }
+    .flow .gate { color: var(--purple-b); font-weight: 700; }
+    .flow .block { color: #ef4444; }
+    .flow .pass { color: var(--green); }
+    .flow .hold { color: var(--amber); }
+    .flow .vault { color: #f0abfc; }
+
+    /* Phase cards */
+    .phases { display: grid; gap: 1rem; margin: 1.5rem 0; }
+    .phase { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start; }
+    .phase-num { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 700; color: var(--purple-b); background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: 6px; padding: 4px 10px; white-space: nowrap; }
+    .phase-num.shipped { color: var(--green); background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
+    .phase-num.next { color: var(--amber); background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+    .phase-title { font-weight: 700; color: var(--text); font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .phase-desc { font-size: 0.85rem; color: var(--muted2); line-height: 1.6; }
+
+    /* Providers table */
+    .providers { display: grid; gap: 0.75rem; margin: 1rem 0 1.5rem; }
+    .provider { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .provider-name { font-weight: 700; color: var(--text); font-size: 0.9rem; }
+    .provider-detail { font-size: 0.8rem; color: var(--muted); }
+    .provider-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+    .tag-v3 { background: rgba(99,102,241,0.1); color: var(--purple-b); border: 1px solid rgba(99,102,241,0.2); }
+    .tag-v31 { background: rgba(245,158,11,0.08); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+
+    /* Callouts */
+    .callout { border-radius: 10px; padding: 1.1rem 1.4rem; margin: 1.5rem 0; font-size: 0.9rem; line-height: 1.7; }
+    .callout-key { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); color: #c7d2fe; }
+    .callout-warn { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); color: #fde68a; }
+    .callout strong { color: var(--text); }
+
+    /* CTA */
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 3rem; }
+    .btn-primary { background: var(--green-d); color: #fff; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+    .btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; }
+    .btn-primary:hover, .btn-secondary:hover { text-decoration: none; opacity: 0.9; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+
+    @media (max-width: 640px) {
+      header { padding: 1rem 1.25rem; }
+      .hdr-links { display: none; }
+      main { padding: 2.5rem 1.25rem 5rem; }
+      .provider { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">zehrava <span>gate</span></div>
+  <nav class="hdr-links">
+    <a href="/">Home</a>
+    <a href="/docs/">Docs</a>
+    <a href="/demo/">Demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate">GitHub</a>
+    <a href="/demo/" class="hdr-cta">Try V2 demo →</a>
+  </nav>
+</header>
+
+<main>
+
+  <div class="version-row">
+    <span class="v-badge">Gate V3</span>
+    <span class="status-badge">In Design</span>
+  </div>
+
+  <h1>Enforcement, not cooperation.<br><em>The proxy architecture.</em></h1>
+
+  <p class="lead">Gate V2 governs agent writes if the agent calls the SDK. V3 closes that gap. A forward proxy, credential vault integration, and network-level enforcement that works regardless of whether the agent was written to cooperate.</p>
+
+  <h2><span class="num">—</span> The problem with cooperative governance</h2>
+
+  <p>V2 is opt-in. An agent that doesn't call <code>gate.propose()</code> writes directly to production. A retry loop that doesn't check for <code>duplicate_blocked</code> fires twice. A developer who ships fast skips the integration. Cooperative governance has holes.</p>
+
+  <p>V3 puts Gate in the path — not the application layer. The agent's HTTP call hits Gate's proxy first. Gate evaluates policy, holds or passes. The agent doesn't need to call the SDK. <strong>There's no path around it.</strong></p>
+
+  <div class="flow">
+<span class="cm">── V2: cooperative ─────────────────────────────────────</span>
+Agent  →  SDK.propose()  →  <span class="gate">Gate API</span>  →  approved  →  Agent executes directly
+                            ↑ optional — agent can skip entirely
+
+<span class="cm">── V3: enforced ─────────────────────────────────────────</span>
+Agent  →  HTTP request  →  <span class="gate">Gate Proxy</span>  →  <span class="pass">auto-approved → forwards to destination</span>
+                                         →  <span class="hold">pending → holds request, returns 202 + intentId</span>
+                                         →  <span class="block">blocked → 403, reason in response</span>
+                                         →  <span class="vault">vault mode → Gate fetches credential + executes</span>
+  </div>
+
+  <h2><span class="num">—</span> Three deployment modes</h2>
+
+  <h3>Mode A — Forward proxy</h3>
+  <p>One environment variable. Agent code unchanged. All outbound HTTP routes through Gate.</p>
+
+<pre><code><span class="cm"># Agent environment — no code change required</span>
+<span class="kw">export</span> HTTP_PROXY=http://gate.internal:4001
+<span class="kw">export</span> HTTPS_PROXY=http://gate.internal:4001
+
+<span class="cm"># Gate intercepts every outbound call</span>
+<span class="cm"># Destination host maps to policy via destination registry</span>
+<span class="cm"># api.sendgrid.com → sendgrid.send → policy: outbound-email</span></code></pre>
+
+  <h3>Mode B — Reverse proxy</h3>
+  <p>Gate deployed in front of specific APIs. Agent routes to Gate's URL instead of the destination directly. Works for services that ignore <code>HTTP_PROXY</code>.</p>
+
+<pre><code><span class="cm"># Agent calls Gate's reverse proxy URL</span>
+<span class="cm"># Gate forwards approved requests to the real destination</span>
+
+POST https://gate.internal/sfdc/services/data/v58.0/sobjects/Contact
+<span class="cm"># Gate evaluates → approved → forwards to api.salesforce.com</span>
+
+POST https://gate.internal/sg/v3/mail/send
+<span class="cm"># Gate evaluates → pending → 202 returned, request held</span></code></pre>
+
+  <h3>Mode C — Credential vault</h3>
+  <p>Gate holds no credentials itself. Credentials live in 1Password, HashiCorp Vault, or AWS Secrets Manager. Gate fetches them at execution time — after approval, for the approved intent only. <strong>The agent never touches production credentials.</strong></p>
+
+<pre><code><span class="cm"># Vault config — Gate's 1Password service account</span>
+vault:
+  provider: 1password
+  config:
+    token_env: OP_SERVICE_ACCOUNT_TOKEN   <span class="cm"># one token for Gate</span>
+    vault_name: AI-Agents                 <span class="cm"># scoped vault, not all of org</span>
+
+credentials:
+  sendgrid.send:
+    ref: <span class="s">"op://AI-Agents/SendGrid/api_key"</span>
+    inject: header
+    format: <span class="s">"Bearer {secret}"</span>
+
+  salesforce.api:
+    ref: <span class="s">"op://AI-Agents/Salesforce/access_token"</span>
+    inject: header
+    format: <span class="s">"Bearer {secret}"</span>
+
+  stripe.charge:
+    ref: <span class="s">"op://AI-Agents/Stripe/secret_key"</span>
+    inject: basic_auth                    <span class="cm"># some APIs use basic auth</span>
+
+  twilio.sms:
+    ref: <span class="s">"op://AI-Agents/Twilio/auth_token"</span>
+    inject: query_param</code></pre>
+
+  <div class="callout callout-key">
+    <strong>Key property:</strong> In vault mode, the agent submits a payload intent. Gate evaluates policy, waits for approval if needed, fetches the credential ephemerally, executes the API call, then discards the credential from memory. The credential never exists in the agent process. A compromised agent has nothing to exfiltrate.
+  </div>
+
+  <h2><span class="num">—</span> 1Password integration — how the auth handshake works</h2>
+
+  <p>1Password Service Accounts issue JWT tokens scoped to specific vaults. Gate holds a single service account token. That token only has read access to the <code>AI-Agents</code> vault — not every credential in the organization.</p>
+
+<pre><code><span class="cm">── What happens at execution time ─────────────────────────</span>
+
+1. Intent approved (auto or human)
+2. Gate looks up destination → <span class="s">"op://AI-Agents/Stripe/secret_key"</span>
+3. Gate SDK call → 1Password verifies service account JWT
+4. 1Password returns credential (in-memory only, never logged)
+5. Gate makes the API call with the credential
+6. Credential discarded
+
+<span class="cm">── Two audit logs, one chain of custody ─────────────────────</span>
+
+1Password Activity Log:
+  gate-production accessed Stripe/secret_key at 14:22:11
+
+Gate Audit Log:
+  execution_succeeded
+  intentId: int_6e5342…
+  credential: op://AI-Agents/Stripe (reference only)
+  executed_at: 14:22:11</code></pre>
+
+  <p>Neither log can be forged independently. An attacker who compromises the agent process gets nothing — no credentials in memory, no direct path to 1Password, no way to trigger a Gate execution without an approved intent.</p>
+
+  <h2><span class="num">—</span> Credential providers</h2>
+
+  <div class="providers">
+    <div class="provider">
+      <div>
+        <div class="provider-name">1Password</div>
+        <div class="provider-detail">Service account JWT · op:// secret references · Activity log integration</div>
+      </div>
+      <span class="provider-tag tag-v3">V3.0</span>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="provider-name">HashiCorp Vault</div>
+        <div class="provider-detail">AppRole auth · dynamic secrets · lease management</div>
+      </div>
+      <span class="provider-tag tag-v3">V3.0</span>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="provider-name">AWS Secrets Manager</div>
+        <div class="provider-detail">IAM role auth · automatic rotation · cross-region</div>
+      </div>
+      <span class="provider-tag tag-v3">V3.0</span>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="provider-name">Azure Key Vault</div>
+        <div class="provider-detail">Managed identity · certificate + secret storage</div>
+      </div>
+      <span class="provider-tag tag-v31">V3.1</span>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="provider-name">Doppler</div>
+        <div class="provider-detail">Service token · sync across environments</div>
+      </div>
+      <span class="provider-tag tag-v31">V3.1</span>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="provider-name">Infisical</div>
+        <div class="provider-detail">Open source · self-hosted · universal secret reference format</div>
+      </div>
+      <span class="provider-tag tag-v31">V3.1</span>
+    </div>
+    <div class="provider">
+      <div>
+        <div class="provider-name">ENV fallback</div>
+        <div class="provider-detail">Process environment variables · dev/local mode · no external dependency</div>
+      </div>
+      <span class="provider-tag tag-v3">V3.0</span>
+    </div>
+  </div>
+
+  <h2><span class="num">—</span> Build phases</h2>
+
+  <div class="phases">
+    <div class="phase">
+      <span class="phase-num shipped">V2 — shipped</span>
+      <div>
+        <div class="phase-title">SDK-based governance</div>
+        <div class="phase-desc">Cooperative model. Agent calls gate.propose(). Policy evaluation, risk scoring, human approval queue, full audit trail, idempotency, execution tokens. Live at zehrava.com.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <span class="phase-num next">Phase 1</span>
+      <div>
+        <div class="phase-title">Forward proxy — HTTP enforcement</div>
+        <div class="phase-desc">HTTP (non-TLS) forward proxy on port 4001. Destination registry maps host → policy. Pass-through for auto-approved (&lt;5ms). 403 for blocked. 202 + hold for pending approval. X-Gate-Intent-Id header injected. No code change required in agent.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <span class="phase-num">Phase 2</span>
+      <div>
+        <div class="phase-title">TLS intercept + auto-replay</div>
+        <div class="phase-desc">HTTPS CONNECT tunnel. Gate CA generates per-destination certificates. Auto-replay on approval — agent experience is "request took a few minutes" not a hard error. Hold queue with TTL + expiry handling.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <span class="phase-num">Phase 3 — gate_exec ships</span>
+      <div>
+        <div class="phase-title">Credential vault + 1Password / HashiCorp / AWS</div>
+        <div class="phase-desc">Gate holds no credentials. Fetches ephemerally from provider at execution time. Agent submits intent payload only — never touches destination API directly. Two audit logs: Gate + credential provider. This is the zero-trust end state.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <span class="phase-num">Phase 4</span>
+      <div>
+        <div class="phase-title">Kubernetes sidecar</div>
+        <div class="phase-desc">Envoy filter or standalone sidecar. Intercepts pod egress at the network layer. Agent can't bypass even by ignoring HTTP_PROXY. Deploys alongside existing service mesh. Enforced governance with zero application changes.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">—</span> What changes between V2 and V3</h2>
+
+  <p>V2 and V3 share the same policy engine, audit trail, approval dashboard, and SDK. V3 adds the enforcement layer on top. V2 integrations keep working — the SDK is still the right choice for greenfield code where you control the agent. V3 is for everything else.</p>
+
+  <div class="callout callout-warn">
+    <strong>Current limitation (V2):</strong> Gate is cooperative. An agent that skips the SDK call bypasses governance. If your threat model includes agents that actively circumvent controls — or teams that ship fast and skip integrations — V3 proxy enforcement is what you need. It's in active design. <a href="https://github.com/cgallic/zehrava-gate">Follow the repo</a> for updates.
+  </div>
+
+  <hr class="divider">
+
+  <p><strong>The one-line version of V3:</strong> 1Password handles custody. Gate handles authorization. An agent can't use a production credential without both systems agreeing.</p>
+
+  <div class="cta-row">
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-primary">Follow on GitHub →</a>
+    <a href="/docs/" class="btn-secondary">V2 docs</a>
+    <a href="/demo/" class="btn-secondary">Try V2 demo</a>
+  </div>
+
+</main>
+</body>
+</html>

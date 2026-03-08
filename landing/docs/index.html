@@ -270,6 +270,7 @@
     <a href="#fail-closed" class="nav-link">Fail closed</a>
     <a href="#multi-agent" class="nav-link">Multi-agent</a>
     <a href="#roadmap" class="nav-link">Roadmap</a>
+    <a href="/v3/" class="nav-link" style="color:var(--amber,#f59e0b)">↗ V3 spec</a>
   </div>
   <a href="/" style="display:block;margin-top:1.5rem;color:var(--muted);font-size:.875rem">← Home</a>
 </div>
@@ -323,6 +324,7 @@
       <a href="#fail-closed" class="nav-link">Fail closed</a>
       <a href="#multi-agent" class="nav-link">Multi-agent</a>
     <a href="#roadmap" class="nav-link">Roadmap</a>
+    <a href="/v3/" class="nav-link" style="color:var(--amber,#f59e0b)">↗ V3 spec</a>
     </div>
   </nav>
 
@@ -977,14 +979,15 @@ POST /v1/executions/:id/report
     <h2 id="roadmap">Roadmap</h2>
     <p>Gate today is cooperative — agents call the SDK voluntarily. The roadmap closes that gap. Here is what is being built, in priority order.</p>
 
-    <h3>1. Network-level enforcement (top priority)</h3>
-    <p>The current model requires agents to call Gate. A cooperative agent that skips the SDK call bypasses governance entirely. The next major version adds enforcement that does not rely on agent cooperation.</p>
-    <p>Three enforcement approaches on the roadmap:</p>
+    <h3>1. Network-level enforcement — Gate V3 (top priority)</h3>
+    <p>The current model requires agents to call Gate. A cooperative agent that skips the SDK call bypasses governance entirely. Gate V3 closes this with a forward proxy and credential vault integration.</p>
+    <p>Three deployment modes in V3:</p>
     <ul>
-      <li><strong>Reverse proxy mode</strong> — Gate sits in front of destination APIs. Agents route all outbound calls through Gate's proxy. Write requests without a valid <code>gex_</code> execution token are rejected at the network layer — not the application layer.</li>
-      <li><strong>Tool wrapper injection</strong> — Framework-specific wrappers (LangChain, CrewAI, AutoGen) replace tool call handlers. Agents cannot execute tools directly — every tool call passes through Gate before firing.</li>
-      <li><strong>Service mesh integration</strong> — Sidecar policy enforcement for Kubernetes deployments. Gate runs as a sidecar; egress traffic to destination APIs requires a valid execution token in headers.</li>
+      <li><strong>Forward proxy</strong> — set <code>HTTP_PROXY=http://gate.internal:4001</code>. All outbound HTTP routes through Gate. No code change in the agent. Gate intercepts, evaluates policy, holds or passes.</li>
+      <li><strong>Reverse proxy</strong> — Gate deployed in front of specific APIs. Agent routes to Gate's URL instead of the destination directly.</li>
+      <li><strong>Credential vault (gate_exec)</strong> — Gate holds no credentials. Fetches ephemerally from 1Password, HashiCorp Vault, or AWS Secrets Manager at execution time. Agent submits payload only — never touches production credentials. Two audit logs: Gate + credential provider.</li>
     </ul>
+    <p>The 1Password integration uses Service Account JWTs scoped to a single vault. Gate fetches credentials at execution time, uses them, then discards them from memory. The agent process never holds a production credential. See the full V3 spec at <a href="/v3/">/v3/</a>.</p>
     <p>Until enforcement ships, Gate is most effective for teams that control the agent code and commit to the SDK integration pattern.</p>
 
     <h3>2. Schema-aware policies</h3>
