@@ -144,7 +144,7 @@ router.post('/propose', authenticate, (req, res) => {
   if (result.status === 'blocked') {
     logEvent(proposalId, 'blocked', 'system', { reason: result.reason });
   } else if (result.status === 'approved') {
-    logEvent(proposalId, 'auto_approved', 'system', { policy });
+    logEvent(proposalId, 'approved', 'system', { policy, auto: true });
   }
 
   res.json({

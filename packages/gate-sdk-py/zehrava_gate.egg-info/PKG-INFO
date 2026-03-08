@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: zehrava-gate
-Version: 0.1.0
+Version: 0.2.0
 Summary: Zehrava Gate Python SDK — the safe commit layer for AI agents
 Author-email: Zehrava <connor@kaicalls.com>
 License: MIT

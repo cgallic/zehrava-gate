@@ -54,7 +54,7 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
 
   // Update intent status to scheduled
   db.prepare('UPDATE proposals SET status = ? WHERE id = ?').run('scheduled', intent.id);
-  logEvent(intent.id, 'execution_scheduled', req.agent?.name || 'system', { executionId, mode });
+  logEvent(intent.id, 'execution_requested', req.agent?.name || 'system', { executionId, mode });
 
   const execution = db.prepare('SELECT * FROM executions WHERE id = ?').get(executionId);
   res.status(201).json(formatExecution(execution));
