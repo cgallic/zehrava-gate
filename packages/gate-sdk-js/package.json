@@ -1,9 +1,24 @@
 {
-  "name": "@zehrava/gate",
-  "version": "0.1.0",
+  "name": "@kaicmo/gate",
+  "version": "0.1.1",
   "description": "Zehrava Gate SDK — safe commit layer for AI agents",
   "main": "src/index.js",
-  "keywords": ["ai", "agents", "approval", "governance", "commit"],
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "ai",
+    "agents",
+    "approval",
+    "governance",
+    "commit",
+    "checkpoint"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cgallic/zehrava-gate"
+  },
+  "homepage": "https://zehrava.com",
   "dependencies": {}
 }

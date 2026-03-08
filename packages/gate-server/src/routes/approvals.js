@@ -1,9 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const { execFile } = require('child_process');
 const db = require('../lib/db');
 const { generateId, generateDeliveryToken } = require('../lib/crypto');
 const { logEvent } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
+
+// Auto-delivery destinations — approve triggers immediate deliver
+const AUTO_DELIVER_DESTINATIONS = ['blog.publish', 'gmail.send', 'loops.send'];
+
+function autoDeliver(proposalId, destination, deliveryToken) {
+  // Fire-and-forget: call the Python delivery worker
+  execFile('python3', [
+    '/opt/cmo-analytics/gate_delivery_worker.py'
+  ], { env: { ...process.env } }, (err, stdout, stderr) => {
+    if (err) console.error(`[gate] auto-deliver failed for ${proposalId}:`, err.message);
+    else console.log(`[gate] auto-delivered ${proposalId} → ${destination}`);
+  });
+}
 
 // POST /v1/approve
 router.post('/approve', authenticate, (req, res) => {
@@ -45,7 +59,12 @@ router.post('/approve', authenticate, (req, res) => {
 
   logEvent(proposalId, 'approved', req.agent.name, { approver: req.agent.name });
 
-  res.json({ status: 'approved', deliveryToken });
+  // Auto-deliver for configured destinations
+  if (AUTO_DELIVER_DESTINATIONS.includes(proposal.destination)) {
+    autoDeliver(proposalId, proposal.destination, deliveryToken);
+  }
+
+  res.json({ status: 'approved', deliveryToken, autoDeliver: AUTO_DELIVER_DESTINATIONS.includes(proposal.destination) });
 });
 
 // POST /v1/reject

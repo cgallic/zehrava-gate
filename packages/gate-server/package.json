@@ -1,12 +1,35 @@
 {
-  "name": "@zehrava/gate-server",
-  "version": "0.1.0",
-  "description": "Zehrava Gate — safe commit layer for AI agents",
+  "name": "zehrava-gate",
+  "version": "0.1.1",
+  "description": "Zehrava Gate — the commit checkpoint between AI agents and production systems",
   "main": "src/index.js",
+  "bin": {
+    "zehrava-gate": "bin/cli.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md"
+  ],
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"
   },
+  "keywords": [
+    "ai",
+    "agents",
+    "approval",
+    "governance",
+    "commit",
+    "checkpoint",
+    "policy"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cgallic/zehrava-gate"
+  },
+  "homepage": "https://zehrava.com",
   "dependencies": {
     "better-sqlite3": "^9.4.3",
     "dotenv": "^16.4.1",
