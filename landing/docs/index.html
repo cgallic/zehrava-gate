@@ -389,10 +389,10 @@ zehrava-gate --port 4000</pre>
   recordCount: <span class="n">1</span>
 })
 
-<span class="fn">console</span>.<span class="fn">log</span>(p.status) <span class="cm">// "approved" | "blocked" | "pending_approval"</span>
+<span class="fn">console</span>.<span class="fn">log</span>(p.status) <span class="cm">// "approved" | "blocked" | "pending_approval" | "duplicate_blocked"</span>
 <span class="fn">console</span>.<span class="fn">log</span>(p.intentId)
 <span class="fn">console</span>.<span class="fn">log</span>(p.blockReason) <span class="cm">// set if status === "blocked"</span></pre>
-    <p>Gate evaluates the policy immediately and returns one of three statuses:</p>
+    <p>Gate evaluates the policy immediately and returns one of four statuses:</p>
     <ul>
       <li><span class="status status-approved">approved</span> — passed all rules, within auto-approve threshold. Safe to request execution.</li>
       <li><span class="status status-blocked">blocked</span> — violated a policy rule. Do not proceed. Check <code>blockReason</code>.</li>
@@ -637,7 +637,7 @@ zehrava-gate --port 4000</pre>
       <div class="table-scroll"><table class="field-table">
         <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td>status</td><td>string</td><td>Filter: <code>pending_approval</code> · <code>approved</code> · <code>blocked</code> · <code>scheduled</code> · <code>succeeded</code> · <code>failed</code> · <code>expired</code>. Omit for all.</td></tr>
+          <tr><td>status</td><td>string</td><td>Filter: <code>pending_approval</code> · <code>approved</code> · <code>blocked</code> · <code>scheduled</code> · <code>succeeded</code> · <code>failed</code> · <code>expired</code>. Omit for all. (<code>scheduled</code> = execution order issued, worker not yet reported.)</td></tr>
           <tr><td>limit</td><td>number</td><td>Max results. Default: 50.</td></tr>
         </tbody>
       </table></div>
@@ -749,11 +749,11 @@ zehrava-gate --port 4000</pre>
       <hr>
       <p><strong>Authentication:</strong> <code>Authorization: Bearer &lt;apiKey&gt;</code></p>
       <pre><span class="val">[
-  { "eventType": "proposed",       "actor": "my-crm-agent", "createdAt": "..." },
-  { "eventType": "policy_checked", "actor": "system",       "metadata": { "result": "approved", "risk_score": 0.42 } },
-  { "eventType": "approved",        "actor": "system",       "createdAt": "..." },
+  { "eventType": "proposed",            "actor": "my-crm-agent", "createdAt": "..." },
+  { "eventType": "policy_checked",      "actor": "system",       "metadata": { "result": "approved", "risk_score": 0.42 } },
+  { "eventType": "approved",            "actor": "system",       "createdAt": "..." },
   { "eventType": "execution_requested", "actor": "my-crm-agent", "createdAt": "..." },
-  { "eventType": "execution_succeeded", "actor": "worker",  "createdAt": "..." }
+  { "eventType": "execution_succeeded", "actor": "worker",       "createdAt": "..." }
 ]</span></pre>
     </div>
 
