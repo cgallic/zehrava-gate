@@ -945,13 +945,13 @@ POST /v1/executions/:id/report
   └── execution_failed     → terminal</pre>
 
     <h2 id="fail-closed">Fail closed</h2>
-    <p><strong>If Gate is unreachable, your agent must halt — not proceed.</strong></p>
-    <p>Gate is middleware. If the HTTP call to <code>/v1/propose</code> fails with a network error, the safe behavior is to treat it as a block and not execute the write. Proceeding silently bypasses Gate entirely.</p>
+    <p><strong>If Gate is unreachable, your agent must halt and never perform the write outside Gate.</strong></p>
+    <p>Gate is middleware. If the HTTP call to <code>/v1/intents</code> (or <code>gate.propose()</code>) fails with a network error, the safe behavior is to treat it as a block and not execute the write. Proceeding silently bypasses Gate entirely.</p>
     <pre><span class="k">try</span> {
   <span class="k">const</span> <span class="v">p</span> = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
   <span class="k">if</span> (p.status === <span class="s">'blocked'</span>) <span class="k">throw new</span> <span class="fn">Error</span>(p.blockReason)
   <span class="k">if</span> (p.status === <span class="s">'pending_approval'</span>) <span class="k">return</span> <span class="cm">// wait — do not proceed</span>
-  <span class="cm">// status === 'approved' → safe to act</span>
+  <span class="cm">// status === 'approved' → safe to request execution</span>
 } <span class="k">catch</span> (err) {
   <span class="cm">// Gate unreachable or returned error — fail closed</span>
   <span class="fn">console</span>.<span class="fn">error</span>(<span class="s">'Gate check failed — halting write'</span>, err.message)
@@ -960,7 +960,7 @@ POST /v1/executions/:id/report
 
     <h2 id="multi-agent">Multi-agent pipelines</h2>
     <p>In pipelines where one agent orchestrates others, use <code>on_behalf_of</code> to record the full chain of accountability in the audit trail:</p>
-    <pre><span class="cm">// Leaf agent calling Gate on behalf of the orchestrator</span>
+    <pre><span class="cm">// Leaf agent submitting an intent on behalf of the orchestrator</span>
 <span class="k">await</span> gate.<span class="fn">propose</span>({
   payload:      data,
   destination:  <span class="s">'salesforce.import'</span>,
