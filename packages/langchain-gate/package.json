@@ -1,0 +1,38 @@
+{
+  "name": "@zehrava/langchain-gate",
+  "version": "0.1.0",
+  "description": "Wrap LangChain/LangGraph tools with Zehrava Gate governance — deterministic policy enforcement before any tool executes",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/",
+    "examples/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node examples/langgraph-crm-agent.js --dry-run"
+  },
+  "keywords": [
+    "langchain",
+    "langgraph",
+    "zehrava",
+    "gate",
+    "agent",
+    "governance",
+    "policy"
+  ],
+  "author": "Zehrava Gate",
+  "license": "MIT",
+  "peerDependencies": {
+    "@langchain/core": ">=0.2.0",
+    "zehrava-gate": ">=0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": false
+    }
+  },
+  "devDependencies": {}
+}
