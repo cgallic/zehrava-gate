@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Governance for Enterprise Teams — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Enforce policy on every AI agent action before it hits production. Gate is a self-hosted runtime control plane — field validation, rate limits, human approval queues, and a full audit log. No cloud dependency.">
+  <meta property="og:title" content="AI Agent Governance for Enterprise Teams — Zehrava Gate">
+  <meta property="og:description" content="Deterministic policy enforcement for AI agents. Every write, every send, every API call — reviewed before execution. Self-hosted, audit-ready, no LLM in the policy path.">
+  <meta property="og:url" content="https://zehrava.com/for/enterprise-teams/">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+    .nav-brand span { color: var(--purple); }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--purple); color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    main { max-width: 720px; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+    .page-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.75rem 0 1rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin: 2rem 0 0.6rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.45rem; color: #d0d0d0; }
+    strong { color: var(--text); }
+    code { font-family: 'JetBrains Mono', monospace; font-size: 0.83em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; margin-bottom: 1.75rem; }
+    pre code { background: none; padding: 0; font-size: 0.8rem; color: #e2e8f0; line-height: 1.7; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.75rem 0; }
+    .snippet-block { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.18); border-radius: 12px; padding: 1.75rem 2rem; margin: 2rem 0 2.5rem; }
+    .snippet-block h2 { margin-top: 0; margin-bottom: 0.875rem; font-size: 1.2rem; }
+    .snippet-block p { color: #c8c8c8; margin-bottom: 0.875rem; }
+    .snippet-block p:last-child { margin-bottom: 0; }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0 2rem; }
+    .feature-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .feature-card h3 { margin-top: 0; margin-bottom: 0.4rem; font-size: 0.9rem; color: var(--text); }
+    .feature-card p { color: var(--muted); font-size: 0.85rem; margin-bottom: 0; line-height: 1.5; }
+    .audit-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.875rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.875rem; }
+    .audit-row:last-child { border-bottom: none; }
+    .audit-event { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--purple); background: rgba(99,102,241,0.1); padding: 0.2rem 0.5rem; border-radius: 4px; white-space: nowrap; }
+    .audit-desc { color: #c0c0c0; }
+    .compare-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.875rem; }
+    .compare-table th { text-align: left; padding: 0.6rem 0.875rem; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .compare-table td { padding: 0.7rem 0.875rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #d0d0d0; }
+    .check { color: var(--green); font-weight: 700; }
+    .cross { color: var(--muted); }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; margin-bottom: 0.625rem; font-size: 1.2rem; }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.925rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .btn-outline { background: transparent; color: var(--purple); border: 1px solid rgba(99,102,241,0.4); margin-left: 0.75rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.625rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+    footer { text-align: center; padding: 2.5rem 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem 1.25rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      main { padding: 2.5rem 1.125rem 4rem; }
+      h1 { font-size: 1.65rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .snippet-block { padding: 1.25rem; }
+      .btn-outline { margin-left: 0; margin-top: 0.5rem; display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava<span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/docs/">Docs</a>
+    <a href="/blog/">Blog</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/dashboard/" class="nav-cta">Dashboard</a>
+  </div>
+</nav>
+
+<main>
+  <div class="page-meta">
+    <span class="tag">Enterprise</span>
+    <span class="tag">Governance</span>
+    <span class="tag">Audit</span>
+    <span>For platform &amp; infrastructure teams</span>
+  </div>
+
+  <h1>Your AI agents are writing to production. Gate decides what gets through.</h1>
+
+  <p>Enterprise teams deploying AI agents face one problem that LLM providers don't solve: <strong>what happens between the model decision and the production action.</strong> Gate sits in that gap. Every agent write, send, and API call passes through Gate before execution — evaluated deterministically, logged immutably, and routable to a human approval queue.</p>
+
+  <!-- Featured Snippet block -->
+  <div class="snippet-block">
+    <h2>What is AI agent governance?</h2>
+    <p><strong>AI agent governance is a control layer between an agent's decision and the production action it wants to take.</strong> Without it, agents write to your CRM, send emails, charge cards, and call APIs with no checkpoint between decision and execution.</p>
+    <p>Effective governance requires four capabilities: a policy engine that evaluates each intent before it runs; a human approval queue for actions above a risk threshold; an immutable audit log tied to the agent identity that submitted each intent; and a fail-closed default — if the governance layer is unreachable, the action does not proceed.</p>
+    <p>Gate implements all four. Policy evaluation is deterministic YAML — no LLM judgment. The audit log records every event in sequence: <code>proposed → policy_checked → approved → execution_requested → execution_succeeded</code>. Every intent carries the agent identity, the action taken, and the human who approved or blocked it. Self-hosted: no agent data leaves your infrastructure.</p>
+  </div>
+
+  <h2>What Gate enforces</h2>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h3>Field validation</h3>
+      <p>Required fields, type constraints, format patterns, value bounds — checked on every intent before approval.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Rate limits</h3>
+      <p>Per-agent hourly and daily action limits. Block volume attacks before they reach your APIs.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Environment thresholds</h3>
+      <p>Different approval rules for production vs staging vs development. Same policy file, different behavior per environment.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Human approval queue</h3>
+      <p>High-risk actions pause for reviewer sign-off. Dashboard shows intent, agent identity, payload, and policy decision.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Webhook notifications</h3>
+      <p>Fire to your Slack, PagerDuty, or SIEM on approve, reject, or block. Persistent SQLite-backed delivery.</p>
+    </div>
+    <div class="feature-card">
+      <h3>Idempotency</h3>
+      <p>Duplicate intents return the original decision. Agents can retry safely — Gate will not process the same action twice.</p>
+    </div>
+  </div>
+
+  <h2>The audit trail every compliance team asks for</h2>
+
+  <p>Gate records a canonical event sequence for every intent. Every event is immutable. Query by agent, by action, by time window, or by policy decision.</p>
+
+  <div>
+    <div class="audit-row">
+      <span class="audit-event">proposed</span>
+      <span class="audit-desc">Agent submitted intent — agent ID, payload hash, destination, policy recorded</span>
+    </div>
+    <div class="audit-row">
+      <span class="audit-event">policy_checked</span>
+      <span class="audit-desc">Policy engine evaluated intent — field checks, rate limits, thresholds applied</span>
+    </div>
+    <div class="audit-row">
+      <span class="audit-event">approved</span>
+      <span class="audit-desc">Human reviewer or auto-approve policy authorized the action</span>
+    </div>
+    <div class="audit-row">
+      <span class="audit-event">blocked</span>
+      <span class="audit-desc">Policy blocked intent — reason recorded, action never executed</span>
+    </div>
+    <div class="audit-row">
+      <span class="audit-event">execution_succeeded</span>
+      <span class="audit-desc">Action completed — execution token, HTTP status, agent report stored</span>
+    </div>
+  </div>
+
+  <h2>Policy as code — in your repo, reviewed like any other change</h2>
+
+  <p>Gate policies are YAML files. Check them into version control. Review them in PRs. Deploy them with your infrastructure tooling. No GUI required, no vendor portal to log into.</p>
+
+  <pre><code># policies/finance-high-risk.yaml
+id: finance-high-risk
+destinations: [stripe.charge, stripe.refund]
+
+field_checks:
+  - path: "amount"
+    max: 10000      # block charges above $100
+
+rate_limits:
+  per_agent_per_hour: 10
+  per_agent_per_day:  50
+
+environments:
+  production:
+    require_approval: always
+  staging:
+    require_approval_over: 100
+    auto_approve_under: 10</code></pre>
+
+  <h2>Multi-agent attribution — every intent has an owner</h2>
+
+  <p>Register each agent with Gate before deployment. Every intent carries the agent's ID. When an intent is approved, the reviewer identity is recorded alongside the agent identity. When something goes wrong, you know which agent acted, what policy allowed it, and who signed off.</p>
+
+  <pre><code>POST /v1/agents/register
+{
+  "name":        "crm-sync-agent",
+  "description": "Syncs qualified leads to Salesforce",
+  "permissions": ["salesforce.api", "loops.send"]
+}
+
+# Returns: { agentId: "agt_...", apiKey: "gate_sk_..." }</code></pre>
+
+  <h2>Gate vs alternatives</h2>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Capability</th>
+        <th>Gate</th>
+        <th>LLM safety layer</th>
+        <th>No governance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Deterministic policy</td>
+        <td class="check">✓ YAML, always same result</td>
+        <td class="cross">✗ LLM judgment varies</td>
+        <td class="cross">✗</td>
+      </tr>
+      <tr>
+        <td>Field-level validation</td>
+        <td class="check">✓ required, max, pattern</td>
+        <td class="cross">✗ not enforced</td>
+        <td class="cross">✗</td>
+      </tr>
+      <tr>
+        <td>Human approval queue</td>
+        <td class="check">✓ built-in dashboard</td>
+        <td class="cross">✗ not included</td>
+        <td class="cross">✗</td>
+      </tr>
+      <tr>
+        <td>Immutable audit log</td>
+        <td class="check">✓ event sequence per intent</td>
+        <td class="cross">✗ varies by vendor</td>
+        <td class="cross">✗</td>
+      </tr>
+      <tr>
+        <td>Self-hosted</td>
+        <td class="check">✓ your infra, MIT license</td>
+        <td class="cross">✗ typically SaaS</td>
+        <td class="check">n/a</td>
+      </tr>
+      <tr>
+        <td>Fail-closed</td>
+        <td class="check">✓ 503 if unreachable</td>
+        <td class="cross">✗ not guaranteed</td>
+        <td class="cross">✗</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Deploy in 5 minutes</h2>
+
+  <pre><code>npm install -g zehrava-gate
+
+# Start with an API key
+GATE_API_KEY=gate_sk_... zehrava-gate start
+
+# Register your first agent
+curl -X POST http://localhost:3001/v1/agents/register \
+  -H "Authorization: Bearer gate_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","permissions":["salesforce.api"]}'
+
+# Drop a policy file in policies/
+# Agents submit intents via SDK — Gate does the rest</code></pre>
+
+  <p>The proxy is optional. Use the SDK for greenfield agents. Use the HTTP forward proxy (<code>HTTP_PROXY=http://localhost:4001</code>) to intercept existing agents with no code changes.</p>
+
+  <hr>
+
+  <div class="cta-block">
+    <h3>Add a governance layer to your agent fleet</h3>
+    <p>Self-hosted. MIT license. Full audit trail from day one.</p>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn">View on GitHub</a>
+    <a href="/docs/" class="btn btn-outline">Read the docs</a>
+  </div>
+
+  <div class="related">
+    <h3>Related</h3>
+    <div class="related-links">
+      <a href="/blog/847-records-no-audit-trail.html" class="related-link">847 records, no audit trail — what happens without Gate →</a>
+      <a href="/blog/policy-as-yaml-agent-governance.html" class="related-link">Policy as YAML: how Gate evaluates intent →</a>
+      <a href="/for/langchain-developers/" class="related-link">Gate for LangChain developers →</a>
+      <a href="/for/autonomous-agent-builders/" class="related-link">Gate for autonomous agent builders →</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Zehrava Gate — <a href="https://zehrava.com">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a> · <a href="/docs/">Docs</a></p>
+</footer>
+
+</body>
+</html>

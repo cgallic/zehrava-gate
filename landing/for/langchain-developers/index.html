@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LangChain Agent Governance with Zehrava Gate — Policy Enforcement Before Tool Execution</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="Add deterministic policy enforcement to LangChain tools. Gate intercepts every tool call, evaluates it against your YAML policy, and blocks or holds it before execution. No LLM in the policy path.">
+  <meta property="og:title" content="LangChain Agent Governance — Zehrava Gate">
+  <meta property="og:description" content="Wrap LangChain tools with Gate governance. Approved runs. Blocked stops. Pending waits for a human. 12 lines of code.">
+  <meta property="og:url" content="https://zehrava.com/for/langchain-developers/">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+    .nav-brand span { color: var(--purple); }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--purple); color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    main { max-width: 720px; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+    .page-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.75rem 0 1rem; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin: 2rem 0 0.6rem; color: var(--text); }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.45rem; color: #d0d0d0; }
+    strong { color: var(--text); }
+    code { font-family: 'JetBrains Mono', monospace; font-size: 0.83em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; margin-bottom: 1.75rem; }
+    pre code { background: none; padding: 0; font-size: 0.8rem; color: #e2e8f0; line-height: 1.7; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.75rem 0; }
+    /* Snippet block — Featured Snippet target */
+    .snippet-block { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.18); border-radius: 12px; padding: 1.75rem 2rem; margin: 2rem 0 2.5rem; }
+    .snippet-block h2 { margin-top: 0; margin-bottom: 0.875rem; font-size: 1.2rem; }
+    .snippet-block p { color: #c8c8c8; margin-bottom: 0.875rem; }
+    .snippet-block p:last-child { margin-bottom: 0; }
+    /* Decision table */
+    .decision-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0 2rem; font-size: 0.875rem; }
+    .decision-table th { text-align: left; padding: 0.6rem 0.875rem; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .decision-table td { padding: 0.7rem 0.875rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #d0d0d0; }
+    .decision-table tr:last-child td { border-bottom: none; }
+    .status-pill { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+    .approved { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.25); }
+    .blocked  { background: rgba(239,68,68,0.12);  color: var(--red);   border: 1px solid rgba(239,68,68,0.25); }
+    .pending  { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+    /* CTA */
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; margin-bottom: 0.625rem; font-size: 1.2rem; }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.925rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .btn-outline { background: transparent; color: var(--purple); border: 1px solid rgba(99,102,241,0.4); margin-left: 0.75rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.625rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem 1rem; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+    footer { text-align: center; padding: 2.5rem 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem 1.25rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      main { padding: 2.5rem 1.125rem 4rem; }
+      h1 { font-size: 1.65rem; }
+      h2 { font-size: 1.2rem; }
+      .snippet-block { padding: 1.25rem; }
+      .btn-outline { margin-left: 0; margin-top: 0.5rem; display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava<span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/docs/">Docs</a>
+    <a href="/blog/">Blog</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank">GitHub</a>
+    <a href="/dashboard/" class="nav-cta">Dashboard</a>
+  </div>
+</nav>
+
+<main>
+  <div class="page-meta">
+    <span class="tag">LangChain</span>
+    <span class="tag">Agent Governance</span>
+    <span>For developers</span>
+  </div>
+
+  <h1>LangChain tool calls need a checkpoint. Gate is the checkpoint.</h1>
+
+  <p>LangChain agents decide what to do. Gate decides whether they're allowed to do it. Every tool call goes through Gate first — evaluated against your YAML policy before the tool runs. No LLM judgment in the policy path. No exceptions.</p>
+
+  <!-- Featured Snippet block -->
+  <div class="snippet-block">
+    <h2>How to add governance to LangChain tools</h2>
+    <p><strong>Wrap each tool with <code>GateTool</code> from <code>@zehrava/langchain-gate</code>.</strong> Gate intercepts the tool call before execution, submits it as a governed intent, evaluates it against a YAML policy, and returns one of three decisions:</p>
+    <ul>
+      <li><strong>Approved</strong> — tool runs immediately, no latency added on the happy path</li>
+      <li><strong>Blocked</strong> — <code>GateBlockedError</code> is thrown with the policy reason</li>
+      <li><strong>Pending</strong> — Gate polls for human approval; tool runs when approved</li>
+    </ul>
+    <p>Policy evaluation is deterministic. The same input always produces the same output. Gate reads field values, checks rate limits, and applies environment-specific thresholds from a YAML file you control. It does not call an LLM to decide. Install: <code>npm install @zehrava/langchain-gate zehrava-gate</code>. Self-hosted. No data leaves your infrastructure.</p>
+  </div>
+
+  <h2>Install and wrap a tool in 12 lines</h2>
+
+  <pre><code>npm install @zehrava/langchain-gate zehrava-gate</code></pre>
+
+  <pre><code>const { Gate } = require('zehrava-gate');
+const { GateTool, GateBlockedError } = require('@zehrava/langchain-gate');
+
+const gate = new Gate({ endpoint: 'http://localhost:3001', apiKey: process.env.GATE_API_KEY });
+
+const governed = new GateTool({
+  tool: emailTool,              // your existing LangChain Tool
+  gate,
+  policy:      'outbound-email',
+  destination: 'sendgrid.send',
+});
+
+// Drop-in replacement — same interface as the original tool
+try {
+  const result = await governed._call(JSON.stringify({ to: 'user@co.com', subject: '...' }));
+} catch (err) {
+  if (err instanceof GateBlockedError) {
+    console.error('Blocked:', err.intentId, err.blockReason);
+  }
+}</code></pre>
+
+  <p>The wrapped tool implements the same <code>_call(input)</code> interface. Pass <code>governed</code> to your agent exactly where you'd pass <code>emailTool</code>. No other changes.</p>
+
+  <h2>What Gate evaluates</h2>
+
+  <p>Gate evaluates YAML policies you define. Evaluation runs in this order:</p>
+
+  <ol>
+    <li>Destination allowlist — is this tool allowed to call this endpoint?</li>
+    <li>Field checks — <code>required</code>, <code>max</code>, <code>min</code>, <code>max_length</code>, <code>pattern</code> on JSON fields</li>
+    <li>Environment overrides — different thresholds for production vs staging vs development</li>
+    <li>Rate limits — <code>per_agent_per_hour</code> and <code>per_agent_per_day</code> via SQLite counts</li>
+    <li>Sensitive term scan — normalized matching catches obfuscated variants</li>
+    <li>Record count thresholds — auto-approve under N, require approval over N</li>
+  </ol>
+
+  <pre><code># policies/outbound-email.yaml
+id: outbound-email
+destinations: [sendgrid.send, loops.send]
+
+field_checks:
+  - path: "to"
+    required: true
+    pattern: "^[^@]+@[^@]+\\.[^@]+$"
+
+rate_limits:
+  per_agent_per_hour: 50
+  per_agent_per_day:  200
+
+environments:
+  production:
+    require_approval: always
+  development:
+    require_approval: never</code></pre>
+
+  <h2>Three decision paths</h2>
+
+  <table class="decision-table">
+    <thead>
+      <tr>
+        <th>Gate decision</th>
+        <th>What happens</th>
+        <th>Your code sees</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="status-pill approved">approved</span></td>
+        <td>Tool executes immediately</td>
+        <td>Tool return value</td>
+      </tr>
+      <tr>
+        <td><span class="status-pill blocked">blocked</span></td>
+        <td>Tool does not execute</td>
+        <td><code>GateBlockedError</code></td>
+      </tr>
+      <tr>
+        <td><span class="status-pill pending">pending</span></td>
+        <td>Gate polls for human approval; executes on approval</td>
+        <td>Tool return value (after delay) or <code>GateTimeoutError</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Wrap multiple tools at once</h2>
+
+  <pre><code>const { GateToolkit } = require('@zehrava/langchain-gate');
+
+const toolkit = new GateToolkit({
+  tools: [emailTool, crmTool, slackTool],
+  gate,
+  policies: {
+    'send-email':  'outbound-email',
+    'crm-update':  'crm-low-risk',
+    '__default__': 'crm-low-risk',   // fallback for unmapped tools
+  },
+  destinations: {
+    'send-email':  'sendgrid.send',
+    'crm-update':  'salesforce.api',
+    '__default__': 'generic.http',
+  },
+});
+
+// Use governedTools exactly where you'd pass the originals
+const governedTools = toolkit.getTools();</code></pre>
+
+  <h2>LangGraph: branch on Gate's decision</h2>
+
+  <p>Gate provides two StateGraph primitives. Use <code>gateNode</code> to submit an intent as a node. Use <code>gateRouteAfter</code> to branch on the result.</p>
+
+  <pre><code>const { gateNode, gateRouteAfter } = require('@zehrava/langchain-gate');
+
+graph.addNode('check_gate', gateNode({
+  gate,
+  buildIntent: (state) => ({
+    payload:     JSON.stringify(state.crmPayload),
+    destination: 'salesforce.api',
+    policy:      'crm-low-risk',
+    recordCount: state.records.length,
+  }),
+}));
+
+// gateNode writes: gateIntentId, gateStatus, gateBlockReason into state
+graph.addConditionalEdges('check_gate', gateRouteAfter('gateStatus'), {
+  execute:  'run_tool',        // approved
+  blocked:  'handle_blocked',  // blocked | duplicate_blocked
+  pending:  'notify_human',    // pending_approval
+  __end__:  END,
+});</code></pre>
+
+  <h2>What Gate does not do</h2>
+
+  <p>Gate is a <strong>deterministic policy engine</strong>, not an LLM-based safety layer.</p>
+
+  <ul>
+    <li>Does not understand natural language in payloads — write explicit field checks for what matters</li>
+    <li>Does not catch every bad action — it catches what your YAML policies describe</li>
+    <li>Does not protect against a model that edits the policy files it's governed by</li>
+    <li>Adds &lt; 5ms latency on auto-approved intents (local SQLite, no network hop)</li>
+  </ul>
+
+  <p>Gate protects against mistakes and unauthorized actions. It's a commit checkpoint, not a jailbreak defense.</p>
+
+  <hr>
+
+  <div class="cta-block">
+    <h3>Add Gate to your LangChain project</h3>
+    <p>Self-hosted. MIT license. Running in 5 minutes.</p>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn">View on GitHub</a>
+    <a href="/docs/" class="btn btn-outline">Read the docs</a>
+  </div>
+
+  <div class="related">
+    <h3>Related</h3>
+    <div class="related-links">
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="related-link">Why AI agents need a commit checkpoint →</a>
+      <a href="/blog/policy-as-yaml-agent-governance.html" class="related-link">Policy as YAML: how Gate evaluates intent →</a>
+      <a href="/blog/why-gate-uses-yaml-not-llms.html" class="related-link">Why Gate uses YAML, not LLMs, for policy →</a>
+      <a href="/for/autonomous-agent-builders/" class="related-link">Gate for autonomous agent builders →</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>Zehrava Gate — <a href="https://zehrava.com">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a> · <a href="/docs/">Docs</a></p>
+</footer>
+
+</body>
+</html>
