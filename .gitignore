@@ -1,13 +1,38 @@
+# Dependencies
 node_modules/
-*.db
-*.db-shm
-*.db-wal
-data/
-.env
-.DS_Store
-*.pyc
-__pycache__/
-*.egg-info/
+**/node_modules/
+
+# Build outputs
 dist/
-.claude/skills/ui-ux-pro-max/scripts/__pycache__/
+build/
+**/*.egg-info/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Runtime data
+data/
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
+
+# Secrets & server-specific config
+.env
+**/.env
+ecosystem.config.js
+**/ecosystem.config.js
+config/vault.yaml
+**/config/vault.yaml
+
+# Internal / deployment-specific policies
+policies/abp-followup-call.yaml
+policies/bluesky-post.yaml
+**/policies/abp-followup-call.yaml
+**/policies/bluesky-post.yaml
+
+# OpenClaw internal tooling
 .claude/
+
+# OS
+.DS_Store
+*.log

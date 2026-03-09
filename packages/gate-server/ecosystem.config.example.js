@@ -1,3 +1,7 @@
+/**
+ * PM2 ecosystem config example.
+ * Copy to ecosystem.config.js and adjust paths for your deployment.
+ */
 const fs = require('fs');
 function parseEnvFile(p) {
   const env = {};
@@ -12,14 +16,15 @@ function parseEnvFile(p) {
 module.exports = {
   apps: [{
     name: 'zehrava-gate',
-    script: '/opt/zehrava-gate/src/index.js',
-    cwd: '/opt/zehrava-gate',
+    script: './src/index.js',
+    cwd: '/path/to/your/gate-server',
     env: {
-      ...parseEnvFile('/opt/zehrava-gate/.env'),
-      DATA_DIR: '/opt/zehrava-gate/data',
-      POLICY_DIR: '/opt/zehrava-gate/policies',
-      PORT: '3001',
-      VAULT_CONFIG: '/opt/zehrava-gate/config/vault.yaml',
+      ...parseEnvFile('.env'),
+      DATA_DIR:    './data',
+      POLICY_DIR:  './policies',
+      PORT:        '3001',
+      PROXY_PORT:  '4001',
+      VAULT_CONFIG: './config/vault.yaml',
     }
   }]
 };
