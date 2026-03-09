@@ -36,3 +36,4 @@ policies/bluesky-post.yaml
 # OS
 .DS_Store
 *.log
+.github/workflows/
