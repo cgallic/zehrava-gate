@@ -10,3 +10,4 @@ __pycache__/
 *.egg-info/
 dist/
 .claude/skills/ui-ux-pro-max/scripts/__pycache__/
+.claude/
