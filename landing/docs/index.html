@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Docs — Zehrava Gate</title>
@@ -261,6 +269,8 @@
     <a href="#sdk-python" class="nav-link">Python</a>
     <a href="#sdk-methods" class="nav-link">Methods</a>
     <a href="#webhooks" class="nav-link">Webhooks</a>
+    <a href="#proxy" class="nav-link">Proxy (V3)</a>
+    <a href="#langchain" class="nav-link">LangChain</a>
   </div>
   <div class="nav-group">
     <div class="nav-group-label">Concepts</div>
@@ -312,6 +322,8 @@
       <a href="#sdk-python" class="nav-link">Python</a>
       <a href="#sdk-methods" class="nav-link">Methods</a>
       <a href="#webhooks" class="nav-link">Webhooks</a>
+      <a href="#proxy" class="nav-link">Proxy (V3)</a>
+      <a href="#langchain" class="nav-link">LangChain</a>
     </div>
     <div class="nav-group">
       <div class="nav-group-label">Dashboard</div>
@@ -505,6 +517,21 @@ zehrava-gate --port 4000</pre>
           <td>number</td>
           <td>How long a pending intent can wait for approval before it expires. Expired intents cannot be approved. Default: 60.</td>
         </tr>
+        <tr>
+          <td>field_checks</td>
+          <td>object[]</td>
+          <td>Schema-aware JSON field validation. Each check has <code>path</code> (dot path), plus any of: <code>required</code>, <code>min</code>, <code>max</code>, <code>max_length</code>, <code>pattern</code>. If any check fails, intent is <code>blocked</code> with a specific reason.</td>
+        </tr>
+        <tr>
+          <td>environments</td>
+          <td>object</td>
+          <td>Environment-specific overrides for thresholds and approval behavior. Gate selects the block using <code>metadata.environment</code> (e.g. <code>production</code>, <code>staging</code>, <code>development</code>) and merges those fields over the base policy.</td>
+        </tr>
+        <tr>
+          <td>rate_limits</td>
+          <td>object</td>
+          <td>Per-agent action limits enforced server-side. Supports <code>per_agent_per_hour</code> and <code>per_agent_per_day</code>. Gate counts recent intents for the submitting agent in SQLite. Errors fail closed.</td>
+        </tr>
       </tbody>
     </table></div>
     <!-- ── POLICY EXAMPLES ── -->
@@ -534,6 +561,30 @@ zehrava-gate --port 4000</pre>
 <span class="key">destinations</span>: <span class="val">[stripe.refund, quickbooks.journal, netsuite.payment]</span>
 <span class="key">require_approval</span>: <span class="val">always</span>
 <span class="key">expiry_minutes</span>: <span class="val">15</span>              <span class="com"># short window — stale approvals are dangerous</span></pre>
+
+    <h3>Schema-aware policy — validate fields, rate limit, env overrides</h3>
+    <pre><span class="key">id</span>: <span class="val">schema-checked-email</span>
+<span class="key">destinations</span>: <span class="val">[sendgrid.send, loops.send]</span>
+
+<span class="key">field_checks</span>:
+  - <span class="key">path</span>: <span class="val">"to"</span>
+    <span class="key">required</span>: <span class="val">true</span>
+    <span class="key">pattern</span>: <span class="val">"^[^@]+@[^@]+\\.[^@]+$"</span>
+  - <span class="key">path</span>: <span class="val">"amount"</span>
+    <span class="key">min</span>: <span class="val">1</span>
+    <span class="key">max</span>: <span class="val">100</span>
+
+<span class="key">rate_limits</span>:
+  <span class="key">per_agent_per_hour</span>: <span class="val">50</span>
+  <span class="key">per_agent_per_day</span>: <span class="val">200</span>
+
+<span class="key">environments</span>:
+  <span class="key">production</span>:
+    <span class="key">require_approval</span>: <span class="val">always</span>
+  <span class="key">development</span>:
+    <span class="key">require_approval</span>: <span class="val">never</span>
+
+<span class="key">auto_approve_under</span>: <span class="val">1</span></pre>
 
     <h3>Internal blog publish — scoped destination, always approve</h3>
     <pre><span class="key">id</span>: <span class="val">blog-publish</span>
@@ -871,7 +922,7 @@ gate = <span class="fn">Gate</span>(endpoint=<span class="s">"http://localhost:4
     <pre><span class="cm">// JavaScript</span>
 <span class="k">const</span> p = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... })
 
-<span class="k">await</span> gate.<span class="fn">registerWebhook</span>({   <span class="cm">// JS SDK — coming in next release</span>
+<span class="k">await</span> gate.<span class="fn">registerWebhook</span>({
   intentId: p.intentId,
   url: <span class="s">'https://your-app.com/gate-callback'</span>,
   secret: <span class="s">'your-secret'</span>           <span class="cm">// sent as X-Gate-Secret header</span>
@@ -892,6 +943,69 @@ gate.<span class="fn">register_webhook</span>(
     <div class="callout callout-info">
       <p><strong>Webhooks are persisted to SQLite.</strong> Registrations survive server restarts. Each webhook fires exactly once — Gate marks it <code>fired=1</code> with a timestamp after delivery. Re-registering after a webhook fires creates a new pending registration.</p>
     </div>
+
+
+
+    <!-- ── PROXY (V3) ── -->
+    <h2 id="proxy">Proxy (V3)</h2>
+    <p>Gate can govern agents without SDK changes by running as a forward proxy. The proxy submits each outbound request as an intent. Gate forwards only approved requests.</p>
+
+    <h3>HTTP forward proxy (Phase 1)</h3>
+    <p>Route outbound HTTP traffic through Gate:</p>
+    <pre>export HTTP_PROXY=http://localhost:4001
+export HTTPS_PROXY=http://localhost:4001</pre>
+
+    <p>If a destination is unknown or blocked, the proxy returns <code>403</code>. This is intentional fail-closed behavior.</p>
+
+    <h3>HTTPS interception (MITM) (Phase 2)</h3>
+    <p>Enable TLS interception to govern HTTPS requests at the payload level:</p>
+    <pre>export GATE_TLS_INTERCEPT=true
+# restart Gate</pre>
+
+    <p>Trust Gate’s CA certificate in your agent runtime:</p>
+    <pre># Download CA
+curl -o gate-ca.crt http://localhost:3001/v1/proxy/ca.crt
+
+# Node
+export NODE_EXTRA_CA_CERTS=/path/to/gate-ca.crt
+
+# curl
+curl --cacert /path/to/gate-ca.crt https://api.example.com</pre>
+
+    <h3>Pending approvals: retry or hold</h3>
+    <p>When Gate returns <code>pending_approval</code>, the proxy supports two patterns:</p>
+    <ul>
+      <li><strong>Retry</strong> (default): proxy returns <code>202</code> with <code>X-Gate-Intent-Id</code> and <code>Retry-After</code>. Re-send the same request with <code>X-Gate-Intent-Id</code>.</li>
+      <li><strong>Hold + auto-replay</strong> (opt-in): set <code>X-Gate-Wait: true</code>. Gate holds the connection open and forwards automatically when approved. Timeout uses <code>GATE_HOLD_TIMEOUT_MS</code> (default 15 minutes).</li>
+    </ul>
+
+    <h3>Inspect held connections</h3>
+    <pre>GET /v1/proxy/held  <span class="com"># auth required</span></pre>
+
+    <h3>Destination naming gotcha</h3>
+    <p>The proxy can emit host-based destinations like <code>api.stripe.com.http</code>. If your policy allowlist expects logical names like <code>stripe.refund</code>, add an override in <code>config/destinations.yaml</code> so host+path maps to your logical destination. Otherwise Gate will block due to allowlist mismatch.</p>
+
+    <!-- ── LANGCHAIN ── -->
+    <h2 id="langchain">LangChain + LangGraph</h2>
+    <p>Gate integrates cleanly with LangChain tools. The pattern is simple: submit an intent before tool execution. Run the tool only if Gate approves.</p>
+
+    <h3>Wrap tools (GateTool)</h3>
+    <p>The repo contains <code>packages/langchain-gate</code>, which provides <code>GateTool</code> and <code>GateToolkit</code>. It wraps any Tool with a Gate checkpoint:</p>
+    <pre><span class="k">const</span> { Gate } = <span class="fn">require</span>(<span class="s">'zehrava-gate'</span>)
+<span class="k">const</span> { GateTool, GateBlockedError } = <span class="fn">require</span>(<span class="s">'@zehrava/langchain-gate'</span>)
+
+<span class="k">const</span> gate = <span class="k">new</span> Gate({ endpoint: <span class="s">'http://localhost:3001'</span>, apiKey: <span class="s">'gate_sk_...'</span> })
+
+<span class="k">const</span> governed = <span class="k">new</span> GateTool({ tool: emailTool, gate, policy: <span class="s">'outbound-email'</span>, destination: <span class="s">'sendgrid.send'</span> })
+
+<span class="k">try</span> {
+  <span class="k">await</span> governed.<span class="fn">_call</span>(JSON.<span class="fn">stringify</span>({ to: <span class="s">'user@co.com'</span>, subject: <span class="s">'...'</span> }))
+} <span class="k">catch</span> (err) {
+  <span class="k">if</span> (err <span class="k">instanceof</span> GateBlockedError) <span class="fn">console</span>.<span class="fn">error</span>(err.blockReason)
+}</pre>
+
+    <h3>Branch graphs (gateNode + gateRouteAfter)</h3>
+    <p>LangGraph graphs can branch on Gate’s decision. Use <code>gateNode()</code> to submit intent and write <code>gateStatus</code> into state. Use <code>gateRouteAfter()</code> to route edges.</p>
 
     <!-- ── DASHBOARD ── -->
     <h2 id="dashboard">Dashboard</h2>
