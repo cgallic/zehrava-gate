@@ -478,6 +478,56 @@
       .email-input, .email-submit { width: 100%; }
     }
 
+    /* ─── V3 SECTION ─── */
+    .v3-intro { display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
+    .v3-badge { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.3rem 0.875rem; border-radius: 999px; }
+    .v3-badge-version { background: rgba(99,102,241,0.12); color: var(--purple-b); border: 1px solid rgba(99,102,241,0.28); }
+    .v3-badge-live { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.28); }
+    .v3-badge-live::before { content: ''; width: 6px; height: 6px; background: #4ade80; border-radius: 50%; box-shadow: 0 0 8px rgba(34,197,94,0.6); animation: badgePulse 2s infinite; }
+
+    .v3-problem { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem 2rem; margin-bottom: 2.5rem; box-shadow: var(--shadow); }
+    .v3-problem p { font-size: 0.925rem; color: var(--muted2); line-height: 1.8; margin: 0; }
+    .v3-problem strong { color: var(--text); }
+
+    .v3-flow { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem 2rem; margin-bottom: 2.5rem; font-family: var(--mono); font-size: 0.78rem; line-height: 2; overflow-x: auto; box-shadow: var(--shadow); }
+    .v3-flow .fl-label { color: var(--muted); font-style: italic; font-size: 0.72rem; }
+    .v3-flow .fl-gate { color: var(--purple-b); font-weight: 700; }
+    .v3-flow .fl-pass { color: #4ade80; }
+    .v3-flow .fl-hold { color: var(--amber); }
+    .v3-flow .fl-block { color: var(--red); }
+    .v3-flow .fl-vault { color: #f0abfc; }
+
+    .v3-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
+    .v3-mode { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; box-shadow: var(--shadow); transition: all 200ms ease-out; position: relative; overflow: hidden; }
+    .v3-mode::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .v3-mode:nth-child(1)::before { background: linear-gradient(90deg, var(--purple), var(--purple-b)); }
+    .v3-mode:nth-child(2)::before { background: linear-gradient(90deg, var(--green-dark), var(--green)); }
+    .v3-mode:nth-child(3)::before { background: linear-gradient(90deg, #d946ef, #f0abfc); }
+    .v3-mode:hover { border-color: var(--border2); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+    .v3-mode-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; font-family: var(--mono); }
+    .v3-mode:nth-child(1) .v3-mode-label { color: var(--purple-b); }
+    .v3-mode:nth-child(2) .v3-mode-label { color: #4ade80; }
+    .v3-mode:nth-child(3) .v3-mode-label { color: #f0abfc; }
+    .v3-mode h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.625rem; letter-spacing: -0.02em; }
+    .v3-mode p { font-size: 0.84rem; color: var(--muted2); line-height: 1.7; margin-bottom: 0.875rem; }
+    .v3-mode code { font-family: var(--mono); font-size: 0.75rem; background: rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 4px; color: var(--purple-b); }
+
+    .v3-vault-callout { background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.2); border-radius: var(--r); padding: 1.5rem 2rem; margin-bottom: 2rem; }
+    .v3-vault-callout strong { color: var(--text); }
+    .v3-vault-callout p { font-size: 0.9rem; color: #c7d2fe; line-height: 1.75; margin: 0; }
+
+    .v3-providers { display: flex; gap: 0.625rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
+    .v3-provider-pill { background: rgba(255,255,255,0.04); border: 1px solid var(--border); padding: 0.4rem 0.9rem; border-radius: 7px; font-size: 0.77rem; font-weight: 600; color: var(--muted2); font-family: var(--mono); display: flex; align-items: center; gap: 0.5rem; }
+    .v3-provider-pill .pp-tag { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 4px; }
+    .pp-live { background: rgba(99,102,241,0.1); color: var(--purple-b); }
+    .pp-next { background: rgba(245,158,11,0.08); color: var(--amber); }
+
+    .v3-cta-row { display: flex; gap: 0.875rem; flex-wrap: wrap; }
+
+    @media (max-width: 900px) {
+      .v3-modes { grid-template-columns: 1fr; }
+    }
+
     /* ─── EMAIL CAPTURE ─── */
     .email-section { max-width: 600px; }
     .email-section h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 800; margin-bottom: 0.75rem; }
@@ -532,6 +582,8 @@
     <a href="#problem">Problem</a>
     <a href="/demo" style="color:var(--purple-b);font-weight:700">Live Demo</a>
     <a href="#how-it-works">How it works</a>
+    <a href="#v3" style="color:var(--purple-b);font-weight:700">V3 Proxy</a>
+    <a href="/demo-dashboard/">Dashboard</a>
     <a href="#api">API</a>
     <a href="#pricing">Pricing</a>
   </div>
@@ -552,6 +604,8 @@
   <a href="#problem" class="m-link">Problem</a>
   <a href="/demo" class="m-link">Live Demo</a>
   <a href="#how-it-works" class="m-link">How it works</a>
+  <a href="#v3" class="m-link" style="color:var(--purple-b)">V3 Proxy</a>
+  <a href="/demo-dashboard/" class="m-link">Dashboard</a>
   <a href="#api" class="m-link">API</a>
   <a href="#pricing" class="m-link">Pricing</a>
   <a href="/docs" class="m-link">Docs</a>
@@ -894,6 +948,82 @@
         <span class="flow-tag tag-audit">Ledger sealed</span>
       </div>
     </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- V3: PROXY ARCHITECTURE -->
+<section class="section" id="v3">
+  <div class="v3-intro reveal">
+    <span class="v3-badge v3-badge-version">Gate V3</span>
+    <span class="v3-badge v3-badge-live">Phase 1 Live</span>
+  </div>
+
+  <div class="section-label reveal">The next layer</div>
+  <h2 class="section-h2 reveal">Enforcement, not cooperation.<br>The proxy architecture.</h2>
+  <p class="section-lead reveal">V2 governs writes when the agent calls the SDK. V3 closes that gap. A forward proxy sits in the request path — the agent's HTTP call hits Gate first. No SDK integration required. No path around it.</p>
+
+  <div class="v3-problem reveal">
+    <p>V2 is opt-in. An agent that skips <code style="font-family:var(--mono);font-size:.82em;color:var(--purple-b)">gate.propose()</code> writes directly to production. A retry loop that ignores <code style="font-family:var(--mono);font-size:.82em;color:var(--purple-b)">duplicate_blocked</code> fires twice. <strong>V3 puts Gate in the network path — not the application layer.</strong></p>
+  </div>
+
+  <div class="v3-flow reveal">
+    <div><span class="fl-label">V2: cooperative</span></div>
+    <div>Agent &rarr; SDK.propose() &rarr; <span class="fl-gate">Gate API</span> &rarr; approved &rarr; Agent executes &nbsp;<span class="fl-label">(optional &mdash; agent can skip)</span></div>
+    <div style="margin:.5rem 0"></div>
+    <div><span class="fl-label">V3: enforced</span></div>
+    <div>Agent &rarr; HTTP request &rarr; <span class="fl-gate">Gate Proxy</span> &rarr; <span class="fl-pass">auto-approved &rarr; forwards to destination</span></div>
+    <div style="padding-left:22ch"><span class="fl-gate">&nbsp;</span> &rarr; <span class="fl-hold">pending &rarr; 202 + intentId</span></div>
+    <div style="padding-left:22ch"><span class="fl-gate">&nbsp;</span> &rarr; <span class="fl-block">blocked &rarr; 403 + reason</span></div>
+    <div style="padding-left:22ch"><span class="fl-gate">&nbsp;</span> &rarr; <span class="fl-vault">vault &rarr; Gate fetches credential + executes</span></div>
+  </div>
+
+  <h2 class="section-h2 reveal" style="font-size:clamp(1.5rem,2.5vw,2rem)">Three deployment modes</h2>
+
+  <div class="v3-modes">
+    <div class="v3-mode reveal-s">
+      <div class="v3-mode-label">Mode A</div>
+      <h3>Forward Proxy</h3>
+      <p>One environment variable. All outbound HTTP routes through Gate. No agent code changes. Destination maps to policy via registry.</p>
+      <code>HTTP_PROXY=http://gate:4001</code>
+    </div>
+    <div class="v3-mode reveal-s" style="transition-delay:.1s">
+      <div class="v3-mode-label">Mode B</div>
+      <h3>Reverse Proxy</h3>
+      <p>Gate deployed in front of specific APIs. Agent routes to Gate's URL. Works for services that ignore proxy variables.</p>
+      <code>POST gate.internal/sfdc/...</code>
+    </div>
+    <div class="v3-mode reveal-s" style="transition-delay:.2s">
+      <div class="v3-mode-label">Mode C</div>
+      <h3>Credential Vault</h3>
+      <p>Gate holds no credentials. Fetches from 1Password, HashiCorp, or AWS at execution time. Agent never touches production secrets.</p>
+      <code>op://AI-Agents/Stripe/key</code>
+    </div>
+  </div>
+
+  <div class="v3-vault-callout reveal">
+    <p><strong>Zero-trust credentials:</strong> In vault mode, the agent submits intent only. Gate evaluates policy, fetches the credential ephemerally, executes the API call, then discards it from memory. A compromised agent has nothing to exfiltrate. 1Password handles custody. Gate handles authorization.</p>
+  </div>
+
+  <div class="v3-providers reveal">
+    <div class="v3-provider-pill">1Password <span class="pp-tag pp-live">V3.0</span></div>
+    <div class="v3-provider-pill">HashiCorp Vault <span class="pp-tag pp-live">V3.0</span></div>
+    <div class="v3-provider-pill">AWS Secrets Manager <span class="pp-tag pp-live">V3.0</span></div>
+    <div class="v3-provider-pill">Azure Key Vault <span class="pp-tag pp-next">V3.1</span></div>
+    <div class="v3-provider-pill">Doppler <span class="pp-tag pp-next">V3.1</span></div>
+    <div class="v3-provider-pill">ENV fallback <span class="pp-tag pp-live">V3.0</span></div>
+  </div>
+
+  <div class="v3-cta-row reveal">
+    <a href="/v3/" class="btn-primary">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" aria-hidden="true"><path d="M2 1l9 5.5-9 5.5z"/></svg>
+      Read V3 Architecture
+    </a>
+    <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Follow on GitHub
+    </a>
   </div>
 </section>
 
@@ -1340,7 +1470,7 @@ npx zehrava-gate --port 4000</pre>
   <div class="email-section reveal">
     <div class="section-label" style="margin-bottom:1rem">Stay in the loop</div>
     <h2>Gate is moving fast.</h2>
-    <p>Get notified when the Python SDK, webhook subscriptions, and the reverse proxy architecture ship. No spam — just release notes.</p>
+    <p>V3 Phase 1 is live — forward proxy enforcement shipping now. Get notified when credential vault integration, HTTPS tunneling, and Kubernetes sidecar support ship. No spam — just release notes.</p>
     <form class="email-form" id="emailForm" onsubmit="submitEmail(event)">
       <input type="email" class="email-input" id="emailInput" placeholder="you@company.com" required aria-label="Email address">
       <button type="submit" class="email-submit">Notify me</button>
@@ -1358,7 +1488,8 @@ npx zehrava-gate --port 4000</pre>
   </div>
   <nav class="footer-links" aria-label="Footer navigation">
     <a href="/docs" style="color:var(--muted2)">Docs</a>
-    <a href="/demo" style="color:var(--purple-b);font-weight:600">Live Demo</a>
+    <a href="/v3/" style="color:var(--purple-b);font-weight:600">V3 Architecture</a>
+    <a href="/demo" style="color:var(--muted2)">Live Demo</a>
     <a href="/dashboard">Dashboard</a>
     <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
     <a href="https://meetkai.xyz" target="_blank" rel="noopener">MeetKai</a>
