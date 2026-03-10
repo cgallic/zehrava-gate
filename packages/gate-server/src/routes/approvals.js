@@ -80,8 +80,18 @@ async function fireWebhook(intentId, event, data) {
 
 // ── APPROVE ───────────────────────────────────────────────────────────────
 
+function requireReviewer(req, res) {
+  const role = req.agent?.role || 'agent';
+  if (role !== 'admin' && role !== 'reviewer') {
+    res.status(403).json({ error: 'forbidden', message: 'Reviewer API key required for approvals' });
+    return false;
+  }
+  return true;
+}
+
 // POST /v1/approve  (V1 backward compat — body.proposalId)
 router.post('/approve', authenticate, (req, res) => {
+  if (!requireReviewer(req, res)) return;
   const { proposalId } = req.body;
   if (!proposalId) return res.status(400).json({ error: 'proposalId required' });
 
@@ -173,6 +183,7 @@ router.post('/approve', authenticate, (req, res) => {
 
 // POST /v1/reject  (V1 backward compat — body.proposalId)
 router.post('/reject', authenticate, (req, res) => {
+  if (!requireReviewer(req, res)) return;
   const { proposalId, reason } = req.body;
   if (!proposalId) return res.status(400).json({ error: 'proposalId required' });
 

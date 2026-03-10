@@ -103,14 +103,20 @@ app.get('/v1/policies', authenticate, (req, res) => {
 // List proposals by status (for dashboard)
 app.get('/v1/proposals', authenticate, (req, res) => {
   const { status, limit = 50 } = req.query;
+  const isReviewer = (req.agent?.role === 'admin' || req.agent?.role === 'reviewer');
+
   let query = 'SELECT p.*, a.name as agent_name FROM proposals p LEFT JOIN agents a ON p.sender_agent_id = a.id';
   const params = [];
-  if (status) {
-    query += ' WHERE p.status = ?';
-    params.push(status);
-  }
+
+  const where = [];
+  if (status) { where.push('p.status = ?'); params.push(status); }
+  if (!isReviewer) { where.push('p.sender_agent_id = ?'); params.push(req.agent.id); }
+
+  if (where.length) query += ' WHERE ' + where.join(' AND ');
+
   query += ' ORDER BY p.created_at DESC LIMIT ?';
   params.push(parseInt(limit));
+
   const proposals = db.prepare(query).all(...params).map(p => ({
     ...p,
     created_at: new Date(p.created_at).toISOString(),
@@ -137,11 +143,20 @@ app.post('/v1/intents/:id/approve', (req, res, next) => { req.body.proposalId = 
 app.post('/v1/intents/:id/reject', (req, res, next) => { req.body.proposalId = req.params.id; next(); }, (req, res, next) => { req.url = '/reject'; next(); }, require('./routes/approvals'));
 app.get('/v1/intents', authenticate, (req, res) => {
   const { status, limit = 50 } = req.query;
+  const isReviewer = (req.agent?.role === 'admin' || req.agent?.role === 'reviewer');
+
   let query = 'SELECT p.*, a.name as agent_name FROM proposals p LEFT JOIN agents a ON p.sender_agent_id = a.id';
   const params = [];
-  if (status) { query += ' WHERE p.status = ?'; params.push(status); }
+
+  const where = [];
+  if (status) { where.push('p.status = ?'); params.push(status); }
+  if (!isReviewer) { where.push('p.sender_agent_id = ?'); params.push(req.agent.id); }
+
+  if (where.length) query += ' WHERE ' + where.join(' AND ');
+
   query += ' ORDER BY p.created_at DESC LIMIT ?';
   params.push(parseInt(limit));
+
   const intents = db.prepare(query).all(...params).map(p => ({
     ...p, intentId: p.id,
     created_at: new Date(p.created_at).toISOString(),

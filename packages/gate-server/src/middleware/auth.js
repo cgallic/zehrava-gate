@@ -15,6 +15,14 @@ function authenticate(req, res, next) {
     return res.status(401).json({ error: 'Invalid API key' });
   }
 
+  const status = agent.status || 'active';
+  if (status !== 'active') {
+    return res.status(403).json({ error: 'agent_inactive', status });
+  }
+
+  // Normalize role for older rows where column was added later
+  agent.role = agent.role || 'agent';
+
   req.agent = agent;
   next();
 }

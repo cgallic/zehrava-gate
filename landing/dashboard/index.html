@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zehrava Gate — Approval Queue</title>
@@ -269,10 +277,14 @@
 </div>
 
 <div class="api-key-box">
-  <span class="api-key-label">Demo API key</span>
-  <span class="api-key-value" id="apiKeyDisplay">gate_sk_1e03e5dd975da4edde747eb5a3de95a22fb0d70e346eb0af</span>
-  <button class="copy-btn" onclick="copyKey()">Copy</button>
-  <span style="color:var(--muted);font-size:0.75rem">Use this key to propose from the demo page or curl</span>
+  <span class="api-key-label">Dashboard API key</span>
+  <span style="color:var(--muted);font-size:0.75rem">Paste a reviewer/admin API key to view and approve intents. Gate does not ship approval keys to the browser.</span>
+  <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+    <input id="apiKeyInput" type="password" placeholder="gate_sk_…" style="flex:1;min-width:240px;padding:.45rem .6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:inherit" />
+    <button class="copy-btn" onclick="saveKey()">Save</button>
+    <button class="copy-btn" onclick="clearKey()">Clear</button>
+  </div>
+  <div style="margin-top:.5rem;font-size:.75rem;color:var(--muted)">Current: <span id="apiKeyDisplay">(none)</span></div>
 </div>
 
 <div class="metrics-bar" id="metricsBar">
@@ -311,14 +323,23 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const API_KEY = 'gate_sk_1e03e5dd975da4edde747eb5a3de95a22fb0d70e346eb0af';
+let API_KEY = localStorage.getItem('GATE_DASHBOARD_API_KEY') || '';
+const API_KEY_STORAGE = 'GATE_DASHBOARD_API_KEY';
 const API_BASE = '/v1';
 let currentTab = 'pending_approval';
 let pendingRejectId = null;
 let refreshTimer = null;
 let expandedRows = new Set();
 
+function renderApiKey() {
+  const el = document.getElementById('apiKeyDisplay');
+  if (!el) return;
+  if (!API_KEY) { el.textContent = '(none)'; return; }
+  el.textContent = API_KEY.slice(0, 12) + '…';
+}
+
 function headers() {
+  if (!API_KEY) return { 'Content-Type': 'application/json' };
   return { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' };
 }
 
@@ -330,9 +351,21 @@ async function api(method, path, body) {
   return res.json();
 }
 
-function copyKey() {
-  navigator.clipboard.writeText(API_KEY);
-  showToast('API key copied', 'success');
+function saveKey() {
+  const v = document.getElementById('apiKeyInput').value.trim();
+  if (!v) { showToast('Paste an API key first', 'error'); return; }
+  API_KEY = v;
+  localStorage.setItem(API_KEY_STORAGE, API_KEY);
+  renderApiKey();
+  showToast('API key saved', 'success');
+  refresh();
+}
+
+function clearKey() {
+  API_KEY = '';
+  localStorage.removeItem(API_KEY_STORAGE);
+  renderApiKey();
+  document.getElementById('tableContainer').innerHTML = '<div class="callout" style="margin-top:1rem">Paste a reviewer/admin API key to load intents.</div>';
 }
 
 function showToast(msg, type = 'success') {

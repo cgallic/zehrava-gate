@@ -45,12 +45,18 @@ router.post('/agents/register', (req, res) => {
   });
 });
 
-// GET /v1/agents — list (auth required)
+// GET /v1/agents — list (auth required, reviewer/admin only)
 router.get('/agents', authenticate, (req, res) => {
-  const agents = db.prepare('SELECT id, name, owner, risk_tier, status, framework, allowed_policies, allowed_destinations, created_at FROM agents').all();
+  const role = req.agent?.role || 'agent';
+  if (role !== 'admin' && role !== 'reviewer') {
+    return res.status(403).json({ error: 'forbidden', message: 'Reviewer API key required' });
+  }
+  const agents = db.prepare('SELECT id, name, owner, risk_tier, role, status, framework, allowed_policies, allowed_destinations, created_at FROM agents').all();
   res.json({
-    agents: agents.map(a => ({ status: a.status || 'active',
-      ...a, status: a.status || 'active',
+    agents: agents.map(a => ({
+      ...a,
+      status: a.status || 'active',
+      role: a.role || 'agent',
       allowed_policies: tryParse(a.allowed_policies, []),
       allowed_destinations: tryParse(a.allowed_destinations, []),
       created_at: new Date(a.created_at).toISOString()
@@ -60,10 +66,18 @@ router.get('/agents', authenticate, (req, res) => {
 
 // GET /v1/agents/:id
 router.get('/agents/:id', authenticate, (req, res) => {
-  const a = db.prepare('SELECT id, name, owner, risk_tier, status, framework, allowed_policies, allowed_destinations, metadata, created_at FROM agents WHERE id = ?').get(req.params.id);
+  const role = req.agent?.role || 'agent';
+  const isReviewer = (role === 'admin' || role === 'reviewer');
+  if (!isReviewer && req.params.id !== req.agent.id) {
+    return res.status(403).json({ error: 'forbidden', message: 'Cannot access other agents' });
+  }
+
+  const a = db.prepare('SELECT id, name, owner, risk_tier, role, status, framework, allowed_policies, allowed_destinations, metadata, created_at FROM agents WHERE id = ?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Agent not found' });
   res.json({
     ...a,
+    status: a.status || 'active',
+    role: a.role || 'agent',
     allowed_policies: tryParse(a.allowed_policies, []),
     allowed_destinations: tryParse(a.allowed_destinations, []),
     metadata: tryParse(a.metadata, {}),
@@ -73,6 +87,11 @@ router.get('/agents/:id', authenticate, (req, res) => {
 
 // POST /v1/agents/:id/revoke
 router.post('/agents/:id/revoke', authenticate, (req, res) => {
+  const role = req.agent?.role || 'agent';
+  if (role !== 'admin' && role !== 'reviewer') {
+    return res.status(403).json({ error: 'forbidden', message: 'Reviewer API key required' });
+  }
+
   const a = db.prepare('SELECT id, name FROM agents WHERE id = ?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Agent not found' });
   db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('revoked', req.params.id);
@@ -82,6 +101,11 @@ router.post('/agents/:id/revoke', authenticate, (req, res) => {
 
 // POST /v1/agents/:id/suspend
 router.post('/agents/:id/suspend', authenticate, (req, res) => {
+  const role = req.agent?.role || 'agent';
+  if (role !== 'admin' && role !== 'reviewer') {
+    return res.status(403).json({ error: 'forbidden', message: 'Reviewer API key required' });
+  }
+
   const a = db.prepare('SELECT id, name FROM agents WHERE id = ?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Agent not found' });
   db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('suspended', req.params.id);

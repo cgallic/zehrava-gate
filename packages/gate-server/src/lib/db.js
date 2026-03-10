@@ -16,6 +16,13 @@ db.exec(`
     name TEXT NOT NULL,
     api_key_hash TEXT NOT NULL,
     risk_tier TEXT DEFAULT 'standard',
+    role TEXT DEFAULT 'agent',
+    status TEXT DEFAULT 'active',
+    owner TEXT,
+    allowed_policies TEXT,
+    allowed_destinations TEXT,
+    framework TEXT,
+    metadata TEXT,
     created_at INTEGER NOT NULL
   );
 
@@ -67,6 +74,22 @@ db.exec(`
     created_at INTEGER NOT NULL,
     FOREIGN KEY (intent_id) REFERENCES proposals(id)
   );
+
+  CREATE INDEX IF NOT EXISTS idx_proposals_sender_created ON proposals(sender_agent_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_proposals_status_created ON proposals(status, created_at);
 `);
+
+// ── Lightweight migrations (no drops; add columns only) ───────────────────
+function ensureColumn(sql) {
+  try { db.exec(sql); }
+  catch (e) {
+    const msg = (e && e.message) ? e.message.toLowerCase() : '';
+    if (msg.includes('duplicate column') || msg.includes('already exists')) return;
+    throw e;
+  }
+}
+
+ensureColumn("ALTER TABLE agents ADD COLUMN role TEXT DEFAULT 'agent'");
+ensureColumn("ALTER TABLE agents ADD COLUMN status TEXT DEFAULT 'active'");
 
 module.exports = db;

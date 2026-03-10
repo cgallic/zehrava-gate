@@ -181,6 +181,11 @@ router.get('/proposals/:id', authenticate, (req, res) => {
   const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
 
+  const isReviewer = (req.agent?.role === 'admin' || req.agent?.role === 'reviewer');
+  if (!isReviewer && proposal.sender_agent_id !== req.agent.id) {
+    return res.status(403).json({ error: 'forbidden', message: 'Cannot access intents from other agents' });
+  }
+
   const auditTrail = getAuditTrail(req.params.id);
   const manifest = db.prepare('SELECT * FROM manifests WHERE proposal_id = ?').get(req.params.id);
 

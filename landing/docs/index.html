@@ -1019,7 +1019,7 @@ curl --cacert /path/to/gate-ca.crt https://api.example.com</pre>
     </ul>
     <p>Try it at <a href="/dashboard" target="_blank">zehrava.com/dashboard →</a></p>
     <div class="callout callout-info">
-      <p><strong>Approval is one click.</strong> The reviewer doesn't need an API key or code access — just the dashboard URL. Gate handles the auth internally for dashboard actions.</p>
+      <p><strong>Approval is one click.</strong> The reviewer still needs a reviewer/admin API key. Gate does not embed approval keys in the dashboard UI. Put <code>/dashboard</code> behind your normal auth (VPN, basic auth, SSO) in production.</p>
     </div>
 
     <h2 id="audit-trail">Audit trail</h2>
