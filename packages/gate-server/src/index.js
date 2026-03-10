@@ -201,16 +201,23 @@ function scrubProposal(p) {
 }
 
 app.get('/v1/public/feed', (req, res) => {
+  if (process.env.PUBLIC_FEED_ENABLED !== 'true') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const allowName = (process.env.PUBLIC_FEED_AGENT_NAME || 'demo-agent').trim();
+
   const rows = db.prepare(`
     SELECT p.*, a.name as agent_name
     FROM proposals p
     LEFT JOIN agents a ON p.sender_agent_id = a.id
-    WHERE a.name = 'kai-cmo'
+    WHERE a.name = ?
     ORDER BY p.created_at DESC
     LIMIT ?
-  `).all(limit);
-  res.json({ proposals: rows.map(scrubProposal), count: rows.length });
+  `).all(allowName, limit);
+
+  res.json({ proposals: rows.map(scrubProposal), count: rows.length, agent: allowName });
 });
 
 // GET /v1/metrics

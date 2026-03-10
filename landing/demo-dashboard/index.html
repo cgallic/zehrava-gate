@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-BQZHH7EYLF');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Dashboard — Zehrava Gate</title>
+  <meta name="description" content="Public demo dashboard for Zehrava Gate. Read-only view of demo-agent intents." />
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: #a5b4fc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    nav[aria-label="Site navigation"] { display:flex; align-items:center; justify-content:space-between; padding:1rem 2rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(10,15,26,0.92); backdrop-filter:blur(14px); z-index:100; }
+    .nav-logo { display:flex; align-items:center; gap:.5rem; font-size:1rem; font-weight:800; color:var(--text); text-decoration:none; letter-spacing:-0.02em; }
+    .nav-logo span { color:#818cf8; }
+    .nav-links { display:flex; gap:1.25rem; font-size:0.85rem; }
+    .nav-links a { color: #94a3b8; }
+    .nav-links a:hover { color: var(--text); text-decoration:none; }
+    .btn-nav { background:linear-gradient(135deg,#16a34a,#15803d); color:#fff; padding:.45rem 1rem; border-radius:10px; font-size:.85rem; font-weight:700; text-decoration:none; }
+
+    main { max-width: 920px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 0.75rem; }
+    p { color: #cbd5e1; margin-bottom: 1rem; }
+
+    .callout { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 1rem 1.25rem; margin: 1.25rem 0 1.75rem; }
+    .callout strong { color: var(--text); }
+
+    .grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.25rem; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; }
+    .row { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: #a5b4fc; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+
+    .badge { display:inline-block; padding: .15rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .02em; border: 1px solid transparent; }
+    .b-pending { background: rgba(245,158,11,0.12); color: var(--amber); border-color: rgba(245,158,11,0.25); }
+    .b-approved { background: rgba(34,197,94,0.12); color: var(--green); border-color: rgba(34,197,94,0.25); }
+    .b-blocked { background: rgba(239,68,68,0.12); color: var(--red); border-color: rgba(239,68,68,0.25); }
+
+    .table { width: 100%; border-collapse: collapse; margin-top: .75rem; font-size: 0.9rem; }
+    .table th { text-align:left; padding: .55rem .65rem; color: #94a3b8; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--border); }
+    .table td { padding: .7rem .65rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: #e2e8f0; vertical-align: top; }
+
+    footer { text-align:center; padding: 2rem 1.25rem; border-top: 1px solid var(--border); color: #94a3b8; font-size: 0.8rem; }
+
+    @media (max-width: 768px) {
+      nav[aria-label="Site navigation"] { padding: .875rem 1.1rem; }
+      .nav-links { display:none; }
+      main { padding: 2rem 1rem 3rem; }
+      .table { font-size: .82rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav aria-label="Site navigation">
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#dg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="dg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
+  <div class="nav-links">
+    <a href="/demo">Live Demo</a>
+    <a href="/docs">Docs</a>
+    <a href="/blog">Blog</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+  <a href="/demo" class="btn-nav">Try the demo</a>
+</nav>
+
+<main>
+  <h1>Demo dashboard (read-only)</h1>
+  <p>This page shows intents created by the public <span class="mono">demo-agent</span>. It is read-only by design.</p>
+
+  <div class="callout">
+    <p><strong>Why read-only?</strong> This site is public. Approvals require a reviewer/admin key and the real dashboard is protected. Run Gate locally to approve intents.</p>
+    <p class="muted" style="margin-top:.5rem">Want the real thing? Start Gate locally and open <span class="mono">/dashboard</span> on your instance.</p>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div style="font-weight:800">Latest demo intents</div>
+        <div class="muted">Refreshes every 10s. Only demo-agent data is visible.</div>
+      </div>
+      <div class="muted">Status: <span id="status">loading…</span></div>
+    </div>
+
+    <table class="table" aria-label="Demo intents table">
+      <thead>
+        <tr>
+          <th>Intent</th>
+          <th>Status</th>
+          <th>Destination</th>
+          <th>Policy</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+
+<footer>
+  Zehrava Gate · <a href="/docs">Docs</a> · <a href="/demo">Live Demo</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a>
+</footer>
+
+<script>
+  // Public demo feed is anonymous and filtered server-side to demo-agent only.
+  // No keys in the browser.
+
+  const API_BASE = '/v1';
+  const elRows = document.getElementById('rows');
+  const elStatus = document.getElementById('status');
+
+  function badge(status) {
+    const s = String(status || '');
+    if (s === 'pending_approval') return '<span class="badge b-pending">pending</span>';
+    if (s === 'approved' || s === 'scheduled' || s === 'executing' || s === 'succeeded') return '<span class="badge b-approved">approved</span>';
+    if (s === 'blocked' || s === 'duplicate_blocked' || s === 'failed' || s === 'expired') return '<span class="badge b-blocked">blocked</span>';
+    return '<span class="badge">' + s + '</span>';
+  }
+
+  function fmtTime(ts) {
+    try { return new Date(ts).toISOString().replace('T',' ').slice(0,19) + 'Z'; }
+    catch { return '—'; }
+  }
+
+  async function load() {
+    try {
+      elStatus.textContent = 'loading…';
+      const res = await fetch(`${API_BASE}/public/feed?limit=25`);
+      const data = await res.json();
+      if (!res.ok) {
+        elStatus.textContent = `error (${res.status})`;
+        elRows.innerHTML = `<tr><td colspan="5" class="muted">${data.error || 'Failed to load'}</td></tr>`;
+        return;
+      }
+
+      const intents = data.proposals || [];
+      elStatus.textContent = `ok (${intents.length})`;
+
+      if (!intents.length) {
+        elRows.innerHTML = `<tr><td colspan="5" class="muted">No intents yet. Create one from /demo.</td></tr>`;
+        return;
+      }
+
+      elRows.innerHTML = intents.map(i => {
+        const id = i.id || '—';
+        const dest = i.destination || '—';
+        const pol  = i.policy || i.policy_id || '—';
+        const st   = i.status || '—';
+        const created = i.created_at || '—';
+        return `<tr>
+          <td class="mono">${id}</td>
+          <td>${badge(st)}</td>
+          <td>${dest}</td>
+          <td class="mono">${pol}</td>
+          <td class="muted">${fmtTime(created)}</td>
+        </tr>`;
+      }).join('');
+
+    } catch (e) {
+      elStatus.textContent = 'network error';
+      elRows.innerHTML = `<tr><td colspan="5" class="muted">${e.message}</td></tr>`;
+    }
+  }
+
+  load();
+  setInterval(load, 10_000);
+</script>
+
+</body>
+</html>
