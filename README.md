@@ -4,6 +4,8 @@
 
 → [zehrava.com](https://zehrava.com) · [npm](https://www.npmjs.com/package/zehrava-gate) · [PyPI](https://pypi.org/project/zehrava-gate/) · [Live demo](https://zehrava.com/demo) · [Docs](https://zehrava.com/docs)
 
+![Zehrava Gate demo](./gate-demo.gif)
+
 ---
 
 Agents can read systems freely. Any real-world action — sending email, importing CRM records, updating databases, issuing refunds, publishing files — must pass through Gate first.
