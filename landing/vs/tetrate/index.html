@@ -130,18 +130,40 @@
 
   <h2>What Tetrate Agent Router Service does</h2>
 
-  <p>Tetrate Agent Router Service is an enterprise AI gateway and routing platform. Tetrate Agent Router Service uses Envoy-based gateway infrastructure and positions around runtime controls, cost visibility, and audit readiness for regulated workflows.</p>
+  <p>Tetrate Agent Router Service is an enterprise AI gateway and routing platform. Tetrate Agent Router Service sits at the network edge for AI traffic. The system unifies model access, governs tool access, and adds observability so platform teams can run agent workflows safely.</p>
 
   <div class="two-col">
     <div class="card">
-      <h3>LLM gateway</h3>
-      <p>Unify model access, centralize keys, route with fallback, and track costs. Use one endpoint across providers.</p>
+      <h3>LLM gateway + routing</h3>
+      <p>Unify model access behind one endpoint. Route requests with fallback. Track cost and usage across providers.</p>
     </div>
     <div class="card">
-      <h3>MCP gateway</h3>
-      <p>Connect agents to tools through an MCP gateway. Control tool access with authentication and filtering.</p>
+      <h3>MCP gateway + tool catalog</h3>
+      <p>Connect agents to tools through an MCP gateway. Enforce authenticated access and filter tool exposure per profile.</p>
     </div>
   </div>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>Guardrails + data loss prevention</h3>
+      <p>Enforce consistency and prevent sensitive data loss at the gateway. Reduce risk from prompt injection and tool misuse.</p>
+    </div>
+    <div class="card">
+      <h3>Cost governance + signals</h3>
+      <p>Alert on spikes and quota violations. Compare usage across models, providers, and teams. Track audit log completeness.</p>
+    </div>
+  </div>
+
+  <h2>What else Tetrate sells (why it can execute)</h2>
+
+  <p>Tetrate is an Envoy and Istio company. Tetrate builds gateways and service mesh for regulated environments. The AI products sit on top of that application networking stack.</p>
+
+  <ul>
+    <li><strong>Tetrate Platform Services</strong> provides a single control and management plane for gateways, load balancers, and service mesh across clusters and clouds.</li>
+    <li><strong>Tetrate Service Bridge</strong> provides centralized governance, mTLS, RBAC, traffic management, and built-in observability for service-to-service connectivity.</li>
+    <li><strong>Tetrate Enterprise Gateway for Envoy</strong> provides hardened Envoy Gateway builds with enterprise support, WAF, and OpenID Connect integration.</li>
+    <li><strong>Tetrate Application Gateway</strong> provides intent-driven ingress orchestration across multi-cloud and hybrid environments.</li>
+  </ul>
 
   <h2>What Zehrava Gate does</h2>
 
@@ -170,43 +192,53 @@
     </thead>
     <tbody>
       <tr>
-        <td class="win">Primary layer</td>
-        <td>AI gateway for model and tool traffic</td>
-        <td>Write-path governance for agent actions</td>
+        <td class="win">Core layer</td>
+        <td>AI gateway and application networking stack (Envoy and Istio)</td>
+        <td>Action governance checkpoint for agent writes</td>
       </tr>
       <tr>
         <td class="win">Best at</td>
-        <td>Model routing, fallback, cost governance, MCP tool catalog</td>
-        <td>Approve/hold/block before execution, human queue, deterministic YAML policy</td>
+        <td>Model routing, fallback, unified auth and billing, spend analytics, MCP tool catalog</td>
+        <td>Approve, hold, or block before execution. Human queue. Deterministic YAML policy.</td>
       </tr>
       <tr>
-        <td class="win">Enforcement timing</td>
-        <td>At request routing and gateway boundaries</td>
-        <td>Before the action executes, per intent</td>
+        <td class="win">Where it enforces</td>
+        <td>Gateway and routing boundary for model and tool traffic</td>
+        <td>Write path boundary for outbound actions</td>
       </tr>
       <tr>
-        <td class="win">Policy format</td>
-        <td>Managed configuration (enterprise platform)</td>
-        <td>YAML policy files in your repo</td>
+        <td class="win">When it enforces</td>
+        <td>At request time for model and tool calls</td>
+        <td>Before an outbound write runs, per intent</td>
       </tr>
       <tr>
         <td class="win">Human approval</td>
-        <td>Not the core product surface</td>
+        <td>Not marketed as a built-in approval queue</td>
         <td class="win">Built-in approval queue + reviewer roles</td>
+      </tr>
+      <tr>
+        <td class="win">Audit logging</td>
+        <td>Compliance-grade logging and observability for MCP and gateway traffic</td>
+        <td class="win">Immutable intent ledger with an event sequence per <code>intentId</code></td>
       </tr>
       <tr>
         <td class="win">MCP support</td>
         <td class="win">Native MCP gateway</td>
-        <td>Planned wrapper (LangChain/LangGraph supported today)</td>
+        <td>Not native today. LangChain/LangGraph wrappers shipped. MCP wrapper is a clear next step.</td>
       </tr>
       <tr>
         <td class="win">Cost governance</td>
-        <td class="win">Token usage, spend limits, routing for cheaper models</td>
-        <td>Out of scope. Gate focuses on action governance.</td>
+        <td class="win">Spend limits, alerts, cross-provider analytics</td>
+        <td>Out of scope. Gate governs actions, not token spend.</td>
       </tr>
       <tr>
-        <td class="win">Deployment</td>
-        <td>Managed service for enterprise operations</td>
+        <td class="win">Policy format</td>
+        <td>Managed configuration in an enterprise platform</td>
+        <td class="win">YAML policy files in your repo</td>
+      </tr>
+      <tr>
+        <td class="win">Deployment model</td>
+        <td>Managed service and enterprise platform operations</td>
         <td class="win">Self-hosted server + local policies</td>
       </tr>
       <tr>
