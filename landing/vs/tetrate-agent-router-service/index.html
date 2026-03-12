@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Zehrava Gate vs Tetrate Agent Router Service — Comparison, Differences, and When to Use Both</title>
+  <meta name="description" content="Zehrava Gate vs Tetrate Agent Router Service. Tetrate Agent Router Service is an enterprise AI gateway for LLM and MCP traffic. Zehrava Gate is a deterministic write-path checkpoint for agent actions with YAML policy and human approvals." />
+
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://zehrava.com/vs/tetrate-agent-router-service/" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <meta property="og:title" content="Zehrava Gate vs Tetrate Agent Router Service" />
+  <meta property="og:description" content="Tetrate Agent Router Service governs model and MCP tool traffic at the gateway layer. Zehrava Gate governs agent write actions before execution with deterministic YAML policies and a human approval queue." />
+  <meta property="og:url" content="https://zehrava.com/vs/tetrate-agent-router-service/" />
+  <meta property="og:image" content="https://zehrava.com/og-image.png" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 900; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+    .nav-brand span { color: var(--purple); }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--purple); color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 800; }
+
+    main { max-width: 920px; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+
+    .page-meta { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em; }
+
+    h1 { font-size: clamp(2.0rem, 5vw, 3.1rem); font-weight: 950; letter-spacing: -0.035em; line-height: 1.12; margin-bottom: 1.1rem; }
+    h2 { font-size: 1.55rem; font-weight: 900; letter-spacing: -0.02em; margin: 2.6rem 0 1rem; }
+    h3 { font-size: 1.08rem; font-weight: 900; margin: 1.85rem 0 0.6rem; }
+
+    p { margin-bottom: 1.1rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.1rem; }
+    li { margin-bottom: 0.45rem; color: #d0d0d0; }
+    strong { color: var(--text); }
+    code { font-family: 'JetBrains Mono', monospace; font-size: 0.84em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+
+    .snippet-block { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.18); border-radius: 12px; padding: 1.75rem 2rem; margin: 1.75rem 0 2.25rem; }
+    .snippet-block h2 { margin-top: 0; margin-bottom: 0.9rem; font-size: 1.25rem; }
+    .snippet-block p { color: #c8c8c8; margin-bottom: 0.9rem; }
+    .snippet-block p:last-child { margin-bottom: 0; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.15rem; margin: 1.15rem 0 1.65rem; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.25rem; }
+    .card h3 { margin-top: 0; font-size: 0.96rem; }
+    .card p { margin-bottom: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.65; }
+
+    .compare-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+    .compare-table th { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 900; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .compare-table td { padding: 0.85rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: #d0d0d0; vertical-align: top; }
+    .win { color: var(--text); font-weight: 850; }
+
+    .diagram { background: #0d1117; border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; padding: 1.25rem 1.25rem; margin: 1.25rem 0 1.75rem; overflow-x: auto; }
+    .diagram pre { margin: 0; color: #cbd5e1; font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; line-height: 1.9; }
+
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 2.5rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; margin-bottom: 0.65rem; font-size: 1.22rem; }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.98rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.66rem 1.55rem; border-radius: 7px; font-weight: 950; font-size: 0.92rem; }
+    .btn-outline { background: transparent; color: var(--purple); border: 1px solid rgba(99,102,241,0.4); margin-left: 0.75rem; }
+
+    .note { color: var(--muted); font-size: 0.92rem; }
+
+    footer { text-align: center; padding: 2.5rem 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+
+    @media(max-width: 900px) {
+      .site-nav { padding: 1rem 1.25rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      main { padding: 2.5rem 1.125rem 4rem; }
+      h1 { font-size: 1.75rem; }
+      .snippet-block { padding: 1.25rem; }
+      .grid { grid-template-columns: 1fr; }
+      .btn-outline { margin-left: 0; margin-top: 0.5rem; display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava<span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/vs/tetrate/">All Tetrate</a>
+    <a href="/demo/">Demo</a>
+    <a href="/docs/">Docs</a>
+    <a href="/v3/">V3 Proxy</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo/" class="nav-cta">Try it</a>
+  </div>
+</nav>
+
+<main>
+  <div class="page-meta">
+    <span class="tag">Comparison</span>
+    <span class="tag">Exact match</span>
+    <span class="tag">Agent Router</span>
+    <span>Updated 2026</span>
+  </div>
+
+  <h1>Zehrava Gate vs Tetrate Agent Router Service</h1>
+
+  <p>Developers compare Zehrava Gate and Tetrate Agent Router Service when they need runtime controls for AI agents. The two products enforce different things. The enforcement point decides the architecture.</p>
+
+  <section class="snippet-block">
+    <h2>Quick answer</h2>
+    <p><strong>Tetrate Agent Router Service is an enterprise AI gateway that governs LLM and MCP traffic.</strong> Tetrate Agent Router Service unifies model access, routes with fallback, and adds cost governance and observability. Tetrate Agent Router Service also positions MCP audit logging for regulated environments.</p>
+    <p><strong>Zehrava Gate is a write-path checkpoint that governs agent actions before execution.</strong> Zehrava Gate makes an agent submit an intent before the agent sends an email, writes to a CRM, charges a card, or calls a production API. Zehrava Gate returns <code>approved</code>, <code>blocked</code>, or <code>pending_approval</code>. High-risk intents wait in a reviewer queue.</p>
+    <p>Pick Tetrate Agent Router Service when you need gateway control for models and tools across many teams. Pick Zehrava Gate when you need a human approval queue and deterministic YAML policy for outbound actions.</p>
+  </section>
+
+  <h2>What Tetrate Agent Router Service is</h2>
+
+  <p>Tetrate Agent Router Service is a managed gateway for AI workloads. The gateway centralizes model access. The gateway also centralizes tool access when agents call MCP tools. The gateway layer is the place where Tetrate enforces budgets, routing policy, and audit logging.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>LLM gateway</h3>
+      <p>Route requests through one endpoint. Apply fallback between models and providers. Centralize keys, auth, and billing.</p>
+    </div>
+    <div class="card">
+      <h3>MCP gateway</h3>
+      <p>Expose tools through a catalog. Authenticate access. Filter tool availability per profile and context.</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Cost governance</h3>
+      <p>Track usage and spend. Alert on spikes and quota violations. Compare consumption across teams and applications.</p>
+    </div>
+    <div class="card">
+      <h3>Audit logging</h3>
+      <p>Record MCP and gateway activity to support compliance evidence for regulated workflows.</p>
+    </div>
+  </div>
+
+  <h2>What Zehrava Gate is</h2>
+
+  <p>Zehrava Gate is a write-path control plane for AI agents. Zehrava Gate governs actions. The action is the thing that changes production state. The agent submits an intent. Zehrava Gate evaluates a YAML policy. Zehrava Gate returns a decision.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Deterministic policy</h3>
+      <p>Evaluate YAML policies deterministically. Add field checks, environment thresholds, and rate limits. Keep policy in version control.</p>
+    </div>
+    <div class="card">
+      <h3>Human approvals</h3>
+      <p>Hold intents for review. Approve and reject with reviewer roles. Record who approved what.</p>
+    </div>
+  </div>
+
+  <h2>Comparison table</h2>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Tetrate Agent Router Service</th>
+        <th>Zehrava Gate</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="win">Enforcement point</td>
+        <td>Gateway boundary for model and MCP tool traffic</td>
+        <td class="win">Write-path boundary for outbound actions</td>
+      </tr>
+      <tr>
+        <td class="win">Human approval queue</td>
+        <td>Not marketed as a core product surface</td>
+        <td class="win">Built-in approval queue + reviewer roles</td>
+      </tr>
+      <tr>
+        <td class="win">Policy format</td>
+        <td>Managed configuration in an enterprise platform</td>
+        <td class="win">YAML policies in your repo</td>
+      </tr>
+      <tr>
+        <td class="win">MCP support</td>
+        <td class="win">Native MCP gateway</td>
+        <td>Not native today. Proxy and tool wrappers cover most write paths.</td>
+      </tr>
+      <tr>
+        <td class="win">Cost governance</td>
+        <td class="win">Spend analytics and alerts</td>
+        <td>Out of scope. Gate governs actions, not token spend.</td>
+      </tr>
+      <tr>
+        <td class="win">Best fit</td>
+        <td>Large orgs running many AI workloads</td>
+        <td class="win">Teams that need approvals and evidence before writes run</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>How teams use both</h2>
+
+  <p>Teams use both when they want gateway governance and write-path authorization. Tetrate routes model and tool calls. Zehrava Gate authorizes production writes.</p>
+
+  <div class="diagram">
+    <pre>Agent runtime
+  │
+  ├─ model and MCP traffic → Tetrate Agent Router Service
+  │
+  └─ write action          → Zehrava Gate intent checkpoint → approved? → execute</pre>
+  </div>
+
+  <h2>Decision guide</h2>
+
+  <ol>
+    <li><strong>Choose Zehrava Gate</strong> when the question is "should this action run" and the answer requires a human approval queue.</li>
+    <li><strong>Choose Tetrate Agent Router Service</strong> when the question is "which model should run" and the answer depends on budgets, routing, and provider controls.</li>
+    <li><strong>Run both</strong> when you ship multiple agents across multiple teams. Put the gateway on model and MCP traffic. Put the checkpoint on outbound writes.</li>
+  </ol>
+
+  <div class="cta-block">
+    <h3>Try Zehrava Gate</h3>
+    <p>Open the demo. Read the docs. See the approval queue and audit ledger.</p>
+    <a class="btn" href="/demo/">Open the demo</a>
+    <a class="btn btn-outline" href="/docs/">Read the docs</a>
+  </div>
+
+  <p class="note" style="margin-top:1.5rem">Want the broader platform context? Read the full breakdown at <a href="/vs/tetrate/">/vs/tetrate/</a>.</p>
+</main>
+
+<footer>
+  Zehrava Gate · <a href="/docs/">Docs</a> · <a href="/v3/">V3 Proxy</a> · <a href="/blog/">Blog</a>
+</footer>
+
+</body>
+</html>
