@@ -1,5 +1,5 @@
 {
-  "name": "@zehrava/langchain-gate",
+  "name": "zehrava-gate-langchain",
   "version": "0.1.0",
   "description": "Wrap LangChain/LangGraph tools with Zehrava Gate governance — deterministic policy enforcement before any tool executes",
   "main": "src/index.js",

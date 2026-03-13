@@ -47,6 +47,12 @@ pip install zehrava-gate
 
 ## Quickstart
 
+### 0. Try the demo (no config)
+
+```bash
+npx zehrava-gate demo
+```
+
 ### 1. Start the server
 
 ```bash
@@ -117,6 +123,32 @@ if p["status"] == "pending_approval":
 # approved — request execution order
 order = gate.execute(intent_id=p["intentId"])
 # order["execution_token"] → gex_… — pass to your worker
+```
+
+### 5. LangChain Integration
+
+Gate includes a `GateTool` wrapper for LangChain and LangGraph agents.
+
+```bash
+npm install zehrava-gate-langchain
+```
+
+```ts
+import { GateTool } from 'zehrava-gate-langchain'
+import { gate } from './my-gate-client'
+
+// Wrap any tool with Gate policy
+const safeEmailTool = new GateTool({
+  name: 'send_email',
+  description: 'Send an email to a customer',
+  gateClient: gate,
+  policy: 'outbound-email',
+  destination: 'sendgrid.send',
+  func: async (input) => {
+    // This only runs if Gate approves the intent
+    return await sendEmail(input)
+  }
+})
 ```
 
 ## SDK methods
@@ -209,14 +241,18 @@ V1 backward-compat routes still work: `/v1/propose`, `/v1/approve`, `/v1/reject`
 --policy-dir <path>  YAML policy directory (default: ./policies)
 ```
 
-## Self-host
+## Gate V3: Forward Proxy
+
+Gate V3 adds network-level enforcement via a forward proxy. Set `HTTP_PROXY` to route all agent traffic through Gate.
 
 ```bash
-git clone https://github.com/cgallic/zehrava-gate
-cd zehrava-gate/packages/gate-server
-npm install
-npm start
+export HTTP_PROXY=http://localhost:4001
+export PROXY_API_KEY=gate_sk_...
 ```
+
+Gate intercepts the request, maps the destination hostname to a policy (via `config/destinations.yaml`), and holds the request until approved or blocked.
+
+[Read the V3 spec →](https://zehrava.com/v3/)
 
 ## Dashboard
 
