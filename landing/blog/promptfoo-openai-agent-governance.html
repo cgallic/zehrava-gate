@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenAI Acquired Promptfoo. What That Means for Agent Governance — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="OpenAI acquired Promptfoo to add agentic security testing to the Frontier platform. Here is what Promptfoo tests and what it does not cover — and why agent governance tools fill the remaining gap.">
+  <meta property="og:title" content="OpenAI Acquired Promptfoo. What That Means for Agent Governance.">
+  <meta property="og:description" content="Promptfoo tests what agents will do. Agent governance controls what agents are allowed to do. OpenAI's acquisition explains why the category is real — and why testing and governance are different problems.">
+  <meta property="og:url" content="https://zehrava.com/blog/promptfoo-openai-agent-governance.html">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+    .nav-brand span { color: var(--purple); }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { background: var(--purple); color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
+    main { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.4rem; color: #d0d0d0; }
+    code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e0e0e0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .callout { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.18); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1.5rem 0; }
+    .callout p { color: #c8c8c8; margin-bottom: 0; }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; }
+    .related { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+    @media(max-width: 768px) {
+      .site-nav { padding: 1rem 1.25rem; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      main { padding: 2rem 1.125rem 3.5rem; }
+      h1 { font-size: 1.65rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="/" class="nav-brand">Zehrava<span>Gate</span></a>
+  <div class="nav-links">
+    <a href="/demo/">Demo</a>
+    <a href="/docs/">Docs</a>
+    <a href="/blog/">Blog</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo/" class="nav-cta">Try it</a>
+  </div>
+</nav>
+
+<main>
+  <div class="post-meta">
+    <span class="tag">AI Governance</span>
+    <span class="tag">Red-teaming</span>
+    <span class="tag">Agent Security</span>
+    <span>March 2026</span>
+  </div>
+
+  <h1>OpenAI Acquired Promptfoo. What That Means for Agent Governance.</h1>
+
+  <p>OpenAI acquired Promptfoo on March 9, 2026. Promptfoo built red-teaming and evaluation tooling for LLM-powered systems. Promptfoo grew to 350,000 developers and reached 25% of the Fortune 500 in under two years. OpenAI will embed Promptfoo technology into its Frontier platform for enterprise agentic security testing.</p>
+
+  <p>The acquisition validates a category: <strong>developers need tooling that enforces safety on agent behavior, not just model outputs.</strong> Understanding what Promptfoo does — and what it does not do — explains where agent governance fits next.</p>
+
+  <h2>What Promptfoo does</h2>
+
+  <p>Promptfoo is a red-teaming and evaluation tool. Promptfoo tests what an agent <em>will</em> do given a prompt. Promptfoo finds vulnerabilities before production deployment. Promptfoo generates adversarial inputs and checks whether the model responds safely. The test runs before the agent ships.</p>
+
+  <p>Four things Promptfoo tests:</p>
+
+  <ol>
+    <li><strong>Prompt injection:</strong> Does the agent follow instructions embedded in malicious input?</li>
+    <li><strong>Data leakage:</strong> Does the agent surface confidential information in its response?</li>
+    <li><strong>Jailbreak resistance:</strong> Does the agent hold its safety constraints under adversarial pressure?</li>
+    <li><strong>Tool misuse:</strong> Does the agent call the wrong function when given ambiguous instructions?</li>
+  </ol>
+
+  <p>Promptfoo answers the question: "Is this agent safe to ship?" It runs offline, before deployment. The evaluation tells teams what risks exist.</p>
+
+  <h2>What Promptfoo does not do</h2>
+
+  <p>Promptfoo does not govern what happens after the agent ships. Promptfoo does not block an action at runtime. Promptfoo does not issue an approval decision before the agent sends an email or charges a card. Promptfoo does not maintain an approval queue or an immutable audit ledger.</p>
+
+  <p>Those are different problems. A safe agent still makes mistakes. A well-tested agent can still receive unexpected inputs at runtime. A well-tested agent can still hit a production system at 2am with a payload that no evaluation anticipated.</p>
+
+  <div class="callout">
+    <p><strong>Testing and governance are sequential.</strong> Promptfoo tests what your agent will do before you ship it. Agent governance controls what your agent is allowed to do after you ship it.</p>
+  </div>
+
+  <h2>The gap: runtime write-path control</h2>
+
+  <p>Production AI agents write to real systems. They send emails. They insert records. They charge cards. They call APIs that do not have an undo button. Evaluation covers the development phase. The write path needs governance at runtime.</p>
+
+  <p>Runtime governance answers a different question than evaluation. Evaluation asks: "Would this agent misuse this tool in testing?" Runtime governance asks: "Should this specific intent execute right now against this specific destination?"</p>
+
+  <p>The 3 requirements for runtime write-path governance are below.</p>
+
+  <ol>
+    <li><strong>Pre-execution decision:</strong> The agent submits an intent before the write runs. The governance layer evaluates and returns a decision. The action runs only on approval.</li>
+    <li><strong>Human approval queue:</strong> High-risk intents wait for a reviewer. Low-risk intents auto-approve under thresholds. The queue gives humans visibility without requiring them to approve every action.</li>
+    <li><strong>Immutable audit trail:</strong> Every intent produces an audit record. The record ties the action to the agent identity, the policy decision, the reviewer, and the execution outcome. The audit record is queryable.</li>
+  </ol>
+
+  <h2>How the two tools fit together</h2>
+
+  <p>Teams building serious agent systems need both. Promptfoo runs in CI — it tests what the agent will do before the agent ships. Agent governance runs in production — it controls what the agent is allowed to do after it ships.</p>
+
+  <pre><code>Development
+  │
+  └─ Promptfoo red-team → find vulnerabilities → fix before shipping
+
+Production
+  │
+  └─ Agent submits intent → governance layer → approved? → execute</code></pre>
+
+  <p>The two tools do not compete. A team that only has Promptfoo has tested its agent but has no runtime checkpoint. A team that only has runtime governance has a checkpoint but no vulnerability baseline. Running both closes the loop.</p>
+
+  <h2>What OpenAI's acquisition signals</h2>
+
+  <p>OpenAI acquiring Promptfoo signals 3 things about the direction of agent infrastructure:</p>
+
+  <ol>
+    <li><strong>The category is real:</strong> 350,000 developers adopted Promptfoo because the need for AI security tooling is genuine, not theoretical. OpenAI paid for that adoption.</li>
+    <li><strong>Evaluation is entering the platform layer:</strong> Baking red-teaming into Frontier means enterprise customers get evaluation as a managed capability. Teams no longer need to self-host evaluation infrastructure.</li>
+    <li><strong>Governance is the next layer:</strong> Evaluation is the "pre-ship" phase. Governance is the "post-ship" phase. The acquisition of an evaluation tool signals that the governance layer — runtime control, approval queues, audit trails — is the open problem that remains.</li>
+  </ol>
+
+  <h2>Where Zehrava Gate fits</h2>
+
+  <p>Zehrava Gate is a runtime write-path control plane for AI agents. Agents submit intents before production writes run. Zehrava Gate evaluates a YAML policy deterministically. Zehrava Gate issues an approval, a block, or a hold. The approval carries a signed execution token with a 15-minute TTL.</p>
+
+  <p>The policy file is simple, reviewable, and version-controlled:</p>
+
+  <pre><code># policies/outbound-email.yaml
+id: outbound-email
+destinations: [gmail.send, sendgrid.send]
+
+field_checks:
+  - path: "to"
+    must_match: "^[^@]+@[a-zA-Z0-9.-]+\\.com$"
+
+rate_limits:
+  per_agent_per_hour: 20
+
+require_approval: always</code></pre>
+
+  <p>Use Promptfoo to test this agent before shipping. Use Zehrava Gate to govern every email it sends after shipping.</p>
+
+  <div class="cta-block">
+    <h3>Try Zehrava Gate</h3>
+    <p>Open the demo. Submit an intent. See the approval queue and audit trail.</p>
+    <a class="btn" href="/demo/">Open the demo</a>
+  </div>
+
+  <div class="related">
+    <h3>Related reading</h3>
+    <div class="related-links">
+      <a class="related-link" href="/blog/why-ai-agents-need-a-commit-checkpoint.html">Why AI Agents Need an AI Agent Commit Checkpoint →</a>
+      <a class="related-link" href="/blog/why-gate-uses-yaml-not-llms.html">Why Gate Uses YAML and Not LLMs for Policy →</a>
+      <a class="related-link" href="/vs/tetrate-agent-router-service/">Zehrava Gate vs Tetrate Agent Router Service →</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Zehrava Gate · <a href="/docs/">Docs</a> · <a href="/blog/">Blog</a> · <a href="/demo/">Demo</a>
+</footer>
+
+</body>
+</html>

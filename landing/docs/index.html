@@ -1090,6 +1090,13 @@ POST /v1/executions/:id/report
       <p>✓ <strong>Best practice:</strong> Wire Gate at the orchestrator level, not just leaf agents. If the orchestrator calls Gate before dispatching to sub-agents, the accountability chain is cleaner.</p>
     </div>
 
+    <h2 id="comparisons">Comparisons</h2>
+    <p>Gate occupies a specific layer in the agent infrastructure stack. Two comparison pages explain how Gate fits with other tools teams use in the same category.</p>
+    <ul>
+      <li><a href="/vs/tetrate/">Zehrava Gate vs Tetrate</a> — Tetrate is an Envoy-based AI gateway platform. Gate is a write-path checkpoint. Full breakdown of both platforms.</li>
+      <li><a href="/vs/tetrate-agent-router-service/">Zehrava Gate vs Tetrate Agent Router Service</a> — Exact comparison of the Agent Router product specifically. How enforcement point and approval model differ.</li>
+    </ul>
+
     <h2 id="roadmap">Roadmap</h2>
     <p>Gate today is cooperative — agents call the SDK voluntarily. The roadmap closes that gap. Here is what is being built, in priority order.</p>
 
