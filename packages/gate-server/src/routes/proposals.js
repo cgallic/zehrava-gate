@@ -8,6 +8,8 @@ const { evaluatePolicy } = require('../lib/policy');
 const { scoreRisk } = require('../lib/risk');
 const { logEvent, getAuditTrail } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
+const { RunLedger } = require('../lib/runs');
+const { EVENT_TYPES } = require('../lib/runs/constants');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -142,10 +144,43 @@ router.post('/propose', authenticate, (req, res) => {
   logEvent(proposalId, 'proposed', req.agent.name, { destination, policy, on_behalf_of: on_behalf_of || null });
   logEvent(proposalId, 'policy_checked', 'system', { result: result.status, reason: result.reason });
 
+  // Run Ledger integration (optional — only if runId provided)
+  const runId = req.body.runId || null;
+  if (runId) {
+    const ledger = RunLedger.getRun(runId);
+    if (ledger) {
+      RunLedger.recordEvent({
+        ledgerId: ledger.id,
+        eventType: EVENT_TYPES.INTENT_PROPOSED,
+        actorId: req.agent.id,
+        payload: { intentId: proposalId, destination, policy, recordCount }
+      });
+      RunLedger.recordEvent({
+        ledgerId: ledger.id,
+        eventType: EVENT_TYPES.POLICY_CHECKED,
+        actorId: 'gate',
+        payload: { intentId: proposalId, decision: result.status, reason: result.reason }
+      });
+    }
+  }
+
   if (result.status === 'blocked') {
     logEvent(proposalId, 'blocked', 'system', { reason: result.reason });
   } else if (result.status === 'approved') {
     logEvent(proposalId, 'approved', 'system', { policy, auto: true });
+    
+    // Run Ledger: auto-approval = approval_received
+    if (runId) {
+      const ledger = RunLedger.getRun(runId);
+      if (ledger) {
+        RunLedger.recordEvent({
+          ledgerId: ledger.id,
+          eventType: EVENT_TYPES.APPROVAL_RECEIVED,
+          actorId: 'gate',
+          payload: { intentId: proposalId, auto: true }
+        });
+      }
+    }
 
     // gate_exec: auto-approved + vault credential → Gate executes immediately
     const { hasCredential } = require('../proxy/vault');

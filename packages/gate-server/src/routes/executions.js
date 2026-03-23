@@ -4,6 +4,9 @@ const db = require('../lib/db');
 const { generateId, generateExecutionToken } = require('../lib/crypto');
 const { logEvent } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
+const { RunLedger } = require('../lib/runs');
+const { EVENT_TYPES, SIDE_EFFECT_CLASS } = require('../lib/runs/constants');
+const { sideEffectKey } = require('../lib/runs/hash');
 
 // POST /v1/intents/:id/execute — issue execution order
 router.post('/intents/:id/execute', authenticate, (req, res) => {
@@ -55,6 +58,20 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
   // Update intent status to scheduled
   db.prepare('UPDATE proposals SET status = ? WHERE id = ?').run('scheduled', intent.id);
   logEvent(intent.id, 'execution_requested', req.agent?.name || 'system', { executionId, mode });
+
+  // Run Ledger integration (find run by on_behalf_of agent if present)
+  if (intent.on_behalf_of) {
+    const runs = db.prepare('SELECT * FROM run_ledgers WHERE agent_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1')
+      .all(intent.on_behalf_of, 'active');
+    if (runs.length > 0) {
+      RunLedger.recordEvent({
+        ledgerId: runs[0].id,
+        eventType: EVENT_TYPES.EXECUTION_REQUESTED,
+        actorId: req.agent?.id || 'system',
+        payload: { executionId, intentId: intent.id, mode }
+      });
+    }
+  }
 
   const execution = db.prepare('SELECT * FROM executions WHERE id = ?').get(executionId);
   res.status(201).json(formatExecution(execution));
@@ -112,6 +129,28 @@ router.post('/executions/:id/report', (req, res) => {
 
   const eventType = status === 'succeeded' ? 'execution_succeeded' : 'execution_failed';
   logEvent(execution.intent_id, eventType, 'runner', { executionId: execution.id, result });
+
+  // Run Ledger integration (find run by on_behalf_of agent if present)
+  const intent = db.prepare('SELECT * FROM proposals WHERE id = ?').get(execution.intent_id);
+  if (intent && intent.on_behalf_of) {
+    const runs = db.prepare('SELECT * FROM run_ledgers WHERE agent_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1')
+      .all(intent.on_behalf_of, 'active');
+    if (runs.length > 0) {
+      const sideEffectCls = status === 'succeeded' ? SIDE_EFFECT_CLASS.EXTERNAL_MUTATION : SIDE_EFFECT_CLASS.NONE;
+      const sideEffKey = status === 'succeeded' 
+        ? sideEffectKey(execution.action, execution.destination, { executionId: execution.id })
+        : null;
+      
+      RunLedger.recordEvent({
+        ledgerId: runs[0].id,
+        eventType: status === 'succeeded' ? EVENT_TYPES.EXECUTION_SUCCEEDED : EVENT_TYPES.RUN_FAILED,
+        actorId: 'runner',
+        payload: { executionId: execution.id, intentId: execution.intent_id, result },
+        sideEffectClass: sideEffectCls,
+        sideEffectKey: sideEffKey
+      });
+    }
+  }
 
   const updated = db.prepare('SELECT * FROM executions WHERE id = ?').get(execution.id);
   res.json(formatExecution(updated));

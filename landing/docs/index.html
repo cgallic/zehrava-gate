@@ -1007,6 +1007,41 @@ curl --cacert /path/to/gate-ca.crt https://api.example.com</pre>
     <h3>Branch graphs (gateNode + gateRouteAfter)</h3>
     <p>LangGraph graphs can branch on Gate’s decision. Use <code>gateNode()</code> to submit intent and write <code>gateStatus</code> into state. Use <code>gateRouteAfter()</code> to route edges.</p>
 
+    <!-- ── WORKS WITH ── -->
+    <h2 id="works-with">Works With</h2>
+    <p>Zehrava Gate is designed to complement existing agent governance and security tooling. It focuses on one thing: <strong>human approval gates for high-consequence writes</strong>. Other tools handle autonomous policy enforcement, output validation, and observability. Together, they create a complete governance stack.</p>
+
+    <h3>Microsoft Agent Governance Toolkit</h3>
+    <p>Microsoft's <a href="https://github.com/microsoft/agent-governance-toolkit" target="_blank" rel="noopener">Agent Governance Toolkit</a> provides deterministic policy enforcement (&lt;0.1ms), zero-trust agent identity, execution sandboxing, and SRE tooling. It handles <strong>autonomous governance at scale</strong> — 95% of agent actions auto-governed via policy.</p>
+    
+    <p>Zehrava Gate sits on top as the <strong>human-in-the-loop approval layer</strong> for the 5% of actions that always need human eyes: email blasts, database deletes, financial transactions, customer-facing content.</p>
+
+    <p><strong>Integration pattern:</strong></p>
+    <pre><span class="k">from</span> agent_os <span class="k">import</span> PolicyEngine
+<span class="k">from</span> zehrava <span class="k">import</span> Gate
+
+<span class="c"># Microsoft's policy engine handles auto-allow/deny</span>
+policy = PolicyEngine(capabilities=...)
+decision = policy.evaluate(agent_id, action, tool)
+
+<span class="k">if</span> decision.allowed:
+    <span class="c"># Auto-allowed by policy — proceed</span>
+    execute_action()
+<span class="k">elif</span> decision.require_human_approval:
+    <span class="c"># Route to Zehrava for visual approval</span>
+    intent = gate.propose(action, payload)
+    <span class="k">if</span> intent.status == <span class="s">"approved"</span>:
+        execute_action()</pre>
+
+    <p>Microsoft's toolkit includes an <code>EscalationHandler</code> for human approval, but it's backend-only (webhook or in-memory queue). Zehrava provides the approval dashboard, persistent history, and async intent lifecycle that teams need in production.</p>
+
+    <p><a href="/blog/agent-governance-comparison.html">Read the full comparison →</a></p>
+
+    <h3>Other Tools</h3>
+    <p><strong>NeMo Guardrails (NVIDIA)</strong> and <strong>Guardrails AI</strong> validate LLM outputs. Gate validates agent actions. Use both: Guardrails ensures the model's words are safe, Gate ensures the agent's actions are approved.</p>
+
+    <p><strong>LiteLLM</strong> and <strong>Portkey</strong> provide LLM gateway routing, caching, and observability. Gate works transparently behind them — it sees tool calls, not model calls.</p>
+
     <!-- ── DASHBOARD ── -->
     <h2 id="dashboard">Dashboard</h2>
     <p>The dashboard at <code>/dashboard</code> on your Gate server shows every pending intent. No code required to review and approve — it's the interface for humans in the loop.</p>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Governance: Zehrava vs. Microsoft vs. Alternatives | Zehrava</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="How Zehrava Gate compares to Microsoft Agent Governance Toolkit, NeMo Guardrails, Guardrails AI, LiteLLM, and Portkey. Complementary tools for a complete governance stack.">
+  <meta property="og:title" content="Agent Governance: Zehrava vs. Microsoft vs. Alternatives">
+  <meta property="og:description" content="How Zehrava Gate compares to Microsoft Agent Governance Toolkit, NeMo Guardrails, Guardrails AI, LiteLLM, and Portkey. Complementary tools for a complete governance stack.">
+  <meta property="og:url" content="https://zehrava.com/blog/agent-governance-comparison">
+  <link rel="canonical" href="https://zehrava.com/blog/agent-governance-comparison">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a1a1a;
+      --border: rgba(255,255,255,0.07); --text: #f0f0f0; --muted: #888;
+    }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    main { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
+    p { margin-bottom: 1.25rem; color: #d0d0d0; }
+    ul { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.5rem; color: #d0d0d0; }
+    code { font-family: 'JetBrains Mono', 'SF Mono', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; line-height: 1.6; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e0e0e0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border: 1px solid var(--border); }
+    th { background: var(--bg2); font-weight: 700; color: var(--text); }
+    td { color: #d0d0d0; }
+    .yes { color: var(--green); font-weight: 600; }
+    .no { color: var(--muted); }
+    .partial { color: var(--amber); }
+    blockquote { border-left: 3px solid var(--purple); padding-left: 1.25rem; margin: 1.5rem 0; color: var(--muted); font-style: italic; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .tldr { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 10px; padding: 1.5rem; margin-bottom: 2rem; }
+    .tldr h3 { margin-top: 0; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--purple); }
+    .tldr p { margin-bottom: 0; color: var(--text); }
+    .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); }
+    .cta-block p { color: var(--muted); margin-bottom: 1.25rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; text-decoration: none; }
+    .btn:hover { opacity: 0.9; text-decoration: none; }
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
+
+    /* === SITE NAV === */
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-logo span { color: #6366f1; }
+    .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
+    .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: #f0f0f0; }
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+    .nav-gh { font-size: 0.85rem; color: #888; text-decoration: none; }
+    .nav-gh:hover { color: #f0f0f0; }
+    .btn-nav { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem; text-decoration: none; }
+    .btn-nav:hover { opacity: 0.9; text-decoration: none; }
+
+    html, body { overflow-x: hidden; }
+    @media (max-width: 768px) {
+      nav { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
+      main { padding: 2rem 1.125rem 3rem; }
+      h1 { font-size: 1.65rem; line-height: 1.25; }
+      h2 { font-size: 1.2rem; }
+      table { font-size: 0.8rem; }
+      th, td { padding: 0.5rem 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#blg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="blg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/demo">Live Demo</a>
+    <a href="/docs">Docs</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/blog">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
+  </div>
+</nav>
+
+<main>
+  <div class="post-meta">
+    <span class="tag">Comparison</span>
+    <span>March 18, 2026</span>
+    <span>8 min read</span>
+  </div>
+
+  <h1>Agent Governance: Zehrava vs. Microsoft vs. Alternatives</h1>
+
+  <div class="tldr">
+    <h3>TL;DR</h3>
+    <p>Microsoft and Rebuno govern what agents <em>can</em> do autonomously. Zehrava governs what agents <em>should</em> do with human oversight. Complementary, not competing. Use together for a complete governance stack.</p>
+  </div>
+
+  <p>When evaluating agent governance tooling, developers encounter Microsoft Agent Governance Toolkit, Rebuno, NeMo Guardrails, Guardrails AI, LiteLLM, and Portkey. These are widely-used, well-regarded tools — but they solve fundamentally different problems.</p>
+
+  <h2>The Core Distinction</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tool</th>
+        <th>Core Focus</th>
+        <th>Primary User</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Zehrava Gate</strong></td>
+        <td>Human approval gates for high-consequence writes</td>
+        <td>Teams building production AI agents</td>
+      </tr>
+      <tr>
+        <td>Microsoft Agent Governance Toolkit</td>
+        <td>Autonomous policy enforcement, identity, sandboxing</td>
+        <td>Platform / security teams at enterprises</td>
+      </tr>
+      <tr>
+        <td>NeMo Guardrails (NVIDIA)</td>
+        <td>Conversational safety for chatbots</td>
+        <td>Developers building dialog systems</td>
+      </tr>
+      <tr>
+        <td>Guardrails AI</td>
+        <td>LLM output validation</td>
+        <td>Developers needing structured outputs</td>
+      </tr>
+      <tr>
+        <td>LiteLLM / Portkey</td>
+        <td>LLM gateway, routing, caching</td>
+        <td>Teams managing multi-provider access</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Microsoft Agent Governance Toolkit</h2>
+
+  <p>Microsoft published <a href="https://github.com/microsoft/agent-governance-toolkit" target="_blank" rel="noopener">github.com/microsoft/agent-governance-toolkit</a> on March 18, 2026. It's enterprise-grade runtime governance for AI agents at scale.</p>
+
+  <h3>What Microsoft Has</h3>
+  <ul>
+    <li><strong>6,100+ tests</strong> — 10/10 OWASP Agentic Top 10 coverage</li>
+    <li><strong>&lt;0.1ms policy engine</strong> — deterministic pre-execution action validation</li>
+    <li><strong>Zero-trust agent identity</strong> — Ed25519 cryptographic credentials, SPIFFE/SVID support</li>
+    <li><strong>4-tier execution sandboxing</strong> — privilege rings for agent actions</li>
+    <li><strong>Agent SRE</strong> — SLOs, error budgets, chaos engineering, circuit breakers</li>
+    <li><strong>12+ framework integrations</strong> — LangChain, CrewAI, AutoGen, Dify, LlamaIndex, Google ADK, OpenAI Agents</li>
+    <li><strong>Python · TypeScript · .NET SDKs</strong></li>
+  </ul>
+
+  <h3>What Microsoft Doesn't Have</h3>
+  <ul>
+    <li><strong>No approval dashboard</strong> — their <code>EscalationHandler</code> is backend-only (webhook or in-memory queue)</li>
+    <li><strong>No persistent approval history</strong></li>
+    <li><strong>No async propose → approve → execute flow</strong> — agent blocks waiting for response</li>
+    <li><strong>No visual intent management</strong></li>
+  </ul>
+
+  <h3>How Zehrava Complements Microsoft</h3>
+
+  <p><strong>Microsoft</strong> = autonomous governance at scale (95% of actions auto-governed via policy)</p>
+  <p><strong>Zehrava</strong> = human-in-the-loop approval layer (5% of actions that always need human eyes)</p>
+
+  <p><strong>Use case split:</strong></p>
+  <ul>
+    <li><strong>Microsoft's policy engine handles:</strong> read operations, low-risk tool calls, internal APIs → auto-allow/deny in &lt;0.1ms</li>
+    <li><strong>Zehrava handles:</strong> email blasts, database deletes, financial transactions, customer-facing content → human approval required</li>
+  </ul>
+
+  <h3>Integration Pattern</h3>
+
+  <pre>from agent_os import PolicyEngine
+from zehrava import Gate
+
+# Microsoft's policy engine handles auto-allow/deny
+policy = PolicyEngine(capabilities=...)
+decision = policy.evaluate(agent_id, action, tool)
+
+if decision.allowed:
+    # Auto-allowed by policy — proceed
+    execute_action()
+elif decision.require_human_approval:
+    # Route to Zehrava for visual approval
+    intent = gate.propose(action, payload)
+    if intent.status == "approved":
+        execute_action()</pre>
+
+  <p>Microsoft's toolkit includes an <code>EscalationHandler</code> for human approval, but it's backend-only (webhook or in-memory queue). Zehrava provides the approval dashboard, persistent history, and async intent lifecycle that teams need in production.</p>
+
+  <h2>Feature Comparison</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Zehrava</th>
+        <th>Microsoft</th>
+        <th>Rebuno</th>
+        <th>NeMo</th>
+        <th>Guardrails AI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Agent action governance</strong></td>
+        <td class="yes">✅</td>
+        <td class="yes">✅</td>
+        <td class="yes">✅</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>Human approval dashboard</strong></td>
+        <td class="yes">✅</td>
+        <td class="no">❌</td>
+        <td class="partial">⚠️ Generic</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>Async propose → approve → execute</strong></td>
+        <td class="yes">✅</td>
+        <td class="no">❌</td>
+        <td class="partial">⚠️ Signal-based</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>Deterministic policy engine</strong></td>
+        <td class="no">❌</td>
+        <td class="yes">✅ &lt;0.1ms</td>
+        <td class="yes">✅ YAML</td>
+        <td class="partial">⚠️</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>Zero-trust agent identity</strong></td>
+        <td class="no">❌</td>
+        <td class="yes">✅ Ed25519</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>Execution sandboxing</strong></td>
+        <td class="no">❌</td>
+        <td class="yes">✅ 4-tier</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>Agent SRE (SLOs, chaos)</strong></td>
+        <td class="no">❌</td>
+        <td class="yes">✅</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+        <td class="no">❌</td>
+      </tr>
+      <tr>
+        <td><strong>LLM output validation</strong></td>
+        <td class="no">❌</td>
+        <td class="partial">⚠️</td>
+        <td class="no">❌</td>
+        <td class="yes">✅</td>
+        <td class="yes">✅</td>
+      </tr>
+      <tr>
+        <td><strong>Setup time</strong></td>
+        <td class="yes">5 min</td>
+        <td>~1 hour</td>
+        <td>~30 min</td>
+        <td>~30 min</td>
+        <td>~20 min</td>
+      </tr>
+      <tr>
+        <td><strong>Target user</strong></td>
+        <td>Solo devs, small teams</td>
+        <td>Enterprises, platform teams</td>
+        <td>Platform builders</td>
+        <td>Chatbot devs</td>
+        <td>Output parsing</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Rebuno</h2>
+
+  <p><a href="https://github.com/rebuno/rebuno" target="_blank" rel="noopener">Rebuno</a> is a kernel-authoritative execution runtime for AI agents. It's Go-based and sits between agents and their tools — agents connect via SSE, receive executions, and submit intents. The kernel enforces policy and records everything.</p>
+
+  <h3>What Rebuno Has</h3>
+  <ul>
+    <li><strong>Kernel-controlled execution</strong> — agents receive work from the kernel (push model)</li>
+    <li><strong>Policy engine</strong> — YAML rules for allow/deny/<code>require_approval</code></li>
+    <li><strong>Human approval via signals</strong> — execution blocks until human sends approval signal</li>
+    <li><strong>Next.js dashboard ("Explorer")</strong> — execution list, event stream, signal dialog</li>
+    <li><strong>Remote tool execution</strong> — optional "runners" for distributed tool execution</li>
+    <li><strong>Full audit trail</strong> — every state transition logged</li>
+  </ul>
+
+  <h3>What Rebuno Doesn't Have</h3>
+  <ul>
+    <li><strong>No dedicated approval queue UI</strong> — signal dialog is generic (you type the signal type manually)</li>
+    <li><strong>No visual intent cards</strong> — approval is signal-based, not intent-based</li>
+    <li><strong>More complex setup</strong> — requires Go kernel + agent + policy YAML</li>
+  </ul>
+
+  <h3>How Zehrava Complements Rebuno</h3>
+
+  <p><strong>Rebuno</strong> = kernel-controlled execution + policy-based governance (95% of actions auto-governed)</p>
+  <p><strong>Zehrava</strong> = human-in-the-loop approval layer with purpose-built dashboard (5% that need human eyes)</p>
+
+  <p><strong>Use case split:</strong></p>
+  <ul>
+    <li><strong>Rebuno's policy engine handles:</strong> policy-based auto-allow/deny for most agent actions</li>
+    <li><strong>Zehrava handles:</strong> visual approval queue for high-consequence writes (email blasts, database deletes, deployments)</li>
+  </ul>
+
+  <p>Rebuno has <code>require_approval</code> policy capability, but the UI is a generic signal dialog. Zehrava provides the visual approval cards, context preview, and approve/reject buttons that teams need in production.</p>
+
+  <h2>Other Tools</h2>
+
+  <h3>NeMo Guardrails (NVIDIA)</h3>
+  <p><strong>What it does:</strong> Adds conversational guardrails to LLM-based chatbots — blocking off-topic requests, enforcing dialog flows (Colang), and filtering harmful outputs.</p>
+  <p><strong>Where it excels:</strong> Chatbot safety and topicality constraints.</p>
+  <p><strong>What it doesn't cover:</strong> Governing what an agent <em>does</em> (tool calls, spawns, file writes, API invocations).</p>
+
+  <h3>Guardrails AI</h3>
+  <p><strong>What it does:</strong> Validates and coerces LLM outputs into structured formats (JSON schemas, Pydantic models) — ensuring outputs conform to expected shapes.</p>
+  <p><strong>Where it excels:</strong> Reliable structured data extraction from LLM responses.</p>
+  <p><strong>What it doesn't cover:</strong> Any form of pre-execution action governance.</p>
+
+  <h3>LiteLLM & Portkey</h3>
+  <p><strong>What they do:</strong> Unified LLM API gateways that abstract over 100+ providers behind a single interface — including routing, caching, observability, and spend tracking.</p>
+  <p><strong>Where they excel:</strong> Multi-provider LLM management and cost optimization.</p>
+  <p><strong>What they don't cover:</strong> Agent-level governance (tool calls are invisible to these gateways).</p>
+
+  <h2>When to Use Each</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>If your question is…</th>
+        <th>Use…</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>"I need a human approval dashboard for high-consequence writes"</td>
+        <td><strong>Zehrava Gate</strong></td>
+      </tr>
+      <tr>
+        <td>"I need a kernel that controls all agent execution"</td>
+        <td><strong>Rebuno</strong></td>
+      </tr>
+      <tr>
+        <td>"I need enterprise-grade autonomous governance at scale"</td>
+        <td><strong>Microsoft Agent Governance Toolkit</strong></td>
+      </tr>
+      <tr>
+        <td>"I need policy-based auto-allow/deny with optional human approval"</td>
+        <td><strong>Rebuno</strong> (policy) + <strong>Zehrava</strong> (dashboard)</td>
+      </tr>
+      <tr>
+        <td>"Did the model return valid JSON?"</td>
+        <td><strong>Guardrails AI</strong></td>
+      </tr>
+      <tr>
+        <td>"Is this chatbot staying on topic?"</td>
+        <td><strong>NeMo Guardrails</strong></td>
+      </tr>
+      <tr>
+        <td>"How do I route across 100+ LLM providers?"</td>
+        <td><strong>LiteLLM or Portkey</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>The Complete Governance Stack</h2>
+
+  <p>For production agentic systems, you likely need <strong>multiple tools working together</strong>:</p>
+
+  <ol>
+    <li><strong>Rebuno or Microsoft Agent Governance Toolkit</strong> — enforces policy-based governance before every tool call (Rebuno = kernel-controlled execution, Microsoft = enterprise-scale + zero-trust identity)</li>
+    <li><strong>Zehrava Gate</strong> — adds human approval gates for the 5% of actions that always need oversight (email blasts, database deletes, financial transactions)</li>
+    <li><strong>Guardrails AI or NeMo</strong> — ensures the LLM's <em>words</em> conform to format and safety rules</li>
+    <li><strong>LiteLLM or Portkey</strong> — routes, caches, and observes the underlying model calls</li>
+  </ol>
+
+  <blockquote>
+    <p>"For production agentic systems, you likely need the Agent Governance Toolkit <strong>plus</strong> one or more of the above tools working together."</p>
+    <footer>— Microsoft Agent Governance Toolkit docs</footer>
+  </blockquote>
+
+  <p>Zehrava Gate is "one of the above tools." It's the human-approval layer that sits on top of autonomous policy enforcement.</p>
+
+  <hr>
+
+  <h2>Summary</h2>
+
+  <p><strong>Microsoft Agent Governance Toolkit</strong> handles autonomous governance at scale — 95% of agent actions auto-governed via policy in &lt;0.1ms. It's enterprise-grade, OWASP-certified, and comes with zero-trust identity, execution sandboxing, and Agent SRE tooling.</p>
+
+  <p><strong>Rebuno</strong> is a kernel-authoritative execution runtime. It controls the full agent lifecycle — executions, steps, policy enforcement, signals, audit trail. It has approval capability via <code>require_approval</code> policy, but the UI is generic (freeform signal dialog).</p>
+
+  <p><strong>Zehrava Gate</strong> handles human-in-the-loop approval for the 5% of actions that always need human eyes. It's the visual dashboard, persistent approval history, and async intent lifecycle that neither Microsoft nor Rebuno provide.</p>
+
+  <p>Use Rebuno or Microsoft for autonomous governance. Use Zehrava for human oversight. Use both for a complete stack.</p>
+
+  <div class="cta-block">
+    <h3>Add human approval gates to your agent stack.</h3>
+    <p>MIT license. Self-hostable. Framework-agnostic. Takes 5 minutes to get a dashboard.</p>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
+  </div>
+</main>
+
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+</body>
+</html>

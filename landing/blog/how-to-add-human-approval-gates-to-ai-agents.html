@@ -7,7 +7,7 @@
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Step-by-step tutorial for adding human-in-the-loop approval checkpoints to AI agent write operations. Node.js and Python examples using Zehrava Gate.">
-  <meta property="og:title" content="How to Add Human Approval Gates to AI Agents (Tutorial)">
+  <meta property="og:title" content="How to Add Human Approval Gates to AI Agents (Tutorial) | Zehrava">
   <meta property="og:description" content="Step-by-step tutorial for adding human-in-the-loop approval checkpoints to AI agent write operations. Node.js and Python examples using Zehrava Gate.">
   <meta property="og:url" content="https://zehrava.com/blog/how-to-add-human-approval-gates-to-ai-agents">
   <link rel="canonical" href="https://zehrava.com/blog/how-to-add-human-approval-gates-to-ai-agents">
@@ -20,7 +20,7 @@
     "author": {
       "@type": "Person",
       "name": "Connor Gallic",
-      "url": "https://connorgallic.com/authors/connor-gallic"
+      "url": "https://connorgallic.com"
     },
     "publisher": {
       "@type": "Organization",
@@ -47,13 +47,16 @@
     h3 { font-size: 1.1rem; font-weight: 700; margin: 2rem 0 0.75rem; }
     p { margin-bottom: 1.25rem; color: #d0d0d0; }
     ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
-    li { margin-bottom: 0.4rem; color: #d0d0d0; }
+    li { margin-bottom: 0.5rem; color: #d0d0d0; }
     code { font-family: 'JetBrains Mono', 'SF Mono', monospace; font-size: 0.85em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #a78bfa; }
     pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
     pre code { background: none; padding: 0; font-size: 0.82rem; color: #e0e0e0; }
+    .step-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--purple); margin-bottom: 0.25rem; }
+    .prereq-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; font-size: 0.9rem; }
+    .prereq-block p { margin: 0; color: var(--muted); }
+    .prereq-block strong { color: var(--text); }
     hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
     strong { color: var(--text); }
-    .step-label { display: inline-block; background: rgba(99,102,241,0.15); color: var(--purple); border: 1px solid rgba(99,102,241,0.3); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
     .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
     .cta-block h3 { margin-top: 0; color: var(--text); }
     .cta-block p { color: var(--muted); margin-bottom: 1.25rem; }
@@ -65,38 +68,51 @@
     footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
 
     /* === SITE NAV === */
-    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
-    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
-    .nav-brand span { color: #6366f1; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-logo span { color: #6366f1; }
     .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
     .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
     .nav-links a:hover { color: #f0f0f0; }
-    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
-    .nav-cta:hover { opacity: 0.9; }
-    @media(max-width: 768px) {
-      .site-nav { padding: 1rem; }
-      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
-      .nav-links a:not(.nav-cta) { display: none; }
-    }
-    /* === END SITE NAV === */
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+    .nav-gh { font-size: 0.85rem; color: #888; text-decoration: none; }
+    .nav-gh:hover { color: #f0f0f0; }
+    .btn-nav { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem; text-decoration: none; }
+    .btn-nav:hover { opacity: 0.9; text-decoration: none; }
 
     html, body { overflow-x: hidden; }
     @media (max-width: 768px) {
+      nav { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
       main { padding: 2rem 1.125rem 3rem; }
-      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
-      h2 { font-size: 1.2rem !important; }
-      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      h1 { font-size: 1.65rem; line-height: 1.25; }
+      h2 { font-size: 1.2rem; }
+      pre { font-size: 0.72rem; padding: 0.875rem; overflow-x: auto; }
     }
   </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a href="/" class="nav-brand">zehrava<span>.</span></a>
+<nav>
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#blg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="blg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
   <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/demo">Live Demo</a>
     <a href="/docs">Docs</a>
+    <a href="/dashboard">Dashboard</a>
     <a href="/blog">Blog</a>
-    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub</a>
-    <a href="/dashboard" class="nav-cta">Dashboard →</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
   </div>
 </nav>
 
@@ -109,30 +125,29 @@
 
   <h1>How to Add Human Approval Gates to AI Agents</h1>
 
-  <p>
-    If your AI agent takes actions — sends messages, modifies records, calls
-    APIs — you need approval gates on the write path. This tutorial shows how
-    to implement them using Zehrava Gate.
-  </p>
-  <p>
-    <strong>Time to implement:</strong> 20–30 minutes for a basic integration<br>
-    <strong>Prerequisites:</strong> Node.js 18+ or Python 3.9+, a Zehrava account
-  </p>
+  <div class="prereq-block">
+    <p><strong>Time to implement:</strong> 20–30 minutes for a basic integration<br>
+    <strong>Prerequisites:</strong> Node.js 18+ or Python 3.9+, a Zehrava account</p>
+  </div>
+
+  <p>If your AI agent takes actions — sends messages, modifies records, calls APIs — you need approval gates on the write path. This tutorial shows how to implement them using Zehrava Gate.</p>
 
   <h2>Step 1: Install the Package</h2>
+
   <p>Node.js:</p>
   <pre><code>npm install zehrava-gate</code></pre>
+
   <p>Python:</p>
   <pre><code>pip install zehrava-gate</code></pre>
 
   <h2>Step 2: Set Up Your API Key</h2>
+
   <pre><code>ZEHRAVA_API_KEY=your_key_here</code></pre>
-  <p>
-    Get your API key at <a href="https://zehrava.com/dashboard">zehrava.com/dashboard</a> →
-    Settings → API Keys.
-  </p>
+
+  <p>Get your API key at <a href="https://zehrava.com/dashboard">zehrava.com/dashboard</a> → Settings → API Keys.</p>
 
   <h2>Step 3: Wrap Your Write Operations</h2>
+
   <p>Before (no gate):</p>
   <pre><code>await sendEmail({
   to: lead.email,
@@ -162,30 +177,23 @@ if (intent.status === 'approved') {
 }</code></pre>
 
   <h2>Step 4: Configure Approval Policies</h2>
+
   <p>In the Zehrava dashboard, configure how each intent type gets approved:</p>
+
   <ul>
-    <li>
-      <strong>Human review:</strong> Every intent routes to a named approver
-      via dashboard or Slack
-    </li>
-    <li>
-      <strong>Auto-approve:</strong> Intents matching a policy auto-approve
-      without human action
-    </li>
-    <li>
-      <strong>Auto-block:</strong> Intents outside defined parameters get
-      blocked and logged
-    </li>
+    <li><strong>Human review:</strong> Every intent routes to a named approver via dashboard or Slack</li>
+    <li><strong>Auto-approve:</strong> Intents matching a policy auto-approve without human action</li>
+    <li><strong>Auto-block:</strong> Intents outside defined parameters get blocked and logged</li>
   </ul>
 
   <h2>Step 5: Handle Async Approval</h2>
-  <p>For long-running pipelines, submit the intent and continue without waiting:</p>
+
   <pre><code>// Submit intent, continue without waiting
 const intent = await gate.propose('update_crm', payload, {
   mode: 'async'
 })
 
-// Webhook handler — fires when a human approves or blocks
+// Webhook handler
 app.post('/zehrava-webhook', (req, res) => {
   const { intent_id, status } = req.body
   if (status === 'approved') {
@@ -195,6 +203,7 @@ app.post('/zehrava-webhook', (req, res) => {
 })</code></pre>
 
   <h2>Full Python Example</h2>
+
   <pre><code>import os
 from zehrava_gate import ZehravaGate
 
@@ -221,19 +230,8 @@ def send_outreach_email(lead, content):
         print(f"Email blocked: {intent.block_reason}")
         return None</code></pre>
 
-  <h2>What You Get</h2>
-  <p>After integration:</p>
-  <ul>
-    <li>Every write operation logged in the intent dashboard</li>
-    <li>Approvals and blocks audited with timestamps + approver identity</li>
-    <li>Policy engine auto-approves low-risk, routes high-risk to humans</li>
-    <li>Async webhook delivery for long-running agents</li>
-    <li>One-time execution tokens — retries on timeout won't double-fire</li>
-  </ul>
-
-  <hr>
-
   <h2>Next Steps</h2>
+
   <ul>
     <li><a href="https://zehrava.com/docs">Full API reference</a></li>
     <li><a href="https://zehrava.com/dashboard">Intent dashboard</a></li>
@@ -242,9 +240,9 @@ def send_outreach_email(lead, content):
   </ul>
 
   <div class="cta-block">
-    <h3>Gate your first agent write in 20 minutes.</h3>
-    <p>MIT license. Self-hostable. Framework-agnostic. Full API reference in the docs.</p>
-    <a href="https://zehrava.com/docs" class="btn">Read the docs →</a>
+    <h3>Add a commit checkpoint to your agent stack.</h3>
+    <p>MIT license. Self-hostable. Framework-agnostic. Takes under an hour to wrap your first agent.</p>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
   </div>
 
   <div class="related">
@@ -256,6 +254,7 @@ def send_outreach_email(lead, content):
     </div>
   </div>
 </main>
+
 <footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
 </body>
 </html>

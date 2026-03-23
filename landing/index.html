@@ -59,10 +59,10 @@
     body::before {
       content: '';
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image: radial-gradient(circle at 1px 1px, rgba(99,102,241,0.1) 1px, transparent 0);
-      background-size: 44px 44px;
-      -webkit-mask-image: radial-gradient(ellipse 100% 55% at 50% 0%, black 0%, transparent 100%);
-      mask-image: radial-gradient(ellipse 100% 55% at 50% 0%, black 0%, transparent 100%);
+      background-image: radial-gradient(circle at 1px 1px, rgba(99,102,241,0.14) 1px, transparent 0);
+      background-size: 36px 36px;
+      -webkit-mask-image: radial-gradient(ellipse 110% 70% at 50% 10%, black 0%, transparent 100%);
+      mask-image: radial-gradient(ellipse 110% 70% at 50% 10%, black 0%, transparent 100%);
     }
     body > * { position: relative; z-index: 1; }
 
@@ -118,24 +118,47 @@
 
     /* ─── HERO ─── */
     .hero-wrapper { position: relative; overflow: hidden; }
-    .hero-ghost {
+    /* ─── HERO BACKGROUND ─── */
+    .hero-bg {
       position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
-      display: flex; flex-direction: column; padding: 2rem 0;
     }
-    .hero-ghost span {
-      display: block; font-family: var(--mono); font-size: 0.82rem;
-      color: rgba(129,140,248,0.07); padding: 0.35rem 3rem; white-space: nowrap; line-height: 1.9;
-      animation: ghostDrift 30s linear infinite alternate;
+    /* radial glow behind terminal */
+    .hero-bg::before {
+      content: '';
+      position: absolute;
+      top: -10%; right: -5%;
+      width: 75%; height: 120%;
+      background: radial-gradient(ellipse at 60% 40%, rgba(99,102,241,0.13) 0%, rgba(99,102,241,0.04) 45%, transparent 70%);
+      pointer-events: none;
     }
-    .hero-ghost span:nth-child(2n) { color: rgba(99,102,241,0.055); animation-duration: 24s; animation-delay: -8s; }
-    .hero-ghost span:nth-child(3n) { color: rgba(167,139,250,0.06); animation-duration: 36s; animation-delay: -15s; }
-    .hero-ghost::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 55%; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
-    @keyframes ghostDrift { from { transform: translateX(0); } to { transform: translateX(-3%); } }
+    /* secondary warm accent glow bottom-left */
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      bottom: -20%; left: -10%;
+      width: 60%; height: 80%;
+      background: radial-gradient(ellipse at 30% 70%, rgba(139,92,246,0.07) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    /* beam lines */
+    .hero-beams {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        linear-gradient(105deg, transparent 20%, rgba(99,102,241,0.04) 35%, transparent 36%),
+        linear-gradient(105deg, transparent 45%, rgba(99,102,241,0.025) 60%, transparent 61%),
+        linear-gradient(105deg, transparent 65%, rgba(139,92,246,0.02) 80%, transparent 81%);
+    }
+    /* fade bottom into section */
+    .hero-fade {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+    }
 
     .hero-cols {
       position: relative; z-index: 1;
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 4rem; max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1.4fr;
+      gap: 3rem; max-width: 1400px; margin: 0 auto;
       padding: 5.5rem 2.5rem 3.5rem; align-items: center;
     }
     .hero-badge {
@@ -148,7 +171,7 @@
     .hero-badge-dot { width: 6px; height: 6px; background: var(--purple-b); border-radius: 50%; box-shadow: 0 0 8px var(--purple); animation: badgePulse 2s infinite; }
     @keyframes badgePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    .hero-h1 { font-size: clamp(3rem, 5.5vw, 5.5rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em; text-transform: uppercase; margin-bottom: 1.5rem; }
+    .hero-h1 { font-size: clamp(2.25rem, 4vw, 3.5rem); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em; text-transform: uppercase; margin-bottom: 1.5rem; }
     .hero-h1 .accent { background: linear-gradient(135deg, var(--purple-b) 0%, #c4b5fd 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .hero-sub { font-size: 1.05rem; color: var(--muted2); line-height: 1.8; margin-bottom: 2.25rem; max-width: 480px; }
     .hero-actions { display: flex; gap: 0.875rem; flex-wrap: wrap; }
@@ -186,6 +209,9 @@
     .ht-stat.amber { color: var(--amber); }
     .ht-stat.purple { color: var(--purple-b); }
 
+n    /* ─── HERO TERMINAL GIF ─── */
+    .ht-gif-wrap { background: #0d1117; }
+    .ht-gif-wrap img { display: block; width: 100%; height: auto; }
     /* ─── STATS BAR ─── */
     .stats-bar { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
     .stats-inner { max-width: 1200px; margin: 0 auto; padding: 0 2.5rem; display: grid; grid-template-columns: repeat(4, 1fr); }
@@ -213,7 +239,7 @@
     }
 
     /* ─── PROBLEM ─── */
-    .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .problem-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1.25rem; }
     .problem-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; box-shadow: var(--shadow); }
     .problem-card-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.125rem; }
     .problem-card-label.bad { color: var(--red); }
@@ -457,7 +483,7 @@
       .hero-h1 { font-size: 2rem; }
       .hero-sub { font-size: .925rem; }
       .hero-actions { flex-direction: column; }
-      .stats-inner { grid-template-columns: 1fr 1fr; }
+      .stats-inner { grid-template-columns: 1fr 1.4fr; }
       .stat-item { padding: 1.25rem 1rem; }
       .ht-footer { grid-template-columns: 1fr; }
       .ht-stat { border-right: none; border-bottom: 1px solid var(--border); }
@@ -617,19 +643,9 @@
 
 <!-- HERO -->
 <div class="hero-wrapper">
-  <div class="hero-ghost" aria-hidden="true">
-    <span>intent.status = "pending_approval" — risk_score: 0.74 — risk_level: high</span>
-    <span>gate.propose({ destination: "salesforce.import", policy: "crm-low-risk", recordCount: 847 })</span>
-    <span>destination: salesforce.import ✓ — record_count: 847 → threshold exceeded → pending_approval</span>
-    <span>idempotency_key: "batch-2026-03-08" — duplicate intent blocked (status: duplicate_blocked)</span>
-    <span>gate.execute({ intentId: "int_K9x2mF4j" }) → execution_token: gex_•••• (15min TTL)</span>
-    <span>require_approval_over: 100 — finance-high-risk: require_approval: always</span>
-    <span>audit: immutable · append-only · every state transition logged · queryable by intent ID</span>
-    <span>intent.status = "blocked" — reason_code: destination_not_allowed ✗</span>
-    <span>gate.verify({ intentId: p.intentId }) → proposed → policy_checked → approved → execution_requested → execution_succeeded</span>
-    <span>execution_token: 15min TTL · runner_exec: worker runs in your VPC · credentials never leave</span>
-    <span>on_behalf_of: "agt_orchestrator_abc" · sensitivity_tags: ["pii", "financial"]</span>
-    <span>// No agent write reaches production without an authorized execution order</span>
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-beams"></div>
+    <div class="hero-fade"></div>
   </div>
 
   <div class="hero-cols">
@@ -656,34 +672,17 @@
 
     <!-- RIGHT: TERMINAL DEMO -->
     <div class="hero-right">
-      <div class="hero-terminal" role="img" aria-label="Gate terminal demo showing intent flow">
+      <div class="hero-terminal" role="img" aria-label="Gate demo: three intents, three outcomes, zero config">
         <div class="ht-header">
           <div class="ht-dots">
             <div class="ht-dot ht-dot-r"></div>
             <div class="ht-dot ht-dot-y"></div>
             <div class="ht-dot ht-dot-g"></div>
           </div>
-          <span class="ht-title">intent → policy → risk → execute → ledger</span>
+          <span class="ht-title">npx zehrava-gate demo</span>
         </div>
-        <div class="ht-body">
-          <div class="ht-line cmd">POST /v1/intents  ← agent submits</div>
-          <div class="ht-sep"></div>
-          <div class="ht-line ok">✓ agent: crm-sync-agent (registered)</div>
-          <div class="ht-line ok">✓ destination: salesforce.import</div>
-          <div class="ht-line warn">⚠ risk: 0.74 high · 847 records · pii</div>
-          <div class="ht-line info">→ PENDING_APPROVAL · int_A1b2C3d4E5f6</div>
-          <div class="ht-sep"></div>
-          <div class="ht-line cmd">POST /v1/intents/:id/approve</div>
-          <div class="ht-line ok">✓ approved_by: ops@acme.com</div>
-          <div class="ht-line cmd">POST /v1/intents/:id/execute</div>
-          <div class="ht-line info">→ runner_exec · token: gex_… (15 min)</div>
-          <div class="ht-sep"></div>
-          <div class="ht-line ok">✓ execution_succeeded · audit sealed · done.</div>
-        </div>
-        <div class="ht-footer">
-          <div class="ht-stat green">risk scored</div>
-          <div class="ht-stat amber">human approved</div>
-          <div class="ht-stat purple">execution governed</div>
+        <div class="ht-gif-wrap">
+          <img src="/gate-demo.gif" alt="Gate demo: auto-approved, blocked, and pending approval intents" loading="eager" width="100%">
         </div>
       </div>
     </div>
@@ -1353,54 +1352,13 @@ npx zehrava-gate --port 4000</pre>
 <hr class="divider">
 
 <!-- PRICING -->
-<section class="section" id="pricing">
+<section class="section" id="pricing" style="text-align:center">
   <div class="section-label reveal">Pricing</div>
-  <h2 class="section-h2 reveal">Priced on governed writes.<br>Not storage. Not tokens.</h2>
-  <p class="section-lead reveal">You pay for the writes that actually reach production — the thing that actually matters.</p>
-
-  <div class="pricing-grid">
-    <div class="pricing-card reveal-s">
-      <div class="plan-name">Free</div>
-      <div class="plan-price">$0</div>
-      <div class="plan-desc">Local dev and small teams. No credit card.</div>
-      <ul class="plan-features">
-        <li>Local dev server</li>
-        <li>1 workspace</li>
-        <li>500 intents/mo</li>
-        <li>7-day audit retention</li>
-      </ul>
-    </div>
-    <div class="pricing-card featured reveal-s" style="transition-delay:.1s">
-      <div class="plan-badge">Most popular</div>
-      <div class="plan-name">Team</div>
-      <div class="plan-price">$149 <span>/mo</span></div>
-      <div class="plan-desc">Teams running agents in production workflows.</div>
-      <ul class="plan-features">
-        <li>5 workspaces</li>
-        <li>10,000 intents/mo</li>
-        <li>Approval queue UI</li>
-        <li>Execution orders + webhooks</li>
-        <li>90-day audit retention</li>
-        <li>Slack/email approval hooks</li>
-      </ul>
-    </div>
-    <div class="pricing-card reveal-s" style="transition-delay:.2s">
-      <div class="plan-name">Enterprise</div>
-      <div class="plan-price">Custom</div>
-      <div class="plan-desc">Full control. Compliance. Self-hosted option.</div>
-      <ul class="plan-features">
-        <li>Self-hosted control plane</li>
-        <li>SSO + SCIM</li>
-        <li>Audit export</li>
-        <li>Custom policy packs</li>
-        <li>Managed connectors</li>
-        <li>SLA + dedicated support</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="self-host-note reveal">
-    Self-hosting is free forever. MIT license. <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">Deploy from GitHub →</a>
+  <h2 class="section-h2 reveal">Open source. MIT license.<br>Self-host free forever.</h2>
+  <p class="section-lead reveal" style="max-width:520px;margin:0 auto 2.5rem">Gate is free to run on your own infrastructure. For managed hosting, integrations, or enterprise support — let’s talk.</p>
+  <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap" class="reveal">
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener" class="btn-secondary">Deploy from GitHub</a>
+    <a href="mailto:connor@kaicmo.com" class="btn-primary">Contact us</a>
   </div>
 </section>
 

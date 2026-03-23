@@ -112,6 +112,98 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_policy_decisions_intent ON policy_decisions(intent_id);
   CREATE INDEX IF NOT EXISTS idx_executions_intent ON executions(intent_id);
   CREATE INDEX IF NOT EXISTS idx_executions_token ON executions(execution_token);
+
+  -- ── RUN LEDGER ──────────────────────────────────────────────────────────
+  -- Tracks full agent runs with checkpointing and resume capability
+
+  CREATE TABLE IF NOT EXISTS run_ledgers (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL UNIQUE,
+    parent_run_id TEXT,
+    runtime TEXT NOT NULL,
+    agent_id TEXT NOT NULL,
+    intent_summary TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    current_step TEXT,
+    last_safe_event_id TEXT,
+    replay_boundary_event_id TEXT,
+    permissions_json TEXT DEFAULT '{}',
+    blocked_capabilities_json TEXT,
+    integrity_hash TEXT NOT NULL,
+    schema_version INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (agent_id) REFERENCES agents(id),
+    FOREIGN KEY (parent_run_id) REFERENCES run_ledgers(run_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS run_events (
+    id TEXT PRIMARY KEY,
+    ledger_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    event_ts INTEGER NOT NULL,
+    actor_id TEXT,
+    step_name TEXT,
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    input_hash TEXT,
+    output_hash TEXT,
+    side_effect_class TEXT DEFAULT 'none',
+    side_effect_key TEXT,
+    status TEXT NOT NULL DEFAULT 'recorded',
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (ledger_id) REFERENCES run_ledgers(id),
+    UNIQUE(ledger_id, seq)
+  );
+
+  CREATE TABLE IF NOT EXISTS run_artifacts (
+    id TEXT PRIMARY KEY,
+    ledger_id TEXT NOT NULL,
+    event_id TEXT,
+    artifact_type TEXT NOT NULL,
+    uri_or_path TEXT NOT NULL,
+    content_hash TEXT,
+    metadata_json TEXT DEFAULT '{}',
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (ledger_id) REFERENCES run_ledgers(id),
+    FOREIGN KEY (event_id) REFERENCES run_events(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS run_checkpoints (
+    id TEXT PRIMARY KEY,
+    ledger_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    checkpoint_reason TEXT NOT NULL,
+    resume_packet_json TEXT NOT NULL,
+    sealed_hash TEXT NOT NULL,
+    is_resumable INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (ledger_id) REFERENCES run_ledgers(id),
+    FOREIGN KEY (event_id) REFERENCES run_events(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS run_handoffs (
+    id TEXT PRIMARY KEY,
+    ledger_id TEXT NOT NULL,
+    checkpoint_id TEXT NOT NULL,
+    from_actor TEXT NOT NULL,
+    to_actor TEXT NOT NULL,
+    handoff_type TEXT NOT NULL,
+    handoff_summary TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (ledger_id) REFERENCES run_ledgers(id),
+    FOREIGN KEY (checkpoint_id) REFERENCES run_checkpoints(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_run_ledgers_run_id ON run_ledgers(run_id);
+  CREATE INDEX IF NOT EXISTS idx_run_ledgers_agent ON run_ledgers(agent_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_run_ledgers_status ON run_ledgers(status, created_at);
+  CREATE INDEX IF NOT EXISTS idx_run_events_ledger_seq ON run_events(ledger_id, seq);
+  CREATE INDEX IF NOT EXISTS idx_run_events_type ON run_events(event_type, created_at);
+  CREATE INDEX IF NOT EXISTS idx_run_events_side_effect_key ON run_events(side_effect_key);
+  CREATE INDEX IF NOT EXISTS idx_run_checkpoints_ledger ON run_checkpoints(ledger_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_run_artifacts_ledger ON run_artifacts(ledger_id, created_at);
 `);
 
 // ── Lightweight migrations (no drops; add columns only) ───────────────────

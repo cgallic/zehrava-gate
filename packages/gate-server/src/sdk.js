@@ -148,6 +148,110 @@ class Gate {
   async registerWebhook({ intentId, url, secret } = {}) {
     return this._request('POST', '/v1/webhooks/register', { intentId, url, secret });
   }
+
+  /**
+   * ─── RUN LEDGER ───────────────────────────────────────────────────────────
+   * Start a new run with execution continuity tracking
+   * @param {Object} opts
+   * @param {string} opts.agentId - Agent ID running this operation
+   * @param {string} opts.intentSummary - Human-readable summary of intent
+   * @param {string} [opts.runtime] - Runtime identifier (default: 'zehrava-gate')
+   * @param {string} [opts.parentRunId] - Parent run for nested execution
+   * @param {Object} [opts.permissions] - Allowed capabilities
+   * @returns {Promise<{runId, ledgerId, status, createdAt}>}
+   */
+  async startRun({ agentId, intentSummary, runtime, parentRunId, permissions } = {}) {
+    return this._request('POST', '/internal/runs/start', {
+      agentId,
+      intentSummary,
+      runtime,
+      parentRunId,
+      permissions
+    });
+  }
+
+  /**
+   * Record an event in a run
+   * @param {Object} opts
+   * @param {string} opts.runId - Run ID
+   * @param {string} opts.eventType - Event type (e.g. 'tool_call_finished')
+   * @param {string} [opts.actorId] - Who performed this action
+   * @param {string} [opts.stepName] - Current step name
+   * @param {Object} [opts.payload] - Event payload
+   * @param {string} [opts.sideEffectClass] - Side effect classification
+   * @param {string} [opts.sideEffectKey] - Deduplication key
+   * @returns {Promise<{eventId, seq, eventType, timestamp}>}
+   */
+  async recordEvent({ runId, eventType, actorId, stepName, payload, sideEffectClass, sideEffectKey } = {}) {
+    return this._request('POST', `/internal/runs/${runId}/events`, {
+      eventType,
+      actorId,
+      stepName,
+      payload,
+      sideEffectClass,
+      sideEffectKey
+    });
+  }
+
+  /**
+   * Create a checkpoint for resumption
+   * @param {Object} opts
+   * @param {string} opts.runId - Run ID
+   * @param {string} [opts.eventId] - Event to checkpoint at (default: latest)
+   * @param {string} opts.reason - Checkpoint reason
+   * @param {string} [opts.suggestedNextAction] - What to do on resume
+   * @returns {Promise<{checkpointId, sealedHash, isResumable, reason, createdAt}>}
+   */
+  async createCheckpoint({ runId, eventId, reason, suggestedNextAction } = {}) {
+    return this._request('POST', `/internal/runs/${runId}/checkpoint`, {
+      eventId,
+      reason,
+      suggestedNextAction
+    });
+  }
+
+  /**
+   * Resume a run from its latest checkpoint
+   * @param {Object} opts
+   * @param {string} opts.runId - Run ID
+   * @param {string} [opts.fromCheckpointId] - Specific checkpoint to resume from
+   * @returns {Promise<{runId, checkpointId, receipts, artifacts, unresolvedApprovals, ...}>}
+   */
+  async resumeRun({ runId, fromCheckpointId } = {}) {
+    return this._request('POST', `/internal/runs/${runId}/resume`, {
+      fromCheckpointId
+    });
+  }
+
+  /**
+   * Get full run details
+   * @param {Object} opts
+   * @param {string} opts.runId - Run ID
+   * @returns {Promise<{run, events, checkpoints, artifacts, resumableCheckpoints}>}
+   */
+  async getRun({ runId } = {}) {
+    return this._request('GET', `/internal/runs/${runId}`);
+  }
+
+  /**
+   * Get all events for a run
+   * @param {Object} opts
+   * @param {string} opts.runId - Run ID
+   * @returns {Promise<{runId, events}>}
+   */
+  async getRunEvents({ runId } = {}) {
+    return this._request('GET', `/internal/runs/${runId}/events`);
+  }
+
+  /**
+   * Verify run integrity
+   * @param {Object} opts
+   * @param {string} opts.runId - Run ID
+   * @returns {Promise<{runId, ledgerIntegrity, checkpointIntegrity, lineageContinuity}>}
+   */
+  async verifyRun({ runId } = {}) {
+    return this._request('POST', `/internal/runs/${runId}/verify`);
+  }
 }
 
 module.exports = { Gate };

@@ -5,6 +5,8 @@ const db = require('../lib/db');
 const { generateId, generateDeliveryToken } = require('../lib/crypto');
 const { logEvent } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
+const { RunLedger } = require('../lib/runs');
+const { EVENT_TYPES } = require('../lib/runs/constants');
 
 // Auto-delivery destinations — approve triggers immediate deliver
 const AUTO_DELIVER_DESTINATIONS = ['blog.publish', 'gmail.send', 'loops.send'];
@@ -129,6 +131,20 @@ router.post('/approve', authenticate, (req, res) => {
 
   logEvent(proposalId, 'approved', req.agent.name, { approver: req.agent.name });
   fireWebhook(proposalId, 'approved', { approver: req.agent.name });
+
+  // Run Ledger integration (find run by on_behalf_of agent if present)
+  if (proposal.on_behalf_of) {
+    const runs = db.prepare('SELECT * FROM run_ledgers WHERE agent_id = ? AND status = ? ORDER BY created_at DESC LIMIT 1')
+      .all(proposal.on_behalf_of, 'active');
+    if (runs.length > 0) {
+      RunLedger.recordEvent({
+        ledgerId: runs[0].id,
+        eventType: EVENT_TYPES.APPROVAL_RECEIVED,
+        actorId: req.agent.id,
+        payload: { intentId: proposalId, approver: req.agent.name }
+      });
+    }
+  }
 
   // gate_exec: if vault has a credential for this destination, Gate executes the call itself
   const { hasCredential } = require('../proxy/vault');

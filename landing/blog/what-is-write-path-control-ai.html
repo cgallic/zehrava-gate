@@ -20,7 +20,7 @@
     "author": {
       "@type": "Person",
       "name": "Connor Gallic",
-      "url": "https://connorgallic.com/authors/connor-gallic"
+      "url": "https://connorgallic.com"
     },
     "publisher": {
       "@type": "Organization",
@@ -64,38 +64,51 @@
     footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
 
     /* === SITE NAV === */
-    .site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
-    .nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
-    .nav-brand span { color: #6366f1; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid #222; position: sticky; top: 0; background: rgba(10,10,10,0.97); backdrop-filter: blur(8px); z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; color: #f0f0f0; text-decoration: none; }
+    .nav-logo span { color: #6366f1; }
     .nav-links { display: flex; align-items: center; gap: 1.75rem; font-size: 0.875rem; }
     .nav-links a { color: #888; text-decoration: none; transition: color 0.15s; }
     .nav-links a:hover { color: #f0f0f0; }
-    .nav-cta { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; }
-    .nav-cta:hover { opacity: 0.9; }
-    @media(max-width: 768px) {
-      .site-nav { padding: 1rem; }
-      .nav-links { gap: 0.875rem; font-size: 0.8rem; }
-      .nav-links a:not(.nav-cta) { display: none; }
-    }
-    /* === END SITE NAV === */
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+    .nav-gh { font-size: 0.85rem; color: #888; text-decoration: none; }
+    .nav-gh:hover { color: #f0f0f0; }
+    .btn-nav { background: #6366f1; color: #fff !important; padding: 0.4rem 1rem; border-radius: 6px; font-weight: 600; font-size: 0.875rem; text-decoration: none; }
+    .btn-nav:hover { opacity: 0.9; text-decoration: none; }
 
     html, body { overflow-x: hidden; }
     @media (max-width: 768px) {
+      nav { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
       main { padding: 2rem 1.125rem 3rem; }
-      h1 { font-size: 1.65rem !important; line-height: 1.25 !important; }
-      h2 { font-size: 1.2rem !important; }
-      pre { font-size: .72rem !important; padding: .875rem !important; overflow-x: auto; }
+      h1 { font-size: 1.65rem; line-height: 1.25; }
+      h2 { font-size: 1.2rem; }
+      pre { font-size: 0.72rem; padding: 0.875rem; overflow-x: auto; }
     }
   </style>
 </head>
 <body>
-<nav class="site-nav">
-  <a href="/" class="nav-brand">zehrava<span>.</span></a>
+<nav>
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#blg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="blg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
   <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/demo">Live Demo</a>
     <a href="/docs">Docs</a>
+    <a href="/dashboard">Dashboard</a>
     <a href="/blog">Blog</a>
-    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub</a>
-    <a href="/dashboard" class="nav-cta">Dashboard →</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
   </div>
 </nav>
 
@@ -108,82 +121,52 @@
 
   <h1>What Is Write-Path Control for AI Agents?</h1>
 
-  <p>
-    Most AI safety discussions focus on catastrophic scenarios. The practical
-    risk for most teams is quieter: AI agents that take consequential actions
-    — send emails, modify databases, post content, make API calls — without a
-    human in the loop.
-  </p>
+  <p>Most AI safety discussions focus on catastrophic scenarios. The practical risk for most teams is quieter: AI agents that take consequential actions — send emails, modify databases, post content, make API calls — without a human in the loop.</p>
+
   <p>Write-path control is the layer that puts a gate on those actions.</p>
 
   <h2>The Problem</h2>
-  <p>
-    An AI agent built to handle customer outreach sends 400 emails with
-    incorrect pricing. The agent did exactly what it was told. Nobody approved
-    the email before it went out.
-  </p>
-  <p>
-    An AI agent managing social content posts a draft that wasn't ready. An AI
-    agent updating a CRM deletes records that weren't actually duplicates.
-  </p>
-  <p>
-    These aren't catastrophic failures. They're the everyday failure modes
-    that teams running AI agents encounter within the first 90 days.
-    Write-path control prevents them.
-  </p>
+
+  <p>An AI agent built to handle customer outreach sends 400 emails with incorrect pricing. The agent did exactly what it was told. Nobody approved the email before it went out.</p>
+
+  <p>An AI agent managing social content posts a draft that wasn't ready. An AI agent updating a CRM deletes records that weren't actually duplicates.</p>
+
+  <p>These aren't catastrophic failures. They're the everyday failure modes that teams running AI agents encounter within the first 90 days. Write-path control prevents them.</p>
 
   <h2>How It Works</h2>
+
   <p>Every AI operation has two paths:</p>
+
   <ul>
-    <li>
-      <strong>Read path:</strong> The agent reads data and generates analysis.
-      No external consequence. Can happen autonomously.
-    </li>
-    <li>
-      <strong>Write path:</strong> The agent sends a message, modifies a
-      record, or calls an external API. Has external consequence. Should
-      require a checkpoint.
-    </li>
+    <li><strong>Read path:</strong> The agent reads data and generates analysis. No external consequence. Can happen autonomously.</li>
+    <li><strong>Write path:</strong> The agent sends a message, modifies a record, or calls an external API. Has external consequence. Should require a checkpoint.</li>
   </ul>
-  <p>
-    Write-path control intercepts every write-path operation and routes it
-    through an approval gate before execution.
-  </p>
+
+  <p>Write-path control intercepts every write-path operation and routes it through an approval gate before execution.</p>
+
   <pre><code>agent calls: zehrava.execute("send_email", { to: "...", body: "..." })
 
 → Zehrava creates an intent record
 → Routes to approval queue (human or policy-based)
 → Human approves → email sends
-→ Human blocks  → intent logged, agent notified, no email sent</code></pre>
-  <p>
-    The agent runs at full speed. The write operations wait for authorization.
-  </p>
+→ Human blocks → intent logged, agent notified, no email sent</code></pre>
+
+  <p>The agent runs at full speed. The write operations wait for authorization.</p>
 
   <h2>Why This Matters in Production</h2>
-  <p>
-    Stateless AI prototyping is easy — you run a prompt, review the output,
-    decide whether to act. Human review is built into the workflow.
-  </p>
-  <p>
-    Production AI agents run autonomously, handle multiple operations in
-    parallel, and execute based on policies rather than real-time human
-    review. The manual review step disappears. Write-path control reintroduces
-    a systematic checkpoint without requiring humans to monitor every run.
-  </p>
+
+  <p>Stateless AI prototyping is easy — you run a prompt, review the output, decide whether to act. Human review is built into the workflow.</p>
+
+  <p>Production AI agents run autonomously, handle multiple operations in parallel, and execute based on policies rather than real-time human review. The manual review step disappears. Write-path control reintroduces a systematic checkpoint without requiring humans to monitor every run.</p>
 
   <h2>Real Deployment: KaiCalls</h2>
-  <p>
-    <a href="https://kaicalls.com" target="_blank" rel="noopener">KaiCalls</a> uses Zehrava write-path
-    control for its lead outreach pipeline. When the AI generates and proposes
-    an outreach email for a law firm lead, Zehrava intercepts the send
-    operation and routes it for approval before delivery.
-  </p>
-  <p>
-    The pipeline runs autonomously up to the send step. Human approval
-    controls whether the email goes out.
-  </p>
+
+  <p><a href="https://kaicalls.com">KaiCalls</a> uses Zehrava write-path control for its lead outreach pipeline. When the AI generates and proposes an outreach email for a law firm lead, Zehrava intercepts the send operation and routes it for approval before delivery.</p>
+
+  <p>The pipeline runs autonomously up to the send step. Human approval controls whether the email goes out.</p>
 
   <h2>Get Started</h2>
+
   <ul>
     <li>npm: <code>npm install zehrava-gate</code></li>
     <li>PyPI: <code>pip install zehrava-gate</code></li>
@@ -192,9 +175,9 @@
   </ul>
 
   <div class="cta-block">
-    <h3>Add a write-path gate to your agent stack.</h3>
+    <h3>Add write-path control to your agent stack.</h3>
     <p>MIT license. Self-hostable. Framework-agnostic. Takes under an hour to wrap your first agent.</p>
-    <a href="https://zehrava.com/docs" class="btn">Read the docs →</a>
+    <a href="https://zehrava.com" class="btn">Get started free →</a>
   </div>
 
   <div class="related">
@@ -206,6 +189,7 @@
     </div>
   </div>
 </main>
+
 <footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
 </body>
 </html>
