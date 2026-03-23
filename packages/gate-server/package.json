@@ -1,6 +1,6 @@
 {
   "name": "zehrava-gate",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Zehrava Gate — the commit checkpoint between AI agents and production systems",
   "main": "src/sdk.js",
   "bin": {
