@@ -249,8 +249,21 @@ function getPolicyFeatures() {
     if (policy.field_checks) features.add('field_checks');
     if (policy.environments) features.add('environment_overrides');
     if (policy.require_approval_for) features.add('require_approval_for');
+    if (policy.approval_channel) features.add('approval_channel_routing');
   }
   return [...features];
 }
 
-module.exports = { loadPolicy, listPolicies, evaluatePolicy, getPolicyFeatures };
+// Distinct approval-channel providers actually referenced by policies on
+// disk, for capability discovery — reflects what a deployment can really
+// route approvals to instead of a hardcoded list.
+function getConfiguredApprovalProviders() {
+  const providers = new Set(['dashboard']);
+  for (const policyId of listPolicies()) {
+    const policy = loadPolicy(policyId);
+    if (policy?.approval_channel?.provider) providers.add(policy.approval_channel.provider);
+  }
+  return [...providers];
+}
+
+module.exports = { loadPolicy, listPolicies, evaluatePolicy, getPolicyFeatures, getConfiguredApprovalProviders };

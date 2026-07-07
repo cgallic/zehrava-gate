@@ -4,7 +4,7 @@ const fs = require('fs');
 const router = express.Router();
 const db = require('../lib/db');
 const { generateId, generateDeliveryToken, hashPayload, parseExpiry, generateMessageId, generateApprovalLinkToken } = require('../lib/crypto');
-const { evaluatePolicy } = require('../lib/policy');
+const { evaluatePolicy, loadPolicy } = require('../lib/policy');
 const { scoreRisk } = require('../lib/risk');
 const { logEvent, getAuditTrail } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
@@ -12,6 +12,7 @@ const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES } = require('../lib/runs/constants');
 const { APPROVAL_STATES, transitionApprovalState } = require('../lib/approval-lifecycle');
 const { getApprovalEvidence } = require('../lib/evidence');
+const { getApprovalProvider } = require('../lib/approval-providers');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -127,12 +128,38 @@ router.post('/propose', authenticate, (req, res) => {
   );
 
   if (needsApproval) {
-    // Dispatch immediately to the (currently local/dashboard-only) approval
-    // channel — future external providers (issue #7) will drive SENT/
-    // WAITING_INPUT off real delivery confirmations instead of doing both
-    // transitions synchronously here.
-    transitionApprovalState(proposalId, APPROVAL_STATES.SENT, { actor: 'system', reason: 'dispatched_to_dashboard' });
-    transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: 'awaiting_reviewer' });
+    transitionApprovalState(proposalId, APPROVAL_STATES.SENT, { actor: 'system', reason: 'dispatch_attempted' });
+
+    const policyObj = loadPolicy(policy);
+    const providerName = policyObj?.approval_channel?.provider || 'dashboard';
+
+    if (providerName === 'dashboard') {
+      // Local-only channel — the dashboard IS Gate, so there's nothing to
+      // dispatch to and no delivery confirmation to wait on.
+      transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: 'awaiting_reviewer' });
+    } else {
+      // External channel: dispatch off the request/response cycle (same
+      // fire-and-forget pattern as gate_exec/autoDeliver below) so a slow
+      // or unreachable provider never blocks the propose response. The
+      // approval interaction only reaches WAITING_INPUT once dispatch is
+      // confirmed; a failed dispatch moves it to FAILED instead, per the
+      // A2H-style lifecycle (issue #3).
+      const approvalUrl = `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-links/${approvalLinkToken}`;
+      setImmediate(async () => {
+        try {
+          const provider = getApprovalProvider(providerName);
+          await provider.sendAuthorize(
+            { id: proposalId, destination, action: req.body.action || destination, message_id: messageId },
+            { approvalUrl, messageId, policy: policyObj }
+          );
+          const transition = transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: `dispatched_via_${providerName}` });
+          if (transition.ok) logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
+        } catch (e) {
+          const transition = transitionApprovalState(proposalId, APPROVAL_STATES.FAILED, { actor: 'system', reason: `channel_dispatch_failed: ${e.message}` });
+          if (transition.ok) logEvent(proposalId, 'approval_channel_failed', 'system', { provider: providerName, error: e.message });
+        }
+      });
+    }
   }
 
   // Store policy decision
@@ -225,7 +252,9 @@ router.post('/propose', authenticate, (req, res) => {
     intentId: proposalId,   // V2 alias
     messageId,
     status: result.status,
-    approvalState: needsApproval ? APPROVAL_STATES.WAITING_INPUT : null,
+    approvalState: needsApproval
+      ? db.prepare('SELECT approval_state FROM proposals WHERE id = ?').get(proposalId).approval_state
+      : null,
     approvalLinkToken,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),

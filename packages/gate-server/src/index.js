@@ -38,12 +38,14 @@ app.use((req, res, next) => {
 // GET /.well-known/gate — capability discovery, derived from real server
 // config/policy features so agents/SDKs can adapt instead of guessing.
 function buildCapabilities() {
-  const { listPolicies, getPolicyFeatures } = require('./lib/policy');
+  const { listPolicies, getPolicyFeatures, getConfiguredApprovalProviders } = require('./lib/policy');
   const { DEFAULT_NONCE_TTL_SEC, DEFAULT_TIMESTAMP_TOLERANCE_SEC } = require('./lib/replay');
+  const providers = getConfiguredApprovalProviders();
   return {
     gate_supported: ['1.0'],
     auth: { methods: ['api_key'] },
-    approval_channels: ['dashboard', 'webhook', 'approval_link'],
+    approval_channels: ['webhook', 'approval_link', ...providers],
+    approval_providers: providers,
     evidence_factors: ['manual.dashboard.v1', 'link.single_use.v1'],
     max_execution_ttl_sec: 900,
     replay_protection: {
