@@ -130,6 +130,26 @@ class Gate:
         """Fetch full intent details including policy decision and audit trail."""
         return self._request("GET", f"/v1/intents/{intent_id}")
 
+    def discover(self) -> dict:
+        """
+        Fetch this deployment's capability discovery document
+        (GET /.well-known/gate) — auth methods, approval channels, evidence
+        factors, replay-protection settings, TTLs, and policy features.
+        Unauthenticated; call before submitting high-risk intents to adapt
+        to what the deployment actually supports.
+        """
+        req = urllib.request.Request(f"{self.endpoint}/.well-known/gate", method="GET")
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            body = {}
+            try:
+                body = json.loads(e.read())
+            except Exception:
+                pass
+            raise GateError(body.get("error", f"HTTP {e.code}"), status=e.code, body=body)
+
     def register_webhook(
         self,
         *,

@@ -1,0 +1,17 @@
+# Demo policy showing the KaiCalls approval channel (issue: "add KaiCalls
+# as an approval engine gate"). Not wired into any real production
+# destination — copy the approval_channel block into a real policy once
+# KAICALLS_API_BASE_URL / KAICALLS_API_KEY and a real approver number are
+# configured. Until then, dispatch is logged and stubbed, never sent.
+id: finance-high-risk-kaicalls-demo
+require_approval: always
+destinations:
+  - stripe.refund
+  - finance.payout
+expiry_minutes: 30
+approval_channel:
+  provider: kaicalls
+  kaicalls:
+    to: "+15550001234"          # placeholder E.164 number — replace with a real approver
+    from_agent_id: "agt_replace_me"  # placeholder KaiCalls agent/phone line ID
+    voice_call: true            # also places an informational call, not just SMS

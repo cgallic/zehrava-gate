@@ -68,6 +68,12 @@ POST /v1/reject            Reject a pending proposal
 POST /v1/deliver           Deliver an approved proposal (one-time)
 GET  /v1/proposals         List proposals (filter by status)
 GET  /v1/audit/:id         Get audit trail for a proposal
+GET  /v1/nonce             Issue a single-use nonce for replay-safe decisions
+GET  /.well-known/gate     Capability discovery (auth, channels, TTLs, policy features)
+POST /v1/intents/:id/cancel-approval        Cancel a pending/waiting approval
+GET  /v1/approval-links/:token              Preview a single-use approval link
+POST /v1/approval-links/:token/approve      Approve via a single-use link (no API key)
+POST /v1/approval-links/:token/reject       Reject via a single-use link (no API key)
 GET  /health               Server health check
 ```
 
@@ -85,6 +91,28 @@ block_if_terms:
   - "drop table"
 expiry_minutes: 60
 ```
+
+### Approval channels
+
+By default, approvals happen in Gate's own dashboard/API. A policy can instead
+route the AUTHORIZE notification to an external channel via `approval_channel`
+— the channel only *delivers* the request; the decision itself is always
+captured by Gate's own approve/reject/approval-link endpoints, never by the
+channel:
+
+```yaml
+approval_channel:
+  provider: kaicalls        # or: dashboard (default)
+  kaicalls:
+    to: "+15550001234"       # E.164 approver number
+    from_agent_id: "agt_..." # KaiCalls agent/phone line
+    voice_call: true         # optional, default true — also places an informational call
+```
+
+Set `KAICALLS_API_BASE_URL` and `KAICALLS_API_KEY` to point the KaiCalls
+provider at a real account; until both are set, every dispatch is logged and
+stubbed — nothing is sent to a real phone. A failed dispatch moves the
+intent's `approval_state` to `failed` rather than silently hanging.
 
 ## Dashboard
 

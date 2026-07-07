@@ -3,13 +3,16 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const db = require('../lib/db');
-const { generateId, generateDeliveryToken, hashPayload, parseExpiry } = require('../lib/crypto');
-const { evaluatePolicy } = require('../lib/policy');
+const { generateId, generateDeliveryToken, hashPayload, parseExpiry, generateMessageId, generateApprovalLinkToken } = require('../lib/crypto');
+const { evaluatePolicy, loadPolicy } = require('../lib/policy');
 const { scoreRisk } = require('../lib/risk');
 const { logEvent, getAuditTrail } = require('../lib/audit');
 const { authenticate } = require('../middleware/auth');
 const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES } = require('../lib/runs/constants');
+const { APPROVAL_STATES, transitionApprovalState } = require('../lib/approval-lifecycle');
+const { getApprovalEvidence } = require('../lib/evidence');
+const { getApprovalProvider } = require('../lib/approval-providers');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -23,6 +26,7 @@ router.post('/propose', authenticate, (req, res) => {
   }
 
   const proposalId = generateId('int');
+  const messageId = generateMessageId();
   const now = Date.now();
   const expirySeconds = parseExpiry(expiresIn || '1h');
   const expiresAt = now + (expirySeconds * 1000);
@@ -88,10 +92,15 @@ router.post('/propose', authenticate, (req, res) => {
     policyRequireApproval: null // evaluated in policy engine
   });
 
+  // Approval interaction bookkeeping: intents that need a human get a
+  // single-use approval link token, tied to the same expiry as the intent.
+  const needsApproval = result.status === 'pending_approval';
+  const approvalLinkToken = needsApproval ? generateApprovalLinkToken() : null;
+
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -111,8 +120,47 @@ router.post('/propose', authenticate, (req, res) => {
     JSON.stringify(req.body.sensitivity_tags || []),
     recordCount ? parseInt(recordCount) : null,
     req.body.estimated_value_usd ? parseFloat(req.body.estimated_value_usd) : null,
-    req.body.action || destination
+    req.body.action || destination,
+    messageId,
+    needsApproval ? APPROVAL_STATES.PENDING : (result.status === 'blocked' ? APPROVAL_STATES.FAILED : APPROVAL_STATES.ANSWERED),
+    approvalLinkToken,
+    needsApproval ? expiresAt : null
   );
+
+  if (needsApproval) {
+    transitionApprovalState(proposalId, APPROVAL_STATES.SENT, { actor: 'system', reason: 'dispatch_attempted' });
+
+    const policyObj = loadPolicy(policy);
+    const providerName = policyObj?.approval_channel?.provider || 'dashboard';
+
+    if (providerName === 'dashboard') {
+      // Local-only channel — the dashboard IS Gate, so there's nothing to
+      // dispatch to and no delivery confirmation to wait on.
+      transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: 'awaiting_reviewer' });
+    } else {
+      // External channel: dispatch off the request/response cycle (same
+      // fire-and-forget pattern as gate_exec/autoDeliver below) so a slow
+      // or unreachable provider never blocks the propose response. The
+      // approval interaction only reaches WAITING_INPUT once dispatch is
+      // confirmed; a failed dispatch moves it to FAILED instead, per the
+      // A2H-style lifecycle (issue #3).
+      const approvalUrl = `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-links/${approvalLinkToken}`;
+      setImmediate(async () => {
+        try {
+          const provider = getApprovalProvider(providerName);
+          await provider.sendAuthorize(
+            { id: proposalId, destination, action: req.body.action || destination, message_id: messageId },
+            { approvalUrl, messageId, policy: policyObj }
+          );
+          const transition = transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: `dispatched_via_${providerName}` });
+          if (transition.ok) logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
+        } catch (e) {
+          const transition = transitionApprovalState(proposalId, APPROVAL_STATES.FAILED, { actor: 'system', reason: `channel_dispatch_failed: ${e.message}` });
+          if (transition.ok) logEvent(proposalId, 'approval_channel_failed', 'system', { provider: providerName, error: e.message });
+        }
+      });
+    }
+  }
 
   // Store policy decision
   const decisionId = generateId('dec');
@@ -202,7 +250,12 @@ router.post('/propose', authenticate, (req, res) => {
   res.json({
     proposalId,
     intentId: proposalId,   // V2 alias
+    messageId,
     status: result.status,
+    approvalState: needsApproval
+      ? db.prepare('SELECT approval_state FROM proposals WHERE id = ?').get(proposalId).approval_state
+      : null,
+    approvalLinkToken,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
@@ -223,12 +276,18 @@ router.get('/proposals/:id', authenticate, (req, res) => {
 
   const auditTrail = getAuditTrail(req.params.id);
   const manifest = db.prepare('SELECT * FROM manifests WHERE proposal_id = ?').get(req.params.id);
+  const evidence = getApprovalEvidence(req.params.id);
+  const { approval_link_token, ...safeProposal } = proposal;
 
   res.json({
-    ...proposal,
+    ...safeProposal,
+    has_approval_link: !!approval_link_token,
     created_at: new Date(proposal.created_at).toISOString(),
     expires_at: proposal.expires_at ? new Date(proposal.expires_at).toISOString() : null,
+    approval_link_expires_at: proposal.approval_link_expires_at ? new Date(proposal.approval_link_expires_at).toISOString() : null,
+    approval_link_used_at: proposal.approval_link_used_at ? new Date(proposal.approval_link_used_at).toISOString() : null,
     manifest: manifest || null,
+    approval_evidence: evidence,
     auditTrail
   });
 });
