@@ -231,4 +231,26 @@ function evaluateRateLimits(rateLimits, agentId) {
   }
 }
 
-module.exports = { loadPolicy, listPolicies, evaluatePolicy };
+// Derive the set of policy features actually in use across all loaded
+// policies, for capability discovery (GET /.well-known/gate) — reflects
+// real deployment behavior instead of a hardcoded static list.
+function getPolicyFeatures() {
+  const features = new Set();
+  for (const policyId of listPolicies()) {
+    const policy = loadPolicy(policyId);
+    if (!policy) continue;
+    if (policy.destinations) features.add('destination_allowlist');
+    if (policy.allowed_types) features.add('payload_type_allowlist');
+    if (policy.require_approval === 'always') features.add('require_approval');
+    if (policy.auto_approve_under !== undefined) features.add('auto_approve_under');
+    if (policy.require_approval_over !== undefined) features.add('require_approval_over');
+    if (policy.block_if_terms) features.add('block_if_terms');
+    if (policy.rate_limits) features.add('rate_limits');
+    if (policy.field_checks) features.add('field_checks');
+    if (policy.environments) features.add('environment_overrides');
+    if (policy.require_approval_for) features.add('require_approval_for');
+  }
+  return [...features];
+}
+
+module.exports = { loadPolicy, listPolicies, evaluatePolicy, getPolicyFeatures };

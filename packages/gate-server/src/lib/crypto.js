@@ -16,6 +16,22 @@ function generateExecutionToken() {
   return `gex_${crypto.randomBytes(20).toString('hex')}`;
 }
 
+function generateMessageId() {
+  return `msg_${crypto.randomBytes(12).toString('hex')}`;
+}
+
+function generateNonce() {
+  return `non_${crypto.randomBytes(16).toString('hex')}`;
+}
+
+function generateApprovalLinkToken() {
+  return `alk_${crypto.randomBytes(24).toString('hex')}`;
+}
+
+function generateInteractionId() {
+  return `itx_${crypto.randomBytes(12).toString('hex')}`;
+}
+
 function hashApiKey(key) {
   return crypto.createHash('sha256').update(key).digest('hex');
 }
@@ -33,4 +49,8 @@ function parseExpiry(expiresIn) {
   return val * (units[unit] || 3600);
 }
 
-module.exports = { generateId, generateApiKey, generateDeliveryToken, generateExecutionToken, hashApiKey, hashPayload, parseExpiry };
+module.exports = {
+  generateId, generateApiKey, generateDeliveryToken, generateExecutionToken,
+  generateMessageId, generateNonce, generateApprovalLinkToken, generateInteractionId,
+  hashApiKey, hashPayload, parseExpiry
+};

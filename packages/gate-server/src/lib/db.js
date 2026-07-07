@@ -113,6 +113,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_executions_intent ON executions(intent_id);
   CREATE INDEX IF NOT EXISTS idx_executions_token ON executions(execution_token);
 
+  -- ── A2H-style hardening: replay protection, evidence, server keys ──────
+
+  CREATE TABLE IF NOT EXISTS nonces (
+    id TEXT PRIMARY KEY,
+    nonce TEXT NOT NULL UNIQUE,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS approval_evidence (
+    id TEXT PRIMARY KEY,
+    intent_id TEXT NOT NULL UNIQUE,
+    protocol TEXT NOT NULL DEFAULT 'a2h.v1',
+    interaction_id TEXT NOT NULL,
+    request_jws TEXT,
+    response_jws TEXT NOT NULL,
+    responds_to TEXT,
+    decision TEXT NOT NULL,
+    decided_at INTEGER NOT NULL,
+    factor TEXT NOT NULL,
+    proof_json TEXT DEFAULT '{}',
+    approved_intent_hash TEXT NOT NULL,
+    consumed_at INTEGER,
+    created_at INTEGER NOT NULL,
+    FOREIGN KEY (intent_id) REFERENCES proposals(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS server_keys (
+    id TEXT PRIMARY KEY,
+    secret TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_nonces_nonce ON nonces(nonce);
+  CREATE INDEX IF NOT EXISTS idx_approval_evidence_intent ON approval_evidence(intent_id);
+
   -- ── RUN LEDGER ──────────────────────────────────────────────────────────
   -- Tracks full agent runs with checkpointing and resume capability
 
@@ -225,5 +262,14 @@ ensureColumn("ALTER TABLE proposals ADD COLUMN estimated_records INTEGER");
 ensureColumn("ALTER TABLE proposals ADD COLUMN estimated_value_usd REAL");
 ensureColumn("ALTER TABLE proposals ADD COLUMN action TEXT");
 ensureColumn("ALTER TABLE proposals ADD COLUMN approved_at INTEGER");
+
+// proposals: A2H-style hardening columns
+ensureColumn("ALTER TABLE proposals ADD COLUMN message_id TEXT");
+ensureColumn("ALTER TABLE proposals ADD COLUMN approval_state TEXT DEFAULT 'pending'");
+ensureColumn("ALTER TABLE proposals ADD COLUMN approval_link_token TEXT");
+ensureColumn("ALTER TABLE proposals ADD COLUMN approval_link_expires_at INTEGER");
+ensureColumn("ALTER TABLE proposals ADD COLUMN approval_link_used_at INTEGER");
+ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_message_id ON proposals(message_id)");
+ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_approval_link_token ON proposals(approval_link_token)");
 
 module.exports = db;

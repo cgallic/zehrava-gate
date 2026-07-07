@@ -7,6 +7,7 @@ const { authenticate } = require('../middleware/auth');
 const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES, SIDE_EFFECT_CLASS } = require('../lib/runs/constants');
 const { sideEffectKey } = require('../lib/runs/hash');
+const { verifyApprovalEvidence, consumeApprovalEvidence } = require('../lib/evidence');
 
 // POST /v1/intents/:id/execute — issue execution order
 router.post('/intents/:id/execute', authenticate, (req, res) => {
@@ -36,6 +37,20 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
     return res.status(409).json({ error: `Execution already ${existing.status}`, execution_id: existing.id, status: existing.status });
   }
 
+  // Fail closed: if approval evidence was recorded for this intent, it must
+  // still bind to the intent's exact current canonical state. This is what
+  // stops "approve X, execute Y" — any drift between what was approved and
+  // what's about to run blocks execution order issuance.
+  const evidenceCheck = verifyApprovalEvidence(intent);
+  if (!evidenceCheck.valid) {
+    logEvent(intent.id, 'evidence_verification_failed', 'system', { reason: evidenceCheck.reason });
+    return res.status(409).json({
+      error: 'approval_evidence_invalid',
+      reason: evidenceCheck.reason,
+      message: 'Approval evidence does not bind to the current intent — execution order refused'
+    });
+  }
+
   const mode = req.body.mode || 'runner_exec';
   const executionId = generateId('exe');
   const executionToken = generateExecutionToken();
@@ -57,6 +72,7 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
 
   // Update intent status to scheduled
   db.prepare('UPDATE proposals SET status = ? WHERE id = ?').run('scheduled', intent.id);
+  if (!evidenceCheck.skipped) consumeApprovalEvidence(intent.id);
   logEvent(intent.id, 'execution_requested', req.agent?.name || 'system', { executionId, mode });
 
   // Run Ledger integration (find run by on_behalf_of agent if present)
@@ -157,6 +173,7 @@ router.post('/executions/:id/report', (req, res) => {
 });
 
 function formatExecution(e) {
+  const { getApprovalEvidence } = require('../lib/evidence');
   return {
     executionId: e.id,
     execution_id: e.id,
@@ -172,7 +189,8 @@ function formatExecution(e) {
     issued_at: new Date(e.issued_at).toISOString(),
     expires_at: new Date(e.expires_at).toISOString(),
     executed_at: e.executed_at ? new Date(e.executed_at).toISOString() : null,
-    result: e.result ? JSON.parse(e.result) : null
+    result: e.result ? JSON.parse(e.result) : null,
+    approval_evidence: getApprovalEvidence(e.intent_id)
   };
 }
 

@@ -138,6 +138,41 @@ class Gate {
   }
 
   /**
+   * Fetch this deployment's capability discovery document
+   * (GET /.well-known/gate) — auth methods, approval channels, evidence
+   * factors, replay-protection settings, TTLs, and policy features.
+   * Use this before submitting high-risk intents to adapt to what the
+   * deployment actually supports instead of hardcoding assumptions.
+   * @returns {Promise<Object>}
+   */
+  async discover() {
+    return new Promise((resolve, reject) => {
+      const url = new URL(`${this.endpoint}/.well-known/gate`);
+      const lib = url.protocol === 'https:' ? https : http;
+      const req = lib.request({ hostname: url.hostname, port: url.port || (url.protocol === 'https:' ? 443 : 80), path: url.pathname, method: 'GET' }, (res) => {
+        let raw = '';
+        res.on('data', chunk => { raw += chunk; });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(raw);
+            if (res.statusCode >= 400) {
+              const err = new Error(parsed.error || `HTTP ${res.statusCode}`);
+              err.status = res.statusCode;
+              err.body = parsed;
+              return reject(err);
+            }
+            resolve(parsed);
+          } catch (e) {
+            reject(new Error(`Failed to parse discovery response: ${raw}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  /**
    * Register a webhook for intent state transitions (approved | rejected).
    * Note: JS SDK method coming in next release — use Python SDK or direct API for now.
    * @param {Object} opts

@@ -35,6 +35,60 @@ app.use((req, res, next) => {
   next();
 });
 
+// GET /.well-known/gate — capability discovery, derived from real server
+// config/policy features so agents/SDKs can adapt instead of guessing.
+function buildCapabilities() {
+  const { listPolicies, getPolicyFeatures } = require('./lib/policy');
+  const { DEFAULT_NONCE_TTL_SEC, DEFAULT_TIMESTAMP_TOLERANCE_SEC } = require('./lib/replay');
+  return {
+    gate_supported: ['1.0'],
+    auth: { methods: ['api_key'] },
+    approval_channels: ['dashboard', 'webhook', 'approval_link'],
+    evidence_factors: ['manual.dashboard.v1', 'link.single_use.v1'],
+    max_execution_ttl_sec: 900,
+    replay_protection: {
+      idempotency_window_sec: null,
+      timestamp_tolerance_sec: DEFAULT_TIMESTAMP_TOLERANCE_SEC,
+      nonce_endpoint: '/v1/nonce',
+      nonce_ttl_sec: DEFAULT_NONCE_TTL_SEC,
+      single_use_approval_links: true,
+    },
+    webhooks: { supported: true, retry_attempts: 1, timeout_sec: 30 },
+    policy_features: getPolicyFeatures(),
+    policies_available: listPolicies().length,
+  };
+}
+
+app.get('/.well-known/gate', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json(buildCapabilities());
+});
+
+// Optional A2H-compatible alias — same capabilities, A2H-flavored field names.
+if (process.env.GATE_A2H_COMPAT === 'true') {
+  app.get('/.well-known/a2h', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const caps = buildCapabilities();
+    res.json({
+      a2h_supported: caps.gate_supported,
+      auth: caps.auth,
+      channels: caps.approval_channels,
+      evidence_factors: caps.evidence_factors,
+      max_ttl_sec: caps.max_execution_ttl_sec,
+      replay_protection: caps.replay_protection,
+      webhooks: caps.webhooks,
+    });
+  });
+}
+
+// GET /v1/nonce — single-use challenge for approval channels that need one
+// (e.g. an external A2H-style provider proving a response isn't replayed).
+app.get('/v1/nonce', authenticate, (req, res) => {
+  const { issueNonce } = require('./lib/replay');
+  const { nonce, expiresAt } = issueNonce();
+  res.json({ nonce, expiresAt: new Date(expiresAt).toISOString() });
+});
+
 // Health
 app.get('/health', (req, res) => {
   const proxyEnabled = !!process.env.PROXY_API_KEY;
@@ -101,6 +155,13 @@ app.get('/v1/policies', authenticate, (req, res) => {
   res.json({ policies: listPolicies() });
 });
 
+// Strip single-use approval link tokens out of bulk/listing responses —
+// they're only disclosed once, in the propose response, same as a delivery link.
+function redactProposal(p) {
+  const { approval_link_token, ...rest } = p;
+  return { ...rest, has_approval_link: !!approval_link_token };
+}
+
 // List proposals by status (for dashboard)
 app.get('/v1/proposals', authenticate, (req, res) => {
   const { status, limit = 50 } = req.query;
@@ -119,7 +180,7 @@ app.get('/v1/proposals', authenticate, (req, res) => {
   params.push(parseInt(limit));
 
   const proposals = db.prepare(query).all(...params).map(p => ({
-    ...p,
+    ...redactProposal(p),
     created_at: new Date(p.created_at).toISOString(),
     expires_at: p.expires_at ? new Date(p.expires_at).toISOString() : null
   }));
@@ -159,7 +220,7 @@ app.get('/v1/intents', authenticate, (req, res) => {
   params.push(parseInt(limit));
 
   const intents = db.prepare(query).all(...params).map(p => ({
-    ...p, intentId: p.id,
+    ...redactProposal(p), intentId: p.id,
     created_at: new Date(p.created_at).toISOString(),
     expires_at: p.expires_at ? new Date(p.expires_at).toISOString() : null
   }));
@@ -170,7 +231,8 @@ app.get('/v1/intents/:id/audit', (req, res, next) => { req.url = `/${req.params.
 app.get('/v1/intents/:id/decision', authenticate, (req, res) => {
   const d = db.prepare('SELECT * FROM policy_decisions WHERE intent_id = ?').get(req.params.id);
   if (!d) return res.status(404).json({ error: 'No decision found for this intent' });
-  res.json({ ...d, evaluated_at: new Date(d.evaluated_at).toISOString() });
+  const { getApprovalEvidence } = require('./lib/evidence');
+  res.json({ ...d, evaluated_at: new Date(d.evaluated_at).toISOString(), approval_evidence: getApprovalEvidence(req.params.id) });
 });
 app.use('/v1', subscribeRouter);
 app.use('/v1', approvalsRouter);
