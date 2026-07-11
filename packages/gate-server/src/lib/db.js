@@ -309,6 +309,55 @@ ensureColumn("ALTER TABLE approval_interactions ADD COLUMN assurance_level TEXT"
 ensureColumn("ALTER TABLE proposals ADD COLUMN profile_id TEXT");
 ensureColumn("ALTER TABLE proposals ADD COLUMN profile_fields_hash TEXT");
 
+// proposals: Layer 2 authority — standing approvals + N-of-M (#8)
+ensureColumn("ALTER TABLE proposals ADD COLUMN required_approvals INTEGER DEFAULT 1");
+ensureColumn("ALTER TABLE proposals ADD COLUMN standing_approval_id TEXT");
+
+// Layer 2 authority model (issue #8): standing policies, revocation,
+// delegation, N-of-M approvals.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS standing_approvals (
+    id TEXT PRIMARY KEY,
+    destination TEXT NOT NULL,
+    policy_id TEXT,
+    principal_id TEXT,
+    max_amount_usd REAL,
+    daily_limit_usd REAL,
+    expires_at INTEGER,
+    revoked_at INTEGER,
+    revoked_reason TEXT,
+    created_by TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS delegations (
+    id TEXT PRIMARY KEY,
+    delegator_principal_id TEXT NOT NULL,
+    delegate_agent_id TEXT,
+    destination TEXT,
+    policy_id TEXT,
+    max_amount_usd REAL,
+    expires_at INTEGER,
+    revoked_at INTEGER,
+    revoked_reason TEXT,
+    created_by TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS approval_votes (
+    id TEXT PRIMARY KEY,
+    intent_id TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    principal_id TEXT,
+    decided_at INTEGER NOT NULL,
+    UNIQUE(intent_id, actor)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_standing_approvals_destination ON standing_approvals(destination, revoked_at);
+  CREATE INDEX IF NOT EXISTS idx_delegations_delegator ON delegations(delegator_principal_id, revoked_at);
+  CREATE INDEX IF NOT EXISTS idx_approval_votes_intent ON approval_votes(intent_id);
+`);
+
 // webhooks: signed delivery + bounded retry (issue #6)
 ensureColumn("ALTER TABLE webhooks ADD COLUMN delivery_id TEXT");
 ensureColumn("ALTER TABLE webhooks ADD COLUMN attempts INTEGER DEFAULT 0");

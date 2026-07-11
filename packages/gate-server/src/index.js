@@ -14,6 +14,7 @@ const approvalsRouter = require('./routes/approvals');
 const deliveryRouter = require('./routes/delivery');
 const auditRouter = require('./routes/audit');
 const runsRouter = require('./routes/runs');
+const authorityRouter = require('./routes/authority');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -249,6 +250,7 @@ app.get('/v1/intents/:id/decision', authenticate, (req, res) => {
 });
 app.use('/v1', subscribeRouter);
 app.use('/v1', approvalsRouter);
+app.use('/v1', authorityRouter);
 app.use('/v1', deliveryRouter);
 app.use('/v1/audit', auditRouter);
 

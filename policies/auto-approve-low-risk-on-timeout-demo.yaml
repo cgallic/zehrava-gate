@@ -1,0 +1,8 @@
+# Demo/test policy for conditional timeout defaults (issue #8):
+# on_no_response: auto_approve_if_low_risk auto-approves a low-risk intent
+# instead of expiring it once its TTL elapses with no human decision.
+id: auto-approve-low-risk-on-timeout-demo
+destinations: [salesforce.import, hubspot.contacts]
+require_approval: always
+on_no_response: auto_approve_if_low_risk
+expiry_minutes: 60

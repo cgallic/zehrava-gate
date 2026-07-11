@@ -233,6 +233,47 @@ Built-in profiles: `email.send.v1`, `crm.import.v1`, `payment.refund.v1`,
 — propose is rejected before any dispatch if the profile is missing,
 mismatched, or its required fields are incomplete.
 
+### Layer 2 authority — standing approvals, delegation, N-of-M, timeouts
+
+Beyond the base propose/approve/execute protocol, Gate has an explicit
+authority layer:
+
+```
+POST /v1/standing-approvals               Pre-authorize auto-approval under a cap
+GET  /v1/standing-approvals
+POST /v1/standing-approvals/:id/revoke
+POST /v1/delegations                      Let an agent approve on a principal's behalf
+GET  /v1/delegations
+POST /v1/delegations/:id/revoke
+POST /v1/approval-providers/:provider/revoke-sessions   Kill all pending interactions for a provider
+```
+
+**Standing approvals** auto-approve a matching intent without a human in the
+loop — scoped to a destination, optionally a `principal_id`, a
+per-transaction `max_amount_usd`, and a rolling-24h `daily_limit_usd`. Any
+ambiguity (no `estimated_value_usd` supplied against a capped approval, cap
+exceeded, expired, revoked) falls back to normal manual approval rather than
+guessing.
+
+**Delegation** lets an agent approve on behalf of a principal's authority:
+pass `on_behalf_of_principal` on `POST /v1/intents/:id/approve` — Gate
+requires an active, matching, non-revoked delegation or refuses with
+`403 delegation_not_found`. Approval evidence records both the delegating
+principal and the delegate agent.
+
+**N-of-M approval**: a policy can set `require_approvals: N` — each
+`/approve` call from a distinct actor records one vote; the intent only
+actually transitions to `approved` (and becomes executable) once N distinct
+approvers have voted. `approval_state` stays `waiting_input` until quorum so
+more reviewers can act, and voting is idempotent per actor (no double-count).
+
+**Conditional timeout defaults**: `on_no_response: reject | defer | auto_approve_if_low_risk`
+in policy YAML controls what happens once an intent's TTL elapses with no
+decision. Default (unset, or any unrecognized value) is `reject` — fails
+closed, marking the intent expired. `defer` lets a late decision still land.
+`auto_approve_if_low_risk` auto-approves only if the intent's computed
+`risk_level` is `low`; anything else still expires.
+
 ## Dashboard
 
 Every proposal lands in the approval queue at `/dashboard`. Approve, reject, view audit trail — no code required.

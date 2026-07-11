@@ -12,6 +12,8 @@ const { buildApprovalEvidence, canonicalIntentHash } = require('../lib/evidence'
 const { consumeNonce, checkTimestampTolerance } = require('../lib/replay');
 const { getInteraction, getLatestInteractionForIntent, updateInteractionState, INTERACTION_STATES } = require('../lib/approval-ledger');
 const { verifyProviderSignature, computeSignature } = require('../lib/provider-signature');
+const { loadPolicy } = require('../lib/policy');
+const { findApplicableDelegation, recordVote, listVotes, resolveOnNoResponse } = require('../lib/authority');
 
 // Auto-delivery destinations — approve triggers immediate deliver
 const AUTO_DELIVER_DESTINATIONS = ['blog.publish', 'gmail.send', 'loops.send'];
@@ -218,8 +220,32 @@ function guardApprovalInteraction(proposal) {
 // both the API-key-authenticated dashboard endpoints and the single-use
 // approval-link endpoints so side effects (evidence, webhooks, gate_exec,
 // hold-queue release, auto-deliver) never drift apart between the two paths.
-function executeApproveDecision(proposal, { actor, factor = 'manual.dashboard.v1' }) {
+function executeApproveDecision(proposal, { actor, factor = 'manual.dashboard.v1', principalId, delegation }) {
   const proposalId = proposal.id;
+
+  // N-of-M approval (issue #8): a policy can require multiple distinct
+  // approvers. Each call records one vote; only once quorum is reached does
+  // the intent actually transition to approved — every guard that already
+  // ran (replay, interaction-state, expiry) applies per vote, and
+  // approval_state deliberately stays WAITING_INPUT until quorum so
+  // additional reviewers can still act.
+  const requiredApprovals = proposal.required_approvals || 1;
+  if (requiredApprovals > 1) {
+    const votes = recordVote(proposalId, actor, principalId || null);
+    if (votes.length < requiredApprovals) {
+      logEvent(proposalId, 'approval_vote_recorded', actor, { votes: votes.length, required: requiredApprovals });
+      return {
+        status: 'pending_approval',
+        approvalState: APPROVAL_STATES.WAITING_INPUT,
+        intentId: proposalId,
+        votes: votes.length,
+        requiredApprovals,
+        votedBy: votes.map((v) => v.actor),
+      };
+    }
+    logEvent(proposalId, 'approval_quorum_reached', actor, { votes: votes.length, required: requiredApprovals });
+  }
+
   const deliveryToken = generateDeliveryToken();
   db.prepare("UPDATE proposals SET status = 'approved' WHERE id = ?").run(proposalId);
   db.prepare(`
@@ -229,7 +255,8 @@ function executeApproveDecision(proposal, { actor, factor = 'manual.dashboard.v1
 
   transitionApprovalState(proposalId, APPROVAL_STATES.ANSWERED, { actor, reason: 'approved' });
   const freshProposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
-  const evidence = buildApprovalEvidence(freshProposal, { decision: 'APPROVE', factor, actor });
+  const votedBy = requiredApprovals > 1 ? listVotes(proposalId).map((v) => v.actor) : undefined;
+  const evidence = buildApprovalEvidence(freshProposal, { decision: 'APPROVE', factor, actor, delegation, votedBy });
 
   logEvent(proposalId, 'approved', actor, { approver: actor });
   fireWebhook(proposalId, 'approved', { approver: actor });
@@ -309,6 +336,53 @@ function executeRejectDecision(proposal, { actor, reason, factor = 'manual.dashb
   return { status: 'blocked', approvalState: APPROVAL_STATES.ANSWERED, reason, approvalEvidence: evidence };
 }
 
+// Conditional timeout default (issue #8): consults policy.on_no_response
+// once an intent's TTL has elapsed. 'reject' (the default — fail closed)
+// marks it expired; 'defer' lets the caller's actual decision proceed as if
+// not expired; 'auto_approve_if_low_risk' auto-approves low-risk intents
+// instead of expiring them. Returns null when not expired at all.
+function checkExpiryWithPolicy(proposal) {
+  if (!proposal.expires_at || Date.now() <= proposal.expires_at) return null;
+
+  const policyObj = loadPolicy(proposal.policy_id);
+  const onNoResponse = resolveOnNoResponse(policyObj);
+
+  if (onNoResponse === 'defer') {
+    logEvent(proposal.id, 'expiry_deferred', 'system', { on_no_response: 'defer' });
+    return { deferred: true };
+  }
+  if (onNoResponse === 'auto_approve_if_low_risk' && proposal.risk_level === 'low') {
+    return { autoApprove: true };
+  }
+
+  db.prepare("UPDATE proposals SET status = 'expired' WHERE id = ?").run(proposal.id);
+  transitionApprovalState(proposal.id, APPROVAL_STATES.EXPIRED, { actor: 'system', reason: `ttl_elapsed_on_no_response_${onNoResponse}` });
+  logEvent(proposal.id, 'expired', 'system', { on_no_response: onNoResponse });
+  return { expired: true };
+}
+
+// Delegation (issue #8): an on_behalf_of_principal field means "I, the
+// authenticated agent, am acting as a delegate for this principal's
+// approval authority." Requires an active, matching, non-revoked
+// delegation — evidence records both the principal and the delegate agent.
+function resolveDelegation(req, proposal) {
+  if (!req.body.on_behalf_of_principal) return { delegation: null, error: null };
+  const delegation = findApplicableDelegation({
+    delegatorPrincipalId: req.body.on_behalf_of_principal,
+    delegateAgentId: req.agent.id,
+    destination: proposal.destination,
+    policyId: proposal.policy_id,
+    estimatedValueUsd: proposal.estimated_value_usd,
+  });
+  if (!delegation) {
+    return {
+      delegation: null,
+      error: { httpStatus: 403, body: { error: 'delegation_not_found', message: `No active delegation from ${req.body.on_behalf_of_principal} to this agent for this action` } },
+    };
+  }
+  return { delegation, error: null };
+}
+
 // POST /v1/approve  (V1 backward compat — body.proposalId)
 router.post('/approve', authenticate, (req, res) => {
   if (!requireReviewer(req, res)) return;
@@ -341,13 +415,22 @@ router.post('/approve', authenticate, (req, res) => {
   if (replayError) return res.status(replayError.httpStatus).json(replayError.body);
 
   if (proposal.expires_at && Date.now() > proposal.expires_at) {
-    db.prepare("UPDATE proposals SET status = 'expired' WHERE id = ?").run(proposalId);
-    transitionApprovalState(proposalId, APPROVAL_STATES.EXPIRED, { actor: 'system', reason: 'ttl_elapsed' });
-    logEvent(proposalId, 'expired', 'system', {});
-    return res.status(410).json({ error: 'Proposal has expired' });
+    const outcome = checkExpiryWithPolicy(proposal);
+    if (outcome.expired) return res.status(410).json({ error: 'Proposal has expired' });
+    if (outcome.autoApprove) {
+      return res.json(executeApproveDecision(proposal, { actor: 'system:timeout_default', factor: 'timeout.auto_approve_if_low_risk.v1' }));
+    }
+    // deferred: fall through and let the reviewer's actual decision proceed
   }
 
-  res.json(executeApproveDecision(proposal, { actor: req.agent.name }));
+  const { delegation, error: delegationError } = resolveDelegation(req, proposal);
+  if (delegationError) return res.status(delegationError.httpStatus).json(delegationError.body);
+
+  res.json(executeApproveDecision(proposal, {
+    actor: req.agent.name,
+    principalId: req.body.on_behalf_of_principal || req.body.principal_id || null,
+    delegation,
+  }));
 });
 
 // ── REJECT ────────────────────────────────────────────────────────────────
@@ -471,10 +554,15 @@ router.post('/approval-links/:token/approve', (req, res) => {
   if (replayError) return res.status(replayError.httpStatus).json(replayError.body);
 
   if (proposal.expires_at && Date.now() > proposal.expires_at) {
-    db.prepare("UPDATE proposals SET status = 'expired' WHERE id = ?").run(proposal.id);
-    transitionApprovalState(proposal.id, APPROVAL_STATES.EXPIRED, { actor: 'system', reason: 'ttl_elapsed' });
-    logEvent(proposal.id, 'expired', 'system', {});
-    return res.status(410).json({ error: 'Proposal has expired' });
+    const outcome = checkExpiryWithPolicy(proposal);
+    if (outcome.expired) return res.status(410).json({ error: 'Proposal has expired' });
+    if (outcome.autoApprove) {
+      if (!consumeApprovalLinkToken(proposal.id)) {
+        return res.status(410).json({ error: 'link_already_used', message: 'This approval link has already been used' });
+      }
+      return res.json(executeApproveDecision(proposal, { actor: 'system:timeout_default', factor: 'timeout.auto_approve_if_low_risk.v1' }));
+    }
+    // deferred: fall through and let the caller's actual decision proceed
   }
 
   if (!consumeApprovalLinkToken(proposal.id)) {

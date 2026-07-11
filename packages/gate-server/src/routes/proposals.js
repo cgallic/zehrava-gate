@@ -119,10 +119,34 @@ router.post('/propose', authenticate, (req, res) => {
     policyRequireApproval: null // evaluated in policy engine
   });
 
+  // Standing approvals (issue #8) — a pre-authorized, revocable, capped
+  // authorization can auto-approve an intent that would otherwise require
+  // manual approval. Only ever promotes pending_approval -> approved; never
+  // touches an already-blocked or already-approved decision, and requires
+  // an exact destination + (optional) principal + amount/daily-cap match —
+  // any ambiguity leaves the normal approval requirement in place.
+  let standingApproval = null;
+  if (result.status === 'pending_approval' && req.body.principal_id) {
+    standingApproval = require('../lib/authority').findApplicableStandingApproval({
+      destination,
+      principalId: req.body.principal_id,
+      estimatedValueUsd: req.body.estimated_value_usd ? parseFloat(req.body.estimated_value_usd) : null,
+    });
+    if (standingApproval) {
+      result.status = 'approved';
+      result.reason = null;
+    }
+  }
+
   // Approval interaction bookkeeping: intents that need a human get a
   // single-use approval link token, tied to the same expiry as the intent.
   const needsApproval = result.status === 'pending_approval';
   const approvalLinkToken = needsApproval ? generateApprovalLinkToken() : null;
+
+  // N-of-M approval (issue #8): a policy can require multiple distinct
+  // approvers before an intent is actually approved. Defaults to 1 (today's
+  // single-decision behavior, unchanged).
+  const requiredApprovals = needsApproval ? (Number(loadPolicy(policy)?.require_approvals) || 1) : 1;
 
   // Provider-neutral approval dispatch fields (issue #13) — all optional;
   // when omitted, the policy's approval_channel (or the dashboard default)
@@ -167,8 +191,8 @@ router.post('/propose', authenticate, (req, res) => {
 
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at, profile_id, profile_fields_hash)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at, profile_id, profile_fields_hash, required_approvals, standing_approval_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -194,8 +218,14 @@ router.post('/propose', authenticate, (req, res) => {
     approvalLinkToken,
     needsApproval ? expiresAt : null,
     profileId,
-    profileFieldsHash
+    profileFieldsHash,
+    requiredApprovals,
+    standingApproval?.id || null
   );
+
+  if (standingApproval) {
+    logEvent(proposalId, 'standing_approval_applied', 'system', { standingApprovalId: standingApproval.id, principalId: req.body.principal_id });
+  }
 
   let approvalInteractionId = null;
   if (needsApproval) {
@@ -278,6 +308,7 @@ router.post('/propose', authenticate, (req, res) => {
       : result.reason?.includes('destination') ? 'destination_not_allowed'
       : result.reason?.includes('sensitive') ? 'sensitive_data_detected'
       : 'manual_review_required')
+    : standingApproval ? 'standing_approval_applied'
     : result.status === 'approved' ? 'approved_by_policy'
     : 'manual_review_required';
 
@@ -370,6 +401,8 @@ router.post('/propose', authenticate, (req, res) => {
     assuranceLevel: needsApproval ? resolvedAssuranceLevel : null,
     profile: profileId,
     profileSummary: profileId ? summarizeProfile(profileId, metadata) : null,
+    standingApprovalId: standingApproval?.id || null,
+    requiredApprovals: needsApproval ? requiredApprovals : 1,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
