@@ -115,6 +115,26 @@ provider at a real account; until both are set, every dispatch is logged and
 stubbed — nothing is sent to a real phone. A failed dispatch moves the
 intent's `approval_state` to `failed` rather than silently hanging.
 
+A second built-in provider, `a2h`, is a bridge to any [A2H](https://github.com/twilio-labs/Agent2Human)/Ola-compatible
+gateway — unlike KaiCalls, the gateway itself issues a signed decision back
+to Gate rather than a human deciding inside Gate's own UI:
+
+```yaml
+approval_channel:
+  provider: a2h
+  a2h:
+    gateway_url: "https://a2h.example.com/v1/authorize"
+    gateway_id: "ola-prod"   # optional, informational
+```
+
+Gate sends an AUTHORIZE request carrying the intent, canonical hash, required
+factors, and a callback URL; the gateway calls back
+`POST /v1/approval-callbacks/a2h` with a signed RESPONSE, verified by the
+same generic verifier every provider callback goes through (see below).
+Set `A2H_GATEWAY_API_KEY` (outbound auth to the gateway) and
+`GATE_PROVIDER_SECRET_A2H` (inbound callback verification) to go live;
+until then, AUTHORIZE calls are stubbed.
+
 `POST /v1/propose` also accepts provider-neutral dispatch fields directly,
 overriding the policy default for that one request:
 

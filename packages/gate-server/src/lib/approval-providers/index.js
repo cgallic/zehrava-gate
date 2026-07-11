@@ -1,5 +1,6 @@
 const dashboard = require('./dashboard');
 const kaicalls = require('./kaicalls');
+const a2h = require('./a2h');
 const noop = require('./noop');
 
 // Approval provider abstraction (see issue #7): Gate decides a human is
@@ -9,7 +10,7 @@ const noop = require('./noop');
 // job is delivering the AUTHORIZE notification over some external channel —
 // it never becomes the source of truth for the decision unless its
 // verifyResponse() actually cryptographically proves one.
-const PROVIDERS = { dashboard, kaicalls, noop };
+const PROVIDERS = { dashboard, kaicalls, a2h, noop };
 
 // Capability declarations (issue #12/#15): which approval factors a
 // provider can plausibly produce evidence for. Used to reject policy/
@@ -21,6 +22,7 @@ const PROVIDERS = { dashboard, kaicalls, noop };
 const DEFAULT_CAPABILITIES = {
   dashboard: ['manual.dashboard.v1'],
   kaicalls: ['voice.ivr.v1', 'voice.spoken.v1', 'sms.otp.v1'],
+  a2h: ['a2h.signed_response.v1'],
   noop: [],
 };
 
