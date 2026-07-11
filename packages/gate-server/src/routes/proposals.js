@@ -15,6 +15,7 @@ const { getApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
 const { getApprovalProvider, getProviderCapabilities, providerSupportsFactors, listApprovalProviders } = require('../lib/approval-providers');
 const { createInteraction, updateInteractionState, setProviderInteractionId, listInteractionsForIntent, INTERACTION_STATES } = require('../lib/approval-ledger');
 const { redactChannelAddress, validatePrincipal } = require('../lib/principal');
+const { validateProfilePayload, canonicalProfileFieldsHash, summarizeProfile } = require('../lib/action-profiles');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -25,6 +26,30 @@ router.post('/propose', authenticate, (req, res) => {
 
   if (!destination || !policy) {
     return res.status(400).json({ error: 'destination and policy are required' });
+  }
+
+  // Typed action profiles (issue #10) — validated before policy evaluation.
+  // A policy can require a specific profile via `require_profile`; a
+  // caller-supplied profile is validated regardless, so evidence/audit
+  // metadata is only ever attached for a payload that actually matches it.
+  const policyForProfile = loadPolicy(policy);
+  const requiredProfile = policyForProfile?.require_profile || null;
+  const profileId = req.body.profile || null;
+
+  if (requiredProfile && !profileId) {
+    return res.status(400).json({ error: 'profile_required', message: `Policy "${policy}" requires a typed profile: ${requiredProfile}` });
+  }
+  if (requiredProfile && profileId !== requiredProfile) {
+    return res.status(400).json({ error: 'profile_mismatch', message: `Policy "${policy}" requires profile "${requiredProfile}", got "${profileId}"` });
+  }
+
+  let profileFieldsHash = null;
+  if (profileId) {
+    const profileCheck = validateProfilePayload(profileId, metadata);
+    if (!profileCheck.valid) {
+      return res.status(400).json({ error: 'invalid_profile_payload', messages: profileCheck.errors, profile: profileId });
+    }
+    profileFieldsHash = canonicalProfileFieldsHash(profileId, metadata);
   }
 
   const proposalId = generateId('int');
@@ -142,8 +167,8 @@ router.post('/propose', authenticate, (req, res) => {
 
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at, profile_id, profile_fields_hash)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -167,7 +192,9 @@ router.post('/propose', authenticate, (req, res) => {
     messageId,
     needsApproval ? APPROVAL_STATES.PENDING : (result.status === 'blocked' ? APPROVAL_STATES.FAILED : APPROVAL_STATES.ANSWERED),
     approvalLinkToken,
-    needsApproval ? expiresAt : null
+    needsApproval ? expiresAt : null,
+    profileId,
+    profileFieldsHash
   );
 
   let approvalInteractionId = null;
@@ -341,6 +368,8 @@ router.post('/propose', authenticate, (req, res) => {
     approvalProvider: needsApproval ? (requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard') : null,
     requiredApprovalFactors: needsApproval ? resolvedRequiredFactors : [],
     assuranceLevel: needsApproval ? resolvedAssuranceLevel : null,
+    profile: profileId,
+    profileSummary: profileId ? summarizeProfile(profileId, metadata) : null,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,

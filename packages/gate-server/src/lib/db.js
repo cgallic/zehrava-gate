@@ -305,6 +305,10 @@ ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_approval_link_toke
 // approval_interactions: assurance level requested at dispatch time (#13/#15)
 ensureColumn("ALTER TABLE approval_interactions ADD COLUMN assurance_level TEXT");
 
+// proposals: typed action profile binding (#10)
+ensureColumn("ALTER TABLE proposals ADD COLUMN profile_id TEXT");
+ensureColumn("ALTER TABLE proposals ADD COLUMN profile_fields_hash TEXT");
+
 // webhooks: signed delivery + bounded retry (issue #6)
 ensureColumn("ALTER TABLE webhooks ADD COLUMN delivery_id TEXT");
 ensureColumn("ALTER TABLE webhooks ADD COLUMN attempts INTEGER DEFAULT 0");

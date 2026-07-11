@@ -1,0 +1,9 @@
+# Demo policy requiring a typed action profile (issue #10) — every propose
+# against this policy must carry `profile: "email.send.v1"` and metadata
+# fields matching that profile's shape, or it's rejected before policy
+# evaluation ever runs.
+id: email-send-typed-profile-demo
+destinations: [gmail.send]
+require_approval: always
+require_profile: email.send.v1
+expiry_minutes: 60

@@ -210,6 +210,29 @@ adversarial pass (replay, tampered hash, expired interaction, wrong provider,
 insufficient evidence factors) proving none of those can grant execution
 access either.
 
+### Typed action profiles
+
+For common high-risk categories, `propose` can carry a versioned profile
+name plus structured fields in `metadata` — validated before policy
+evaluation, and folded into the approval-evidence hash binding so tampering
+with a profile field after approval is caught at execute time the same way
+a tampered destination/payload already is:
+
+```json
+{
+  "destination": "gmail.send",
+  "policy": "email-send-typed-profile-demo",
+  "profile": "email.send.v1",
+  "metadata": { "to": "someone@example.com", "subject": "Q3 update" }
+}
+```
+
+Built-in profiles: `email.send.v1`, `crm.import.v1`, `payment.refund.v1`,
+`finance.journal.v1`, `support.reply.v1`, `social.publish.v1` (see
+`lib/action-profiles.js`). A policy can require one via `require_profile: <id>`
+— propose is rejected before any dispatch if the profile is missing,
+mismatched, or its required fields are incomplete.
+
 ## Dashboard
 
 Every proposal lands in the approval queue at `/dashboard`. Approve, reject, view audit trail — no code required.
