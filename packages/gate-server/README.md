@@ -145,6 +145,30 @@ Configure the shared secret per provider via `GATE_PROVIDER_SECRET_<PROVIDER>`
 is approved — unless the signature, delivery ID, `responds_to`, canonical
 intent hash, expiry, and required evidence factors all check out.
 
+### Risk-tiered approval assurance
+
+A policy can declare which approval factors are required at each computed
+risk level, applied automatically unless a `propose` request explicitly
+overrides `assurance`:
+
+```yaml
+approval_channel:
+  provider: kaicalls
+assurance:
+  low: []                             # no extra evidence required
+  medium: [voice.ivr.v1]
+  high: [voice.ivr.v1, sms.otp.v1]
+  critical: [voice.ivr.v1, sms.otp.v1, passkey.webauthn.v1]
+```
+
+Recommended mappings: `low` — chat button or dashboard click is enough;
+`medium` — a spoken/IVR confirmation; `high` — IVR plus an OTP; `critical` —
+add a strong possession/inherence factor (passkey) once a provider that can
+deliver one is configured. If the resolved provider can't satisfy a tier's
+required factors, `propose` is rejected with `400 unsupported_factor` before
+any dispatch happens — see `lib/approval-providers/index.js` for the
+provider capability registry.
+
 ## Testing
 
 ```bash

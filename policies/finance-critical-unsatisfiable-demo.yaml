@@ -1,0 +1,16 @@
+# Demo/test policy: a critical-tier assurance requirement (passkey) that
+# the configured provider (kaicalls) cannot satisfy. Used to prove policy-
+# derived (not just request-supplied) required factors are validated
+# against provider capabilities at propose time (issue #15).
+id: finance-critical-unsatisfiable-demo
+require_approval: always
+destinations:
+  - stripe.refund
+expiry_minutes: 30
+approval_channel:
+  provider: kaicalls
+  kaicalls:
+    to: "+15550001234"
+    from_agent_id: "agt_replace_me"
+assurance:
+  critical: [passkey.webauthn.v1]

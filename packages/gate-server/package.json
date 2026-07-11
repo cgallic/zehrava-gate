@@ -14,7 +14,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test/a2h-hardening.test.js && node test/kaicalls-provider.test.js && node test/approval-ledger.test.js && node test/dispatch-provider.test.js && node test/provider-callback.test.js && node test/webhook-delivery.test.js && node test/e2e-approval-provider.test.js",
+    "test": "node test/a2h-hardening.test.js && node test/kaicalls-provider.test.js && node test/approval-ledger.test.js && node test/dispatch-provider.test.js && node test/provider-callback.test.js && node test/webhook-delivery.test.js && node test/risk-tiered-assurance.test.js && node test/e2e-approval-provider.test.js",
     "test:e2e": "node test/e2e-approval-provider.test.js",
     "test:e2e:kaicalls-staging": "node test/e2e-approval-provider.test.js --real-provider"
   },

@@ -108,6 +108,15 @@ router.post('/propose', authenticate, (req, res) => {
   const requestedChannel = req.body.approval_channel || null;
   const requestedAssurance = req.body.assurance || null;
 
+  // Risk-tiered assurance (issue #15): a policy can declare which approval
+  // factors are required per risk level —
+  //   assurance: { low: [...], medium: [...], high: [...], critical: [...] }
+  // — applied automatically from the intent's computed risk_level whenever
+  // the caller doesn't explicitly override required_factors on propose.
+  const policyAssuranceFactors = policyForDispatch?.assurance?.[risk.risk_level] || null;
+  const resolvedRequiredFactors = requestedAssurance?.required_factors || policyAssuranceFactors || [];
+  const resolvedAssuranceLevel = requestedAssurance?.level || (policyAssuranceFactors ? risk.risk_level.toUpperCase() : null);
+
   if (needsApproval) {
     if (requestedProvider && !listApprovalProviders().includes(requestedProvider)) {
       return res.status(400).json({ error: 'invalid_provider', message: `Unknown approval provider: ${requestedProvider}` });
@@ -120,13 +129,13 @@ router.post('/propose', authenticate, (req, res) => {
       return res.status(400).json({ error: 'invalid_channel', message: 'approval_channel.address is required when approval_channel is provided' });
     }
     const effectiveProvider = requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard';
-    const requiredFactors = requestedAssurance?.required_factors || [];
-    if (requiredFactors.length && !providerSupportsFactors(effectiveProvider, requiredFactors)) {
+    if (resolvedRequiredFactors.length && !providerSupportsFactors(effectiveProvider, resolvedRequiredFactors)) {
       return res.status(400).json({
         error: 'unsupported_factor',
-        message: `Provider "${effectiveProvider}" cannot satisfy required factors: ${requiredFactors.join(', ')}`,
+        message: `Provider "${effectiveProvider}" cannot satisfy required factors: ${resolvedRequiredFactors.join(', ')}`,
         provider: effectiveProvider,
         capabilities: getProviderCapabilities(effectiveProvider),
+        risk_level: risk.risk_level,
       });
     }
   }
@@ -182,8 +191,8 @@ router.post('/propose', authenticate, (req, res) => {
       channelType,
       channelAddressRedacted: redactChannelAddress(channelAddress),
       approvedIntentHash: canonicalIntentHash(freshProposal),
-      requiredFactors: requestedAssurance?.required_factors || [],
-      assuranceLevel: requestedAssurance?.level || null,
+      requiredFactors: resolvedRequiredFactors,
+      assuranceLevel: resolvedAssuranceLevel,
       expiresAt,
     });
     approvalInteractionId = interaction.id;
@@ -209,7 +218,7 @@ router.post('/propose', authenticate, (req, res) => {
             {
               approvalUrl, messageId, policy: policyObj, channel: requestedChannel, assurance: requestedAssurance,
               approvalInteractionId: interaction.id,
-              requiredFactors: requestedAssurance?.required_factors || [],
+              requiredFactors: resolvedRequiredFactors,
               expiresAt: new Date(expiresAt).toISOString(),
               summary: `${req.body.action || destination} via ${policy}`,
               callbackUrl: `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-callbacks/${providerName}`,
@@ -330,6 +339,8 @@ router.post('/propose', authenticate, (req, res) => {
     approvalLinkToken,
     approvalInteractionId,
     approvalProvider: needsApproval ? (requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard') : null,
+    requiredApprovalFactors: needsApproval ? resolvedRequiredFactors : [],
+    assuranceLevel: needsApproval ? resolvedAssuranceLevel : null,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
