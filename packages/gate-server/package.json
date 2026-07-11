@@ -14,7 +14,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test/a2h-hardening.test.js && node test/kaicalls-provider.test.js"
+    "test": "node test/a2h-hardening.test.js && node test/kaicalls-provider.test.js && node test/approval-ledger.test.js"
   },
   "keywords": [
     "ai",

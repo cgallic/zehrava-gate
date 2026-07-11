@@ -40,12 +40,15 @@ app.use((req, res, next) => {
 function buildCapabilities() {
   const { listPolicies, getPolicyFeatures, getConfiguredApprovalProviders } = require('./lib/policy');
   const { DEFAULT_NONCE_TTL_SEC, DEFAULT_TIMESTAMP_TOLERANCE_SEC } = require('./lib/replay');
+  const { getProviderCapabilities } = require('./lib/approval-providers');
   const providers = getConfiguredApprovalProviders();
+  const providerCapabilities = Object.fromEntries(providers.map((p) => [p, getProviderCapabilities(p)]));
   return {
     gate_supported: ['1.0'],
     auth: { methods: ['api_key'] },
     approval_channels: ['webhook', 'approval_link', ...providers],
     approval_providers: providers,
+    approval_provider_capabilities: providerCapabilities,
     evidence_factors: ['manual.dashboard.v1', 'link.single_use.v1'],
     max_execution_ttl_sec: 900,
     replay_protection: {

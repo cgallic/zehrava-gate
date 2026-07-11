@@ -11,8 +11,10 @@ const { authenticate } = require('../middleware/auth');
 const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES } = require('../lib/runs/constants');
 const { APPROVAL_STATES, transitionApprovalState } = require('../lib/approval-lifecycle');
-const { getApprovalEvidence } = require('../lib/evidence');
-const { getApprovalProvider } = require('../lib/approval-providers');
+const { getApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
+const { getApprovalProvider, getProviderCapabilities } = require('../lib/approval-providers');
+const { createInteraction, updateInteractionState, setProviderInteractionId, listInteractionsForIntent, INTERACTION_STATES } = require('../lib/approval-ledger');
+const { redactChannelAddress } = require('../lib/principal');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -127,36 +129,64 @@ router.post('/propose', authenticate, (req, res) => {
     needsApproval ? expiresAt : null
   );
 
+  let approvalInteractionId = null;
   if (needsApproval) {
     transitionApprovalState(proposalId, APPROVAL_STATES.SENT, { actor: 'system', reason: 'dispatch_attempted' });
 
     const policyObj = loadPolicy(policy);
     const providerName = policyObj?.approval_channel?.provider || 'dashboard';
+    const channelConfig = policyObj?.approval_channel?.[providerName] || null;
+
+    // Every dispatched approval request — dashboard included — gets a
+    // durable ledger row (issue #12), independent of proposals.approval_state.
+    const freshProposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
+    const interaction = createInteraction({
+      intentId: proposalId,
+      provider: providerName,
+      messageId,
+      principalId: req.body.principal_id || null,
+      channelType: providerName === 'dashboard' ? 'dashboard' : (channelConfig ? providerName : null),
+      channelAddressRedacted: redactChannelAddress(channelConfig?.to),
+      approvedIntentHash: canonicalIntentHash(freshProposal),
+      requiredFactors: getProviderCapabilities(providerName),
+      expiresAt,
+    });
+    approvalInteractionId = interaction.id;
 
     if (providerName === 'dashboard') {
       // Local-only channel — the dashboard IS Gate, so there's nothing to
       // dispatch to and no delivery confirmation to wait on.
       transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: 'awaiting_reviewer' });
+      updateInteractionState(interaction.id, INTERACTION_STATES.WAITING_INPUT);
     } else {
       // External channel: dispatch off the request/response cycle (same
       // fire-and-forget pattern as gate_exec/autoDeliver below) so a slow
       // or unreachable provider never blocks the propose response. The
       // approval interaction only reaches WAITING_INPUT once dispatch is
       // confirmed; a failed dispatch moves it to FAILED instead, per the
-      // A2H-style lifecycle (issue #3).
+      // A2H-style lifecycle (issue #3), and never approves/executes anything.
       const approvalUrl = `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-links/${approvalLinkToken}`;
       setImmediate(async () => {
         try {
           const provider = getApprovalProvider(providerName);
-          await provider.sendAuthorize(
+          const dispatch = await provider.sendAuthorize(
             { id: proposalId, destination, action: req.body.action || destination, message_id: messageId },
             { approvalUrl, messageId, policy: policyObj }
           );
+          if (dispatch?.interactionId && dispatch.interactionId !== proposalId) {
+            setProviderInteractionId(interaction.id, dispatch.interactionId);
+          }
           const transition = transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: `dispatched_via_${providerName}` });
-          if (transition.ok) logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
+          if (transition.ok) {
+            logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
+            updateInteractionState(interaction.id, INTERACTION_STATES.WAITING_INPUT);
+          }
         } catch (e) {
           const transition = transitionApprovalState(proposalId, APPROVAL_STATES.FAILED, { actor: 'system', reason: `channel_dispatch_failed: ${e.message}` });
-          if (transition.ok) logEvent(proposalId, 'approval_channel_failed', 'system', { provider: providerName, error: e.message });
+          if (transition.ok) {
+            logEvent(proposalId, 'approval_channel_failed', 'system', { provider: providerName, error: e.message });
+            updateInteractionState(interaction.id, INTERACTION_STATES.FAILED);
+          }
         }
       });
     }
@@ -256,6 +286,7 @@ router.post('/propose', authenticate, (req, res) => {
       ? db.prepare('SELECT approval_state FROM proposals WHERE id = ?').get(proposalId).approval_state
       : null,
     approvalLinkToken,
+    approvalInteractionId,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
@@ -288,6 +319,7 @@ router.get('/proposals/:id', authenticate, (req, res) => {
     approval_link_used_at: proposal.approval_link_used_at ? new Date(proposal.approval_link_used_at).toISOString() : null,
     manifest: manifest || null,
     approval_evidence: evidence,
+    approval_interactions: listInteractionsForIntent(req.params.id),
     auditTrail
   });
 });

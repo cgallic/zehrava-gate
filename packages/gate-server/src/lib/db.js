@@ -150,6 +150,36 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_nonces_nonce ON nonces(nonce);
   CREATE INDEX IF NOT EXISTS idx_approval_evidence_intent ON approval_evidence(intent_id);
 
+  -- ── Provider-neutral approval interaction ledger (issue #12) ───────────
+  -- Durable record of every dispatched approval request, regardless of
+  -- which provider (dashboard/webhook/kaicalls/a2h/...) delivered it. This
+  -- is additive to proposals.approval_state (still the source of truth for
+  -- gating decisions) — the ledger exists so external approvals are
+  -- first-class auditable objects instead of side effects of a webhook.
+
+  CREATE TABLE IF NOT EXISTS approval_interactions (
+    id TEXT PRIMARY KEY,
+    intent_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_interaction_id TEXT,
+    message_id TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'pending',
+    principal_id TEXT,
+    channel_type TEXT,
+    channel_address_redacted TEXT,
+    approved_intent_hash TEXT,
+    required_factors_json TEXT DEFAULT '[]',
+    evidence_json TEXT,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER,
+    answered_at INTEGER,
+    FOREIGN KEY (intent_id) REFERENCES proposals(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_approval_interactions_intent ON approval_interactions(intent_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_approval_interactions_provider ON approval_interactions(provider, provider_interaction_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_interactions_message_id ON approval_interactions(message_id);
+
   -- ── RUN LEDGER ──────────────────────────────────────────────────────────
   -- Tracks full agent runs with checkpointing and resume capability
 

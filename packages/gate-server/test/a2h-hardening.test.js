@@ -127,6 +127,13 @@ async function main() {
       assert(body.message_id === messageId, 'exposes message_id');
       assert(body.approval_link_token === undefined, 'never echoes raw approval_link_token back');
       assert(body.has_approval_link === true, 'signals a link exists via boolean flag');
+
+      assert(Array.isArray(body.approval_interactions) && body.approval_interactions.length === 1, 'propose creates exactly one ledger interaction (issue #12)');
+      const interaction = body.approval_interactions[0];
+      assert(interaction.provider === 'dashboard', 'ledger interaction records the dashboard provider');
+      assert(interaction.messageId === messageId, 'ledger interaction message_id matches the intent');
+      assert(interaction.state === 'waiting_input', 'ledger interaction state mirrors approval_state');
+      assert(!!interaction.approvedIntentHash, 'ledger interaction carries a canonical intent hash');
     }
 
     console.log('\nApprove via single-use link...');
