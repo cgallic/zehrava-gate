@@ -284,6 +284,26 @@ async function main() {
       assert(retry.status === 200, 'retry with the required factor succeeds');
     }
 
+    console.log('\nCallback after the interaction has expired is rejected...');
+    {
+      const { body: p } = await req('POST', '/v1/intents', {
+        apiKey: agent.apiKey,
+        body: { destination: 'salesforce.import', policy: 'crm-low-risk', recordCount: 200, payload: 'cb-expired.csv', approval_provider: 'noop', expiresIn: '1s' }
+      });
+      await waitForState(reviewer.apiKey, p.intentId, 'waiting_input');
+      await new Promise(r => setTimeout(r, 1200));
+
+      const { status, body } = await callbackReq('noop', {
+        intent_id: p.intentId, decision: 'APPROVE', decided_at: Date.now(),
+      }, { secret: NOOP_SECRET, deliveryId: 'del_expired' });
+      assert(status === 410, 'callback after expiry returns 410');
+      assert(body.error === 'interaction_expired', 'error is interaction_expired');
+
+      const { body: intent } = await getIntent(reviewer.apiKey, p.intentId);
+      assert(intent.approval_state === 'expired', 'approval_state transitions to expired');
+      assert(intent.status !== 'approved', 'intent is never approved after expiry');
+    }
+
     console.log(`\n${passed} passed, ${failed} failed\n`);
     if (failed > 0) process.exitCode = 1;
   } finally {

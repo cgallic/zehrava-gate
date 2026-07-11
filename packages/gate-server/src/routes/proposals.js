@@ -206,7 +206,14 @@ router.post('/propose', authenticate, (req, res) => {
           const provider = getApprovalProvider(providerName);
           const dispatch = await provider.sendAuthorize(
             { id: proposalId, destination, action: req.body.action || destination, message_id: messageId },
-            { approvalUrl, messageId, policy: policyObj, channel: requestedChannel, assurance: requestedAssurance }
+            {
+              approvalUrl, messageId, policy: policyObj, channel: requestedChannel, assurance: requestedAssurance,
+              approvalInteractionId: interaction.id,
+              requiredFactors: requestedAssurance?.required_factors || [],
+              expiresAt: new Date(expiresAt).toISOString(),
+              summary: `${req.body.action || destination} via ${policy}`,
+              callbackUrl: `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-callbacks/${providerName}`,
+            }
           );
           if (dispatch?.interactionId && dispatch.interactionId !== proposalId) {
             setProviderInteractionId(interaction.id, dispatch.interactionId);
