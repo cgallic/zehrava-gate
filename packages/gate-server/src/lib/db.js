@@ -302,4 +302,19 @@ ensureColumn("ALTER TABLE proposals ADD COLUMN approval_link_used_at INTEGER");
 ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_message_id ON proposals(message_id)");
 ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_approval_link_token ON proposals(approval_link_token)");
 
+// approval_interactions: assurance level requested at dispatch time (#13/#15)
+ensureColumn("ALTER TABLE approval_interactions ADD COLUMN assurance_level TEXT");
+
+// Delivery-ID dedup for signed provider approval callbacks (#14)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS provider_callback_deliveries (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    delivery_id TEXT NOT NULL,
+    intent_id TEXT,
+    received_at INTEGER NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_provider_callback_deliveries_dedup ON provider_callback_deliveries(provider, delivery_id);
+`);
+
 module.exports = db;

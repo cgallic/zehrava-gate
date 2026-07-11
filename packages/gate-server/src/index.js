@@ -22,7 +22,14 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 // Make BASE_URL available to delivery routes
 process.env.BASE_URL = BASE_URL;
 
-app.use(express.json({ limit: '50mb' }));
+// Capture the raw request body alongside express's parsed JSON so signed
+// callback routes (issue #14) can verify an HMAC over the exact bytes that
+// were sent, not a re-serialization of the parsed object (which could
+// differ in key order/whitespace and break signature verification).
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 
 // CORS — public feed open to all origins, rest locked to same-origin
 app.use((req, res, next) => {
@@ -59,6 +66,7 @@ function buildCapabilities() {
       single_use_approval_links: true,
     },
     webhooks: { supported: true, retry_attempts: 1, timeout_sec: 30 },
+    approval_callback_endpoint: '/v1/approval-callbacks/:provider',
     policy_features: getPolicyFeatures(),
     policies_available: listPolicies().length,
   };

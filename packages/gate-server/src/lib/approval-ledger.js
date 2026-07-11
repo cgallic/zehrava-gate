@@ -27,14 +27,15 @@ function createInteraction({
   channelAddressRedacted = null,
   approvedIntentHash = null,
   requiredFactors = [],
+  assuranceLevel = null,
   expiresAt = null,
 }) {
   const id = generateId('gai');
   const now = Date.now();
   db.prepare(`
     INSERT INTO approval_interactions
-      (id, intent_id, provider, provider_interaction_id, message_id, state, principal_id, channel_type, channel_address_redacted, approved_intent_hash, required_factors_json, evidence_json, created_at, expires_at, answered_at)
-    VALUES (@id, @intent_id, @provider, NULL, @message_id, @state, @principal_id, @channel_type, @channel_address_redacted, @approved_intent_hash, @required_factors_json, NULL, @created_at, @expires_at, NULL)
+      (id, intent_id, provider, provider_interaction_id, message_id, state, principal_id, channel_type, channel_address_redacted, approved_intent_hash, required_factors_json, assurance_level, evidence_json, created_at, expires_at, answered_at)
+    VALUES (@id, @intent_id, @provider, NULL, @message_id, @state, @principal_id, @channel_type, @channel_address_redacted, @approved_intent_hash, @required_factors_json, @assurance_level, NULL, @created_at, @expires_at, NULL)
   `).run({
     id,
     intent_id: intentId,
@@ -46,6 +47,7 @@ function createInteraction({
     channel_address_redacted: channelAddressRedacted,
     approved_intent_hash: approvedIntentHash,
     required_factors_json: JSON.stringify(requiredFactors || []),
+    assurance_level: assuranceLevel,
     created_at: now,
     expires_at: expiresAt,
   });
@@ -113,6 +115,7 @@ function formatInteraction(row) {
     channelAddressRedacted: row.channel_address_redacted,
     approvedIntentHash: row.approved_intent_hash,
     requiredFactors: JSON.parse(row.required_factors_json || '[]'),
+    assuranceLevel: row.assurance_level,
     evidence: row.evidence_json ? JSON.parse(row.evidence_json) : null,
     createdAt: new Date(row.created_at).toISOString(),
     expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,

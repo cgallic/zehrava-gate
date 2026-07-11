@@ -8,8 +8,10 @@ const { authenticate } = require('../middleware/auth');
 const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES } = require('../lib/runs/constants');
 const { APPROVAL_STATES, isTerminal, transitionApprovalState } = require('../lib/approval-lifecycle');
-const { buildApprovalEvidence } = require('../lib/evidence');
+const { buildApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
 const { consumeNonce, checkTimestampTolerance } = require('../lib/replay');
+const { getInteraction, getLatestInteractionForIntent, updateInteractionState, INTERACTION_STATES } = require('../lib/approval-ledger');
+const { verifyProviderSignature } = require('../lib/provider-signature');
 
 // Auto-delivery destinations — approve triggers immediate deliver
 const AUTO_DELIVER_DESTINATIONS = ['blog.publish', 'gmail.send', 'loops.send'];
@@ -445,6 +447,130 @@ router.post('/webhooks/register', authenticate, (req, res) => {
   res.json({ registered: true, webhookId: whkId, intentId, url });
 });
 
+// ── SIGNED PROVIDER APPROVAL CALLBACKS (issue #14) ─────────────────────────
+//
+// External approval only matters if Gate can verify the callback/response
+// is authentic, fresh, single-use, and bound to the exact original intent.
+// This route is the generalized verifier: it works for any provider that
+// itself issues a signed decision (KaiCalls' notify-only integration never
+// calls this — see lib/approval-providers/kaicalls.js — but a future A2H/
+// Ola bridge, issue #7, or a Slack/chat-button provider would).
+//
+// POST /v1/approval-callbacks/:provider
+// Headers: X-Gate-Provider-Signature: t=<ms>,v1=<hex-hmac>
+//          X-Gate-Provider-Delivery-ID: <unique-per-delivery>  (optional but recommended)
+// Body: { intent_id, gate_approval_interaction_id?, responds_to, decision,
+//         decided_at, approved_intent_hash, evidence: { factors, proof } }
+
+function recordDelivery(provider, deliveryId, intentId) {
+  if (!deliveryId) return { duplicate: false };
+  try {
+    db.prepare('INSERT INTO provider_callback_deliveries (id, provider, delivery_id, intent_id, received_at) VALUES (?, ?, ?, ?, ?)')
+      .run(generateId('pcd'), provider, deliveryId, intentId || null, Date.now());
+    return { duplicate: false };
+  } catch (e) {
+    return { duplicate: true };
+  }
+}
+
+router.post('/approval-callbacks/:provider', (req, res) => {
+  const providerName = req.params.provider;
+  const body = req.body || {};
+  const deliveryId = req.headers['x-gate-provider-delivery-id'] || body.delivery_id || null;
+
+  // Dedup first — a replayed delivery should never even reach signature
+  // verification/state mutation twice, regardless of whether the signature
+  // on the replay is (still) valid.
+  const { duplicate } = recordDelivery(providerName, deliveryId, body.intent_id);
+  if (duplicate) {
+    return res.status(409).json({ error: 'duplicate_delivery', message: 'This delivery_id has already been processed' });
+  }
+
+  const sig = verifyProviderSignature({
+    provider: providerName,
+    header: req.headers['x-gate-provider-signature'],
+    rawBody: req.rawBody,
+  });
+  if (!sig.valid) {
+    logEvent(body.intent_id || null, 'provider_callback_rejected', `provider:${providerName}`, { reason: sig.reason });
+    return res.status(401).json({ error: 'invalid_signature', reason: sig.reason });
+  }
+
+  const { intent_id, gate_approval_interaction_id, responds_to, decision, decided_at, approved_intent_hash, evidence, reason } = body;
+  if (!intent_id || !decision) {
+    return res.status(400).json({ error: 'invalid_payload', message: 'intent_id and decision are required' });
+  }
+
+  const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(intent_id);
+  if (!proposal) return res.status(404).json({ error: 'intent_not_found' });
+
+  const interaction = gate_approval_interaction_id
+    ? getInteraction(gate_approval_interaction_id)
+    : getLatestInteractionForIntent(intent_id);
+  if (!interaction || interaction.intentId !== intent_id) {
+    return res.status(404).json({ error: 'approval_interaction_not_found' });
+  }
+  if (interaction.provider !== providerName) {
+    return res.status(409).json({ error: 'provider_mismatch', expected: interaction.provider, got: providerName });
+  }
+  if (![INTERACTION_STATES.PENDING, INTERACTION_STATES.SENT, INTERACTION_STATES.WAITING_INPUT].includes(interaction.state)) {
+    return res.status(409).json({ error: 'interaction_not_pending', state: interaction.state });
+  }
+
+  const interactionError = guardApprovalInteraction(proposal);
+  if (interactionError) return res.status(interactionError.httpStatus).json(interactionError.body);
+
+  const expectedRespondsTo = proposal.message_id || proposal.id;
+  if (responds_to !== undefined && responds_to !== expectedRespondsTo) {
+    return res.status(409).json({ error: 'responds_to_mismatch', expected: expectedRespondsTo });
+  }
+
+  const currentHash = canonicalIntentHash(proposal);
+  if (approved_intent_hash !== undefined && approved_intent_hash !== currentHash) {
+    return res.status(409).json({ error: 'approved_intent_hash_mismatch' });
+  }
+
+  if (decided_at !== undefined) {
+    const tsCheck = checkTimestampTolerance(decided_at);
+    if (!tsCheck.valid) return res.status(409).json({ error: 'replay_rejected', reason: tsCheck.reason });
+  }
+
+  if (interaction.expiresAt && Date.now() > new Date(interaction.expiresAt).getTime()) {
+    updateInteractionState(interaction.id, INTERACTION_STATES.EXPIRED);
+    transitionApprovalState(intent_id, APPROVAL_STATES.EXPIRED, { actor: `provider:${providerName}`, reason: 'callback_after_expiry' });
+    logEvent(intent_id, 'expired', 'system', {});
+    return res.status(410).json({ error: 'interaction_expired' });
+  }
+
+  const suppliedFactors = evidence?.factors || [];
+  const missingFactors = (interaction.requiredFactors || []).filter((f) => !suppliedFactors.includes(f));
+  if (missingFactors.length) {
+    return res.status(409).json({ error: 'insufficient_evidence_factors', missing: missingFactors, supplied: suppliedFactors });
+  }
+
+  const decisionUpper = String(decision).toUpperCase();
+  if (!['APPROVE', 'DECLINE', 'REJECT'].includes(decisionUpper)) {
+    return res.status(400).json({ error: 'invalid_decision', message: 'decision must be APPROVE, DECLINE, or REJECT' });
+  }
+
+  const factor = suppliedFactors[0] || `${providerName}.callback.v1`;
+  const evidenceUpdate = updateInteractionState(interaction.id, INTERACTION_STATES.ANSWERED, {
+    evidence: { decision: decisionUpper, factors: suppliedFactors, proof: evidence?.proof || null },
+  });
+  if (!evidenceUpdate.ok) {
+    return res.status(409).json({ error: evidenceUpdate.reason, state: evidenceUpdate.previous });
+  }
+
+  const actor = `provider:${providerName}`;
+  if (decisionUpper === 'APPROVE') {
+    return res.json(executeApproveDecision(proposal, { actor, factor }));
+  }
+  return res.json(executeRejectDecision(proposal, { actor, reason: reason || `declined_via_${providerName}`, factor }));
+});
+
 module.exports = router;
 module.exports.registerWebhook = registerWebhook;
 module.exports.fireWebhook = fireWebhook;
+module.exports.executeApproveDecision = executeApproveDecision;
+module.exports.executeRejectDecision = executeRejectDecision;
+module.exports.guardApprovalInteraction = guardApprovalInteraction;

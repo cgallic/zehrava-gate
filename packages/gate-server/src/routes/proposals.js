@@ -12,9 +12,9 @@ const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES } = require('../lib/runs/constants');
 const { APPROVAL_STATES, transitionApprovalState } = require('../lib/approval-lifecycle');
 const { getApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
-const { getApprovalProvider, getProviderCapabilities } = require('../lib/approval-providers');
+const { getApprovalProvider, getProviderCapabilities, providerSupportsFactors, listApprovalProviders } = require('../lib/approval-providers');
 const { createInteraction, updateInteractionState, setProviderInteractionId, listInteractionsForIntent, INTERACTION_STATES } = require('../lib/approval-ledger');
-const { redactChannelAddress } = require('../lib/principal');
+const { redactChannelAddress, validatePrincipal } = require('../lib/principal');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -99,6 +99,38 @@ router.post('/propose', authenticate, (req, res) => {
   const needsApproval = result.status === 'pending_approval';
   const approvalLinkToken = needsApproval ? generateApprovalLinkToken() : null;
 
+  // Provider-neutral approval dispatch fields (issue #13) — all optional;
+  // when omitted, the policy's approval_channel (or the dashboard default)
+  // applies unchanged. Validated up front so a bad request never creates a
+  // half-dispatched intent.
+  const policyForDispatch = needsApproval ? loadPolicy(policy) : null;
+  const requestedProvider = req.body.approval_provider || null;
+  const requestedChannel = req.body.approval_channel || null;
+  const requestedAssurance = req.body.assurance || null;
+
+  if (needsApproval) {
+    if (requestedProvider && !listApprovalProviders().includes(requestedProvider)) {
+      return res.status(400).json({ error: 'invalid_provider', message: `Unknown approval provider: ${requestedProvider}` });
+    }
+    const principalCheck = validatePrincipal({ principal_id: req.body.principal_id, channel: requestedChannel });
+    if (!principalCheck.valid) {
+      return res.status(400).json({ error: 'invalid_principal', messages: principalCheck.errors });
+    }
+    if (requestedChannel && !requestedChannel.address) {
+      return res.status(400).json({ error: 'invalid_channel', message: 'approval_channel.address is required when approval_channel is provided' });
+    }
+    const effectiveProvider = requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard';
+    const requiredFactors = requestedAssurance?.required_factors || [];
+    if (requiredFactors.length && !providerSupportsFactors(effectiveProvider, requiredFactors)) {
+      return res.status(400).json({
+        error: 'unsupported_factor',
+        message: `Provider "${effectiveProvider}" cannot satisfy required factors: ${requiredFactors.join(', ')}`,
+        provider: effectiveProvider,
+        capabilities: getProviderCapabilities(effectiveProvider),
+      });
+    }
+  }
+
   // Store proposal
   db.prepare(`
     INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at)
@@ -133,9 +165,11 @@ router.post('/propose', authenticate, (req, res) => {
   if (needsApproval) {
     transitionApprovalState(proposalId, APPROVAL_STATES.SENT, { actor: 'system', reason: 'dispatch_attempted' });
 
-    const policyObj = loadPolicy(policy);
-    const providerName = policyObj?.approval_channel?.provider || 'dashboard';
-    const channelConfig = policyObj?.approval_channel?.[providerName] || null;
+    const policyObj = policyForDispatch;
+    const providerName = requestedProvider || policyObj?.approval_channel?.provider || 'dashboard';
+    const policyChannelConfig = policyObj?.approval_channel?.[providerName] || null;
+    const channelAddress = requestedChannel?.address || policyChannelConfig?.to || null;
+    const channelType = requestedChannel?.type || (providerName === 'dashboard' ? 'dashboard' : (policyChannelConfig ? providerName : null));
 
     // Every dispatched approval request — dashboard included — gets a
     // durable ledger row (issue #12), independent of proposals.approval_state.
@@ -145,10 +179,11 @@ router.post('/propose', authenticate, (req, res) => {
       provider: providerName,
       messageId,
       principalId: req.body.principal_id || null,
-      channelType: providerName === 'dashboard' ? 'dashboard' : (channelConfig ? providerName : null),
-      channelAddressRedacted: redactChannelAddress(channelConfig?.to),
+      channelType,
+      channelAddressRedacted: redactChannelAddress(channelAddress),
       approvedIntentHash: canonicalIntentHash(freshProposal),
-      requiredFactors: getProviderCapabilities(providerName),
+      requiredFactors: requestedAssurance?.required_factors || [],
+      assuranceLevel: requestedAssurance?.level || null,
       expiresAt,
     });
     approvalInteractionId = interaction.id;
@@ -171,7 +206,7 @@ router.post('/propose', authenticate, (req, res) => {
           const provider = getApprovalProvider(providerName);
           const dispatch = await provider.sendAuthorize(
             { id: proposalId, destination, action: req.body.action || destination, message_id: messageId },
-            { approvalUrl, messageId, policy: policyObj }
+            { approvalUrl, messageId, policy: policyObj, channel: requestedChannel, assurance: requestedAssurance }
           );
           if (dispatch?.interactionId && dispatch.interactionId !== proposalId) {
             setProviderInteractionId(interaction.id, dispatch.interactionId);
@@ -287,6 +322,7 @@ router.post('/propose', authenticate, (req, res) => {
       : null,
     approvalLinkToken,
     approvalInteractionId,
+    approvalProvider: needsApproval ? (requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard') : null,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
