@@ -74,6 +74,7 @@ POST /v1/intents/:id/cancel-approval        Cancel a pending/waiting approval
 GET  /v1/approval-links/:token              Preview a single-use approval link
 POST /v1/approval-links/:token/approve      Approve via a single-use link (no API key)
 POST /v1/approval-links/:token/reject       Reject via a single-use link (no API key)
+POST /v1/approval-callbacks/:provider       Signed callback for providers that issue their own decision
 GET  /health               Server health check
 ```
 
@@ -113,6 +114,57 @@ Set `KAICALLS_API_BASE_URL` and `KAICALLS_API_KEY` to point the KaiCalls
 provider at a real account; until both are set, every dispatch is logged and
 stubbed — nothing is sent to a real phone. A failed dispatch moves the
 intent's `approval_state` to `failed` rather than silently hanging.
+
+`POST /v1/propose` also accepts provider-neutral dispatch fields directly,
+overriding the policy default for that one request:
+
+```json
+{
+  "destination": "stripe.refund",
+  "policy": "finance-high-risk-kaicalls-demo",
+  "approval_provider": "kaicalls",
+  "principal_id": "usr_abc123",
+  "approval_channel": { "type": "voice_then_sms", "address": "+15550001234" },
+  "assurance": { "level": "HIGH", "required_factors": ["voice.ivr.v1", "sms.otp.v1"] }
+}
+```
+
+For providers that themselves issue a signed decision (rather than just
+notifying a human who then decides inside Gate's own dashboard/approval-link
+UI), Gate verifies the decision via a signed callback before changing
+anything:
+
+```
+POST /v1/approval-callbacks/:provider
+X-Gate-Provider-Signature: t=<unix-ms>,v1=<hex-hmac-sha256 of "${t}.${rawBody}">
+X-Gate-Provider-Delivery-ID: <unique-per-delivery, for replay dedup>
+```
+
+Configure the shared secret per provider via `GATE_PROVIDER_SECRET_<PROVIDER>`
+(e.g. `GATE_PROVIDER_SECRET_KAICALLS`). The callback is rejected — and nothing
+is approved — unless the signature, delivery ID, `responds_to`, canonical
+intent hash, expiry, and required evidence factors all check out.
+
+## Testing
+
+```bash
+npm test                        # full suite: hardening, providers, dispatch,
+                                 # callbacks, webhooks, and the E2E harness below
+npm run test:e2e                # just the end-to-end approval-provider harness,
+                                 # using Gate's built-in mock ("noop") provider —
+                                 # no real network calls, safe to run anywhere
+npm run test:e2e:kaicalls-staging  # opt-in only — requires GATE_E2E_REAL_PROVIDER=true
+                                    # plus KaiCalls staging credentials; never runs
+                                    # as part of `npm test` or CI
+```
+
+The E2E harness (`test/e2e-approval-provider.test.js`) proves the control-plane
+boundary end to end: propose → `pending_approval` → **no execution token is
+obtainable yet** → simulate a signed provider callback → approved → execute →
+audit includes the approval interaction and evidence bundle — plus a matching
+adversarial pass (replay, tampered hash, expired interaction, wrong provider,
+insufficient evidence factors) proving none of those can grant execution
+access either.
 
 ## Dashboard
 
