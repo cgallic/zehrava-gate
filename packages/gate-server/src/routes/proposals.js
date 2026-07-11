@@ -11,8 +11,11 @@ const { authenticate } = require('../middleware/auth');
 const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES } = require('../lib/runs/constants');
 const { APPROVAL_STATES, transitionApprovalState } = require('../lib/approval-lifecycle');
-const { getApprovalEvidence } = require('../lib/evidence');
-const { getApprovalProvider } = require('../lib/approval-providers');
+const { getApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
+const { getApprovalProvider, getProviderCapabilities, providerSupportsFactors, listApprovalProviders } = require('../lib/approval-providers');
+const { createInteraction, updateInteractionState, setProviderInteractionId, listInteractionsForIntent, INTERACTION_STATES } = require('../lib/approval-ledger');
+const { redactChannelAddress, validatePrincipal } = require('../lib/principal');
+const { validateProfilePayload, canonicalProfileFieldsHash, summarizeProfile } = require('../lib/action-profiles');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '../../../data/payloads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -23,6 +26,30 @@ router.post('/propose', authenticate, (req, res) => {
 
   if (!destination || !policy) {
     return res.status(400).json({ error: 'destination and policy are required' });
+  }
+
+  // Typed action profiles (issue #10) — validated before policy evaluation.
+  // A policy can require a specific profile via `require_profile`; a
+  // caller-supplied profile is validated regardless, so evidence/audit
+  // metadata is only ever attached for a payload that actually matches it.
+  const policyForProfile = loadPolicy(policy);
+  const requiredProfile = policyForProfile?.require_profile || null;
+  const profileId = req.body.profile || null;
+
+  if (requiredProfile && !profileId) {
+    return res.status(400).json({ error: 'profile_required', message: `Policy "${policy}" requires a typed profile: ${requiredProfile}` });
+  }
+  if (requiredProfile && profileId !== requiredProfile) {
+    return res.status(400).json({ error: 'profile_mismatch', message: `Policy "${policy}" requires profile "${requiredProfile}", got "${profileId}"` });
+  }
+
+  let profileFieldsHash = null;
+  if (profileId) {
+    const profileCheck = validateProfilePayload(profileId, metadata);
+    if (!profileCheck.valid) {
+      return res.status(400).json({ error: 'invalid_profile_payload', messages: profileCheck.errors, profile: profileId });
+    }
+    profileFieldsHash = canonicalProfileFieldsHash(profileId, metadata);
   }
 
   const proposalId = generateId('int');
@@ -92,15 +119,80 @@ router.post('/propose', authenticate, (req, res) => {
     policyRequireApproval: null // evaluated in policy engine
   });
 
+  // Standing approvals (issue #8) — a pre-authorized, revocable, capped
+  // authorization can auto-approve an intent that would otherwise require
+  // manual approval. Only ever promotes pending_approval -> approved; never
+  // touches an already-blocked or already-approved decision, and requires
+  // an exact destination + (optional) principal + amount/daily-cap match —
+  // any ambiguity leaves the normal approval requirement in place.
+  let standingApproval = null;
+  if (result.status === 'pending_approval' && req.body.principal_id) {
+    standingApproval = require('../lib/authority').findApplicableStandingApproval({
+      destination,
+      principalId: req.body.principal_id,
+      estimatedValueUsd: req.body.estimated_value_usd ? parseFloat(req.body.estimated_value_usd) : null,
+    });
+    if (standingApproval) {
+      result.status = 'approved';
+      result.reason = null;
+    }
+  }
+
   // Approval interaction bookkeeping: intents that need a human get a
   // single-use approval link token, tied to the same expiry as the intent.
   const needsApproval = result.status === 'pending_approval';
   const approvalLinkToken = needsApproval ? generateApprovalLinkToken() : null;
 
+  // N-of-M approval (issue #8): a policy can require multiple distinct
+  // approvers before an intent is actually approved. Defaults to 1 (today's
+  // single-decision behavior, unchanged).
+  const requiredApprovals = needsApproval ? (Number(loadPolicy(policy)?.require_approvals) || 1) : 1;
+
+  // Provider-neutral approval dispatch fields (issue #13) — all optional;
+  // when omitted, the policy's approval_channel (or the dashboard default)
+  // applies unchanged. Validated up front so a bad request never creates a
+  // half-dispatched intent.
+  const policyForDispatch = needsApproval ? loadPolicy(policy) : null;
+  const requestedProvider = req.body.approval_provider || null;
+  const requestedChannel = req.body.approval_channel || null;
+  const requestedAssurance = req.body.assurance || null;
+
+  // Risk-tiered assurance (issue #15): a policy can declare which approval
+  // factors are required per risk level —
+  //   assurance: { low: [...], medium: [...], high: [...], critical: [...] }
+  // — applied automatically from the intent's computed risk_level whenever
+  // the caller doesn't explicitly override required_factors on propose.
+  const policyAssuranceFactors = policyForDispatch?.assurance?.[risk.risk_level] || null;
+  const resolvedRequiredFactors = requestedAssurance?.required_factors || policyAssuranceFactors || [];
+  const resolvedAssuranceLevel = requestedAssurance?.level || (policyAssuranceFactors ? risk.risk_level.toUpperCase() : null);
+
+  if (needsApproval) {
+    if (requestedProvider && !listApprovalProviders().includes(requestedProvider)) {
+      return res.status(400).json({ error: 'invalid_provider', message: `Unknown approval provider: ${requestedProvider}` });
+    }
+    const principalCheck = validatePrincipal({ principal_id: req.body.principal_id, channel: requestedChannel });
+    if (!principalCheck.valid) {
+      return res.status(400).json({ error: 'invalid_principal', messages: principalCheck.errors });
+    }
+    if (requestedChannel && !requestedChannel.address) {
+      return res.status(400).json({ error: 'invalid_channel', message: 'approval_channel.address is required when approval_channel is provided' });
+    }
+    const effectiveProvider = requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard';
+    if (resolvedRequiredFactors.length && !providerSupportsFactors(effectiveProvider, resolvedRequiredFactors)) {
+      return res.status(400).json({
+        error: 'unsupported_factor',
+        message: `Provider "${effectiveProvider}" cannot satisfy required factors: ${resolvedRequiredFactors.join(', ')}`,
+        provider: effectiveProvider,
+        capabilities: getProviderCapabilities(effectiveProvider),
+        risk_level: risk.risk_level,
+      });
+    }
+  }
+
   // Store proposal
   db.prepare(`
-    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO proposals (id, sender_agent_id, payload_path, payload_hash, payload_type, destination, policy_id, status, block_reason, created_at, expires_at, on_behalf_of, idempotency_key, risk_score, risk_level, sensitivity_tags, estimated_records, estimated_value_usd, action, message_id, approval_state, approval_link_token, approval_link_expires_at, profile_id, profile_fields_hash, required_approvals, standing_approval_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     proposalId,
     req.agent.id,
@@ -124,39 +216,85 @@ router.post('/propose', authenticate, (req, res) => {
     messageId,
     needsApproval ? APPROVAL_STATES.PENDING : (result.status === 'blocked' ? APPROVAL_STATES.FAILED : APPROVAL_STATES.ANSWERED),
     approvalLinkToken,
-    needsApproval ? expiresAt : null
+    needsApproval ? expiresAt : null,
+    profileId,
+    profileFieldsHash,
+    requiredApprovals,
+    standingApproval?.id || null
   );
 
+  if (standingApproval) {
+    logEvent(proposalId, 'standing_approval_applied', 'system', { standingApprovalId: standingApproval.id, principalId: req.body.principal_id });
+  }
+
+  let approvalInteractionId = null;
   if (needsApproval) {
     transitionApprovalState(proposalId, APPROVAL_STATES.SENT, { actor: 'system', reason: 'dispatch_attempted' });
 
-    const policyObj = loadPolicy(policy);
-    const providerName = policyObj?.approval_channel?.provider || 'dashboard';
+    const policyObj = policyForDispatch;
+    const providerName = requestedProvider || policyObj?.approval_channel?.provider || 'dashboard';
+    const policyChannelConfig = policyObj?.approval_channel?.[providerName] || null;
+    const channelAddress = requestedChannel?.address || policyChannelConfig?.to || null;
+    const channelType = requestedChannel?.type || (providerName === 'dashboard' ? 'dashboard' : (policyChannelConfig ? providerName : null));
+
+    // Every dispatched approval request — dashboard included — gets a
+    // durable ledger row (issue #12), independent of proposals.approval_state.
+    const freshProposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
+    const interaction = createInteraction({
+      intentId: proposalId,
+      provider: providerName,
+      messageId,
+      principalId: req.body.principal_id || null,
+      channelType,
+      channelAddressRedacted: redactChannelAddress(channelAddress),
+      approvedIntentHash: canonicalIntentHash(freshProposal),
+      requiredFactors: resolvedRequiredFactors,
+      assuranceLevel: resolvedAssuranceLevel,
+      expiresAt,
+    });
+    approvalInteractionId = interaction.id;
 
     if (providerName === 'dashboard') {
       // Local-only channel — the dashboard IS Gate, so there's nothing to
       // dispatch to and no delivery confirmation to wait on.
       transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: 'awaiting_reviewer' });
+      updateInteractionState(interaction.id, INTERACTION_STATES.WAITING_INPUT);
     } else {
       // External channel: dispatch off the request/response cycle (same
       // fire-and-forget pattern as gate_exec/autoDeliver below) so a slow
       // or unreachable provider never blocks the propose response. The
       // approval interaction only reaches WAITING_INPUT once dispatch is
       // confirmed; a failed dispatch moves it to FAILED instead, per the
-      // A2H-style lifecycle (issue #3).
+      // A2H-style lifecycle (issue #3), and never approves/executes anything.
       const approvalUrl = `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-links/${approvalLinkToken}`;
       setImmediate(async () => {
         try {
           const provider = getApprovalProvider(providerName);
-          await provider.sendAuthorize(
+          const dispatch = await provider.sendAuthorize(
             { id: proposalId, destination, action: req.body.action || destination, message_id: messageId },
-            { approvalUrl, messageId, policy: policyObj }
+            {
+              approvalUrl, messageId, policy: policyObj, channel: requestedChannel, assurance: requestedAssurance,
+              approvalInteractionId: interaction.id,
+              requiredFactors: resolvedRequiredFactors,
+              expiresAt: new Date(expiresAt).toISOString(),
+              summary: `${req.body.action || destination} via ${policy}`,
+              callbackUrl: `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-callbacks/${providerName}`,
+            }
           );
+          if (dispatch?.interactionId && dispatch.interactionId !== proposalId) {
+            setProviderInteractionId(interaction.id, dispatch.interactionId);
+          }
           const transition = transitionApprovalState(proposalId, APPROVAL_STATES.WAITING_INPUT, { actor: 'system', reason: `dispatched_via_${providerName}` });
-          if (transition.ok) logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
+          if (transition.ok) {
+            logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
+            updateInteractionState(interaction.id, INTERACTION_STATES.WAITING_INPUT);
+          }
         } catch (e) {
           const transition = transitionApprovalState(proposalId, APPROVAL_STATES.FAILED, { actor: 'system', reason: `channel_dispatch_failed: ${e.message}` });
-          if (transition.ok) logEvent(proposalId, 'approval_channel_failed', 'system', { provider: providerName, error: e.message });
+          if (transition.ok) {
+            logEvent(proposalId, 'approval_channel_failed', 'system', { provider: providerName, error: e.message });
+            updateInteractionState(interaction.id, INTERACTION_STATES.FAILED);
+          }
         }
       });
     }
@@ -170,6 +308,7 @@ router.post('/propose', authenticate, (req, res) => {
       : result.reason?.includes('destination') ? 'destination_not_allowed'
       : result.reason?.includes('sensitive') ? 'sensitive_data_detected'
       : 'manual_review_required')
+    : standingApproval ? 'standing_approval_applied'
     : result.status === 'approved' ? 'approved_by_policy'
     : 'manual_review_required';
 
@@ -256,6 +395,14 @@ router.post('/propose', authenticate, (req, res) => {
       ? db.prepare('SELECT approval_state FROM proposals WHERE id = ?').get(proposalId).approval_state
       : null,
     approvalLinkToken,
+    approvalInteractionId,
+    approvalProvider: needsApproval ? (requestedProvider || policyForDispatch?.approval_channel?.provider || 'dashboard') : null,
+    requiredApprovalFactors: needsApproval ? resolvedRequiredFactors : [],
+    assuranceLevel: needsApproval ? resolvedAssuranceLevel : null,
+    profile: profileId,
+    profileSummary: profileId ? summarizeProfile(profileId, metadata) : null,
+    standingApprovalId: standingApproval?.id || null,
+    requiredApprovals: needsApproval ? requiredApprovals : 1,
     blockReason: ['blocked','duplicate_blocked'].includes(result.status) ? result.reason : null,
     expiresAt: new Date(expiresAt).toISOString(),
     riskScore: risk.risk_score,
@@ -288,6 +435,7 @@ router.get('/proposals/:id', authenticate, (req, res) => {
     approval_link_used_at: proposal.approval_link_used_at ? new Date(proposal.approval_link_used_at).toISOString() : null,
     manifest: manifest || null,
     approval_evidence: evidence,
+    approval_interactions: listInteractionsForIntent(req.params.id),
     auditTrail
   });
 });

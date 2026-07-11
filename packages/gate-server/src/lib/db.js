@@ -150,6 +150,36 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_nonces_nonce ON nonces(nonce);
   CREATE INDEX IF NOT EXISTS idx_approval_evidence_intent ON approval_evidence(intent_id);
 
+  -- ── Provider-neutral approval interaction ledger (issue #12) ───────────
+  -- Durable record of every dispatched approval request, regardless of
+  -- which provider (dashboard/webhook/kaicalls/a2h/...) delivered it. This
+  -- is additive to proposals.approval_state (still the source of truth for
+  -- gating decisions) — the ledger exists so external approvals are
+  -- first-class auditable objects instead of side effects of a webhook.
+
+  CREATE TABLE IF NOT EXISTS approval_interactions (
+    id TEXT PRIMARY KEY,
+    intent_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_interaction_id TEXT,
+    message_id TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'pending',
+    principal_id TEXT,
+    channel_type TEXT,
+    channel_address_redacted TEXT,
+    approved_intent_hash TEXT,
+    required_factors_json TEXT DEFAULT '[]',
+    evidence_json TEXT,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER,
+    answered_at INTEGER,
+    FOREIGN KEY (intent_id) REFERENCES proposals(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_approval_interactions_intent ON approval_interactions(intent_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_approval_interactions_provider ON approval_interactions(provider, provider_interaction_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_interactions_message_id ON approval_interactions(message_id);
+
   -- ── RUN LEDGER ──────────────────────────────────────────────────────────
   -- Tracks full agent runs with checkpointing and resume capability
 
@@ -271,5 +301,79 @@ ensureColumn("ALTER TABLE proposals ADD COLUMN approval_link_expires_at INTEGER"
 ensureColumn("ALTER TABLE proposals ADD COLUMN approval_link_used_at INTEGER");
 ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_message_id ON proposals(message_id)");
 ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_approval_link_token ON proposals(approval_link_token)");
+
+// approval_interactions: assurance level requested at dispatch time (#13/#15)
+ensureColumn("ALTER TABLE approval_interactions ADD COLUMN assurance_level TEXT");
+
+// proposals: typed action profile binding (#10)
+ensureColumn("ALTER TABLE proposals ADD COLUMN profile_id TEXT");
+ensureColumn("ALTER TABLE proposals ADD COLUMN profile_fields_hash TEXT");
+
+// proposals: Layer 2 authority — standing approvals + N-of-M (#8)
+ensureColumn("ALTER TABLE proposals ADD COLUMN required_approvals INTEGER DEFAULT 1");
+ensureColumn("ALTER TABLE proposals ADD COLUMN standing_approval_id TEXT");
+
+// Layer 2 authority model (issue #8): standing policies, revocation,
+// delegation, N-of-M approvals.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS standing_approvals (
+    id TEXT PRIMARY KEY,
+    destination TEXT NOT NULL,
+    policy_id TEXT,
+    principal_id TEXT,
+    max_amount_usd REAL,
+    daily_limit_usd REAL,
+    expires_at INTEGER,
+    revoked_at INTEGER,
+    revoked_reason TEXT,
+    created_by TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS delegations (
+    id TEXT PRIMARY KEY,
+    delegator_principal_id TEXT NOT NULL,
+    delegate_agent_id TEXT,
+    destination TEXT,
+    policy_id TEXT,
+    max_amount_usd REAL,
+    expires_at INTEGER,
+    revoked_at INTEGER,
+    revoked_reason TEXT,
+    created_by TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS approval_votes (
+    id TEXT PRIMARY KEY,
+    intent_id TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    principal_id TEXT,
+    decided_at INTEGER NOT NULL,
+    UNIQUE(intent_id, actor)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_standing_approvals_destination ON standing_approvals(destination, revoked_at);
+  CREATE INDEX IF NOT EXISTS idx_delegations_delegator ON delegations(delegator_principal_id, revoked_at);
+  CREATE INDEX IF NOT EXISTS idx_approval_votes_intent ON approval_votes(intent_id);
+`);
+
+// webhooks: signed delivery + bounded retry (issue #6)
+ensureColumn("ALTER TABLE webhooks ADD COLUMN delivery_id TEXT");
+ensureColumn("ALTER TABLE webhooks ADD COLUMN attempts INTEGER DEFAULT 0");
+ensureColumn("ALTER TABLE webhooks ADD COLUMN status TEXT DEFAULT 'pending'");
+ensureColumn("ALTER TABLE webhooks ADD COLUMN last_error TEXT");
+
+// Delivery-ID dedup for signed provider approval callbacks (#14)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS provider_callback_deliveries (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    delivery_id TEXT NOT NULL,
+    intent_id TEXT,
+    received_at INTEGER NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_provider_callback_deliveries_dedup ON provider_callback_deliveries(provider, delivery_id);
+`);
 
 module.exports = db;

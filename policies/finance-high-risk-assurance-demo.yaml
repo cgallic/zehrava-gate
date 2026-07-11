@@ -1,0 +1,22 @@
+# Demo policy showing risk-tiered approval assurance (issue #15): required
+# evidence factors scale with the intent's computed risk_level, applied
+# automatically unless a propose request explicitly overrides `assurance`.
+# Not wired into any real production destination — placeholder KaiCalls
+# credentials, same as finance-high-risk-kaicalls-demo.yaml.
+id: finance-high-risk-assurance-demo
+require_approval: always
+destinations:
+  - stripe.refund
+  - finance.payout
+expiry_minutes: 30
+approval_channel:
+  provider: kaicalls
+  kaicalls:
+    to: "+15550001234"          # placeholder E.164 number — replace with a real approver
+    from_agent_id: "agt_replace_me"
+    voice_call: true
+assurance:
+  low: []
+  medium: [voice.ivr.v1]
+  high: [voice.ivr.v1, sms.otp.v1]
+  critical: [voice.ivr.v1, sms.otp.v1]

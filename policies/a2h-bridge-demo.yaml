@@ -1,0 +1,21 @@
+# Demo policy showing the A2H/Ola bridge provider (issue #7). Unlike
+# kaicalls, this provider expects the external gateway to call back
+# POST /v1/approval-callbacks/a2h with its own signed decision — configure
+# GATE_PROVIDER_SECRET_A2H to verify it. Not wired into any real production
+# destination — placeholder gateway URL.
+id: a2h-bridge-demo
+require_approval: always
+destinations:
+  - stripe.refund
+  - finance.payout
+expiry_minutes: 30
+approval_channel:
+  provider: a2h
+  a2h:
+    gateway_url: "https://a2h.example.com/v1/authorize"
+    gateway_id: "ola-demo"
+assurance:
+  low: []
+  medium: [a2h.signed_response.v1]
+  high: [a2h.signed_response.v1]
+  critical: [a2h.signed_response.v1]

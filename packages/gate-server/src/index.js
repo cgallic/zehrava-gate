@@ -14,6 +14,7 @@ const approvalsRouter = require('./routes/approvals');
 const deliveryRouter = require('./routes/delivery');
 const auditRouter = require('./routes/audit');
 const runsRouter = require('./routes/runs');
+const authorityRouter = require('./routes/authority');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,7 +23,14 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 // Make BASE_URL available to delivery routes
 process.env.BASE_URL = BASE_URL;
 
-app.use(express.json({ limit: '50mb' }));
+// Capture the raw request body alongside express's parsed JSON so signed
+// callback routes (issue #14) can verify an HMAC over the exact bytes that
+// were sent, not a re-serialization of the parsed object (which could
+// differ in key order/whitespace and break signature verification).
+app.use(express.json({
+  limit: '50mb',
+  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 
 // CORS — public feed open to all origins, rest locked to same-origin
 app.use((req, res, next) => {
@@ -40,12 +48,15 @@ app.use((req, res, next) => {
 function buildCapabilities() {
   const { listPolicies, getPolicyFeatures, getConfiguredApprovalProviders } = require('./lib/policy');
   const { DEFAULT_NONCE_TTL_SEC, DEFAULT_TIMESTAMP_TOLERANCE_SEC } = require('./lib/replay');
+  const { getProviderCapabilities } = require('./lib/approval-providers');
   const providers = getConfiguredApprovalProviders();
+  const providerCapabilities = Object.fromEntries(providers.map((p) => [p, getProviderCapabilities(p)]));
   return {
     gate_supported: ['1.0'],
     auth: { methods: ['api_key'] },
     approval_channels: ['webhook', 'approval_link', ...providers],
     approval_providers: providers,
+    approval_provider_capabilities: providerCapabilities,
     evidence_factors: ['manual.dashboard.v1', 'link.single_use.v1'],
     max_execution_ttl_sec: 900,
     replay_protection: {
@@ -56,6 +67,7 @@ function buildCapabilities() {
       single_use_approval_links: true,
     },
     webhooks: { supported: true, retry_attempts: 1, timeout_sec: 30 },
+    approval_callback_endpoint: '/v1/approval-callbacks/:provider',
     policy_features: getPolicyFeatures(),
     policies_available: listPolicies().length,
   };
@@ -238,6 +250,7 @@ app.get('/v1/intents/:id/decision', authenticate, (req, res) => {
 });
 app.use('/v1', subscribeRouter);
 app.use('/v1', approvalsRouter);
+app.use('/v1', authorityRouter);
 app.use('/v1', deliveryRouter);
 app.use('/v1/audit', auditRouter);
 

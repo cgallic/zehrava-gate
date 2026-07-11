@@ -74,6 +74,7 @@ POST /v1/intents/:id/cancel-approval        Cancel a pending/waiting approval
 GET  /v1/approval-links/:token              Preview a single-use approval link
 POST /v1/approval-links/:token/approve      Approve via a single-use link (no API key)
 POST /v1/approval-links/:token/reject       Reject via a single-use link (no API key)
+POST /v1/approval-callbacks/:provider       Signed callback for providers that issue their own decision
 GET  /health               Server health check
 ```
 
@@ -113,6 +114,165 @@ Set `KAICALLS_API_BASE_URL` and `KAICALLS_API_KEY` to point the KaiCalls
 provider at a real account; until both are set, every dispatch is logged and
 stubbed — nothing is sent to a real phone. A failed dispatch moves the
 intent's `approval_state` to `failed` rather than silently hanging.
+
+A second built-in provider, `a2h`, is a bridge to any [A2H](https://github.com/twilio-labs/Agent2Human)/Ola-compatible
+gateway — unlike KaiCalls, the gateway itself issues a signed decision back
+to Gate rather than a human deciding inside Gate's own UI:
+
+```yaml
+approval_channel:
+  provider: a2h
+  a2h:
+    gateway_url: "https://a2h.example.com/v1/authorize"
+    gateway_id: "ola-prod"   # optional, informational
+```
+
+Gate sends an AUTHORIZE request carrying the intent, canonical hash, required
+factors, and a callback URL; the gateway calls back
+`POST /v1/approval-callbacks/a2h` with a signed RESPONSE, verified by the
+same generic verifier every provider callback goes through (see below).
+Set `A2H_GATEWAY_API_KEY` (outbound auth to the gateway) and
+`GATE_PROVIDER_SECRET_A2H` (inbound callback verification) to go live;
+until then, AUTHORIZE calls are stubbed.
+
+`POST /v1/propose` also accepts provider-neutral dispatch fields directly,
+overriding the policy default for that one request:
+
+```json
+{
+  "destination": "stripe.refund",
+  "policy": "finance-high-risk-kaicalls-demo",
+  "approval_provider": "kaicalls",
+  "principal_id": "usr_abc123",
+  "approval_channel": { "type": "voice_then_sms", "address": "+15550001234" },
+  "assurance": { "level": "HIGH", "required_factors": ["voice.ivr.v1", "sms.otp.v1"] }
+}
+```
+
+For providers that themselves issue a signed decision (rather than just
+notifying a human who then decides inside Gate's own dashboard/approval-link
+UI), Gate verifies the decision via a signed callback before changing
+anything:
+
+```
+POST /v1/approval-callbacks/:provider
+X-Gate-Provider-Signature: t=<unix-ms>,v1=<hex-hmac-sha256 of "${t}.${rawBody}">
+X-Gate-Provider-Delivery-ID: <unique-per-delivery, for replay dedup>
+```
+
+Configure the shared secret per provider via `GATE_PROVIDER_SECRET_<PROVIDER>`
+(e.g. `GATE_PROVIDER_SECRET_KAICALLS`). The callback is rejected — and nothing
+is approved — unless the signature, delivery ID, `responds_to`, canonical
+intent hash, expiry, and required evidence factors all check out.
+
+### Risk-tiered approval assurance
+
+A policy can declare which approval factors are required at each computed
+risk level, applied automatically unless a `propose` request explicitly
+overrides `assurance`:
+
+```yaml
+approval_channel:
+  provider: kaicalls
+assurance:
+  low: []                             # no extra evidence required
+  medium: [voice.ivr.v1]
+  high: [voice.ivr.v1, sms.otp.v1]
+  critical: [voice.ivr.v1, sms.otp.v1, passkey.webauthn.v1]
+```
+
+Recommended mappings: `low` — chat button or dashboard click is enough;
+`medium` — a spoken/IVR confirmation; `high` — IVR plus an OTP; `critical` —
+add a strong possession/inherence factor (passkey) once a provider that can
+deliver one is configured. If the resolved provider can't satisfy a tier's
+required factors, `propose` is rejected with `400 unsupported_factor` before
+any dispatch happens — see `lib/approval-providers/index.js` for the
+provider capability registry.
+
+## Testing
+
+```bash
+npm test                        # full suite: hardening, providers, dispatch,
+                                 # callbacks, webhooks, and the E2E harness below
+npm run test:e2e                # just the end-to-end approval-provider harness,
+                                 # using Gate's built-in mock ("noop") provider —
+                                 # no real network calls, safe to run anywhere
+npm run test:e2e:kaicalls-staging  # opt-in only — requires GATE_E2E_REAL_PROVIDER=true
+                                    # plus KaiCalls staging credentials; never runs
+                                    # as part of `npm test` or CI
+```
+
+The E2E harness (`test/e2e-approval-provider.test.js`) proves the control-plane
+boundary end to end: propose → `pending_approval` → **no execution token is
+obtainable yet** → simulate a signed provider callback → approved → execute →
+audit includes the approval interaction and evidence bundle — plus a matching
+adversarial pass (replay, tampered hash, expired interaction, wrong provider,
+insufficient evidence factors) proving none of those can grant execution
+access either.
+
+### Typed action profiles
+
+For common high-risk categories, `propose` can carry a versioned profile
+name plus structured fields in `metadata` — validated before policy
+evaluation, and folded into the approval-evidence hash binding so tampering
+with a profile field after approval is caught at execute time the same way
+a tampered destination/payload already is:
+
+```json
+{
+  "destination": "gmail.send",
+  "policy": "email-send-typed-profile-demo",
+  "profile": "email.send.v1",
+  "metadata": { "to": "someone@example.com", "subject": "Q3 update" }
+}
+```
+
+Built-in profiles: `email.send.v1`, `crm.import.v1`, `payment.refund.v1`,
+`finance.journal.v1`, `support.reply.v1`, `social.publish.v1` (see
+`lib/action-profiles.js`). A policy can require one via `require_profile: <id>`
+— propose is rejected before any dispatch if the profile is missing,
+mismatched, or its required fields are incomplete.
+
+### Layer 2 authority — standing approvals, delegation, N-of-M, timeouts
+
+Beyond the base propose/approve/execute protocol, Gate has an explicit
+authority layer:
+
+```
+POST /v1/standing-approvals               Pre-authorize auto-approval under a cap
+GET  /v1/standing-approvals
+POST /v1/standing-approvals/:id/revoke
+POST /v1/delegations                      Let an agent approve on a principal's behalf
+GET  /v1/delegations
+POST /v1/delegations/:id/revoke
+POST /v1/approval-providers/:provider/revoke-sessions   Kill all pending interactions for a provider
+```
+
+**Standing approvals** auto-approve a matching intent without a human in the
+loop — scoped to a destination, optionally a `principal_id`, a
+per-transaction `max_amount_usd`, and a rolling-24h `daily_limit_usd`. Any
+ambiguity (no `estimated_value_usd` supplied against a capped approval, cap
+exceeded, expired, revoked) falls back to normal manual approval rather than
+guessing.
+
+**Delegation** lets an agent approve on behalf of a principal's authority:
+pass `on_behalf_of_principal` on `POST /v1/intents/:id/approve` — Gate
+requires an active, matching, non-revoked delegation or refuses with
+`403 delegation_not_found`. Approval evidence records both the delegating
+principal and the delegate agent.
+
+**N-of-M approval**: a policy can set `require_approvals: N` — each
+`/approve` call from a distinct actor records one vote; the intent only
+actually transitions to `approved` (and becomes executable) once N distinct
+approvers have voted. `approval_state` stays `waiting_input` until quorum so
+more reviewers can act, and voting is idempotent per actor (no double-count).
+
+**Conditional timeout defaults**: `on_no_response: reject | defer | auto_approve_if_low_risk`
+in policy YAML controls what happens once an intent's TTL elapses with no
+decision. Default (unset, or any unrecognized value) is `reject` — fails
+closed, marking the intent expired. `defer` lets a late decision still land.
+`auto_approve_if_low_risk` auto-approves only if the intent's computed
+`risk_level` is `low`; anything else still expires.
 
 ## Dashboard
 

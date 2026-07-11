@@ -1,0 +1,44 @@
+{
+  "name": "zehrava-gate-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing Zehrava Gate's human-in-the-loop approval/audit primitives to MCP-compatible agents (Claude, etc.) without bypassing Gate's policy/execution-token boundary",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "zehrava-gate-mcp": "src/index.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./tools": "./src/tools.js",
+    "./gate-client": "./src/gate-client.js"
+  },
+  "files": [
+    "src/",
+    "examples/",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test/tools.test.js",
+    "demo": "node examples/demo.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "zehrava",
+    "gate",
+    "agent",
+    "governance",
+    "human-in-the-loop",
+    "a2h"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cgallic/zehrava-gate"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.8"
+  }
+}

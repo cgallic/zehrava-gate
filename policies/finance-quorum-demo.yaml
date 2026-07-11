@@ -1,0 +1,8 @@
+# Demo/test policy for N-of-M approval (issue #8): requires 3 distinct
+# approvers before an intent actually transitions to approved.
+id: finance-quorum-demo
+require_approval: always
+destinations:
+  - stripe.refund
+require_approvals: 3
+expiry_minutes: 30

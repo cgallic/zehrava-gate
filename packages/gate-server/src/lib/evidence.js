@@ -17,6 +17,12 @@ function canonicalIntentPayload(proposal) {
     sensitivity_tags: (() => {
       try { return JSON.parse(proposal.sensitivity_tags || '[]'); } catch { return []; }
     })(),
+    // Typed action profile binding (#10): folding these in means tampering
+    // with a profile's required fields after approval is caught by the same
+    // approved_intent_hash mismatch that already catches destination/payload
+    // tampering — "approve X" and "execute Y" must be the same profile too.
+    profile_id: proposal.profile_id || null,
+    profile_fields_hash: proposal.profile_fields_hash || null,
   };
 }
 
@@ -28,7 +34,7 @@ function canonicalIntentHash(proposal) {
  * Build and persist an A2H-shaped approval evidence bundle for a decided intent.
  * decision: 'APPROVE' | 'REJECT'
  */
-function buildApprovalEvidence(proposal, { decision, factor = 'manual.dashboard.v1', actor, interactionId }) {
+function buildApprovalEvidence(proposal, { decision, factor = 'manual.dashboard.v1', actor, interactionId, delegation, votedBy }) {
   const decidedAt = Date.now();
   const approvedIntentHash = canonicalIntentHash(proposal);
   const respondsTo = proposal.message_id || proposal.id;
@@ -56,7 +62,12 @@ function buildApprovalEvidence(proposal, { decision, factor = 'manual.dashboard.
     decision,
     decided_at: decidedAt,
     factor,
-    proof_json: JSON.stringify({ actor: actor || 'system' }),
+    proof_json: JSON.stringify({
+      actor: actor || 'system',
+      profile: proposal.profile_id ? { id: proposal.profile_id, fields_hash: proposal.profile_fields_hash } : null,
+      delegation: delegation ? { delegation_id: delegation.id, principal_id: delegation.delegatorPrincipalId, delegate_agent_id: delegation.delegateAgentId } : null,
+      voted_by: votedBy || null,
+    }),
     approved_intent_hash: approvedIntentHash,
     created_at: decidedAt,
   };

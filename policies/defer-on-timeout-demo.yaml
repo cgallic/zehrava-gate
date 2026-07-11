@@ -1,0 +1,8 @@
+# Demo/test policy for conditional timeout defaults (issue #8):
+# on_no_response: defer means a late decision can still land instead of the
+# intent auto-expiring once its TTL elapses.
+id: defer-on-timeout-demo
+destinations: [salesforce.import, hubspot.contacts]
+require_approval: always
+on_no_response: defer
+expiry_minutes: 60
