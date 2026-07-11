@@ -201,6 +201,34 @@ async function main() {
       assert(r2.status === 409, 'cannot approve a rejected (already-answered) intent');
     }
 
+    console.log('\nApproved intent cannot later be rejected (reverse-direction double-answer)...');
+    {
+      const { body: p } = await proposeIntent(agent.apiKey, { payload: 'leads-approve-then-reject.csv' });
+      const aid = p.intentId;
+      const approveRes = await req('POST', `/v1/intents/${aid}/approve`, { apiKey: reviewer.apiKey, body: {} });
+      assert(approveRes.status === 200, 'approve succeeds');
+
+      const rejectRes = await req('POST', `/v1/intents/${aid}/reject`, { apiKey: reviewer.apiKey, body: { reason: 'changed my mind' } });
+      assert(rejectRes.status === 409, 'rejecting an already-approved intent is refused');
+      assert(rejectRes.body.error === 'already_answered', 'error is already_answered');
+      assert(rejectRes.body.decision === 'APPROVE', 'reports the original decision was APPROVE');
+
+      const { body: check } = await req('GET', `/v1/intents/${aid}`, { apiKey: reviewer.apiKey });
+      assert(check.status === 'approved', 'intent status is unchanged after the refused reject');
+    }
+
+    console.log('\nDashboard approval invalidates the still-unused approval link (no duplicate execution)...');
+    {
+      const { body: p } = await proposeIntent(agent.apiKey, { payload: 'leads-dual-channel.csv' });
+      const did = p.intentId, dashboardLink = p.approvalLinkToken;
+      const approveRes = await req('POST', `/v1/intents/${did}/approve`, { apiKey: reviewer.apiKey, body: {} });
+      assert(approveRes.status === 200, 'dashboard approve succeeds');
+
+      const linkRes = await req('POST', `/v1/approval-links/${dashboardLink}/approve`);
+      assert(linkRes.status === 409, 'the still-unused approval link cannot re-approve an already-answered intent');
+      assert(linkRes.body.error === 'already_answered', 'link approve error is already_answered');
+    }
+
     // ── Issue #5: nonce + timestamp tolerance ───────────────────────────
     console.log('\nNonce issuance and single use...');
     {

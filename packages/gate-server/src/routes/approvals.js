@@ -110,8 +110,12 @@ function checkReplayGuards({ nonce, timestamp }) {
 }
 
 // Approval-interaction state guard: refuses to answer an interaction that
-// has already left the pending/waiting_input phase (cancelled/expired/failed),
-// independent of the intent's own status field.
+// has already left the pending/waiting_input phase (answered/cancelled/
+// expired/failed), independent of the intent's own status field. This is
+// the backstop that stops an already-approved intent from later being
+// rejected (or vice versa) and stops a second decision channel (e.g. an
+// unused approval link) from re-firing side effects after the intent was
+// already answered through a different channel.
 function guardApprovalInteraction(proposal) {
   const state = proposal.approval_state || APPROVAL_STATES.PENDING;
   if (state === APPROVAL_STATES.CANCELLED) {
@@ -119,6 +123,19 @@ function guardApprovalInteraction(proposal) {
   }
   if (state === APPROVAL_STATES.FAILED) {
     return { httpStatus: 409, body: { error: 'approval_failed', message: 'This approval request failed and cannot be answered' } };
+  }
+  if (state === APPROVAL_STATES.EXPIRED) {
+    return { httpStatus: 410, body: { error: 'approval_expired', message: 'This approval request has expired' } };
+  }
+  if (state === APPROVAL_STATES.ANSWERED) {
+    return {
+      httpStatus: 409,
+      body: {
+        error: 'already_answered',
+        message: 'This approval request has already been answered',
+        decision: proposal.status === 'approved' ? 'APPROVE' : 'REJECT',
+      },
+    };
   }
   return null;
 }
