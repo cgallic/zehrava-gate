@@ -305,6 +305,12 @@ ensureColumn("CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_approval_link_toke
 // approval_interactions: assurance level requested at dispatch time (#13/#15)
 ensureColumn("ALTER TABLE approval_interactions ADD COLUMN assurance_level TEXT");
 
+// webhooks: signed delivery + bounded retry (issue #6)
+ensureColumn("ALTER TABLE webhooks ADD COLUMN delivery_id TEXT");
+ensureColumn("ALTER TABLE webhooks ADD COLUMN attempts INTEGER DEFAULT 0");
+ensureColumn("ALTER TABLE webhooks ADD COLUMN status TEXT DEFAULT 'pending'");
+ensureColumn("ALTER TABLE webhooks ADD COLUMN last_error TEXT");
+
 // Delivery-ID dedup for signed provider approval callbacks (#14)
 db.exec(`
   CREATE TABLE IF NOT EXISTS provider_callback_deliveries (

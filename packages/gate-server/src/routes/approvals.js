@@ -11,7 +11,7 @@ const { APPROVAL_STATES, isTerminal, transitionApprovalState } = require('../lib
 const { buildApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
 const { consumeNonce, checkTimestampTolerance } = require('../lib/replay');
 const { getInteraction, getLatestInteractionForIntent, updateInteractionState, INTERACTION_STATES } = require('../lib/approval-ledger');
-const { verifyProviderSignature } = require('../lib/provider-signature');
+const { verifyProviderSignature, computeSignature } = require('../lib/provider-signature');
 
 // Auto-delivery destinations — approve triggers immediate deliver
 const AUTO_DELIVER_DESTINATIONS = ['blog.publish', 'gmail.send', 'loops.send'];
@@ -25,64 +25,135 @@ function autoDeliver(proposalId, destination, deliveryToken) {
   });
 }
 
-// ── WEBHOOK SYSTEM (DB-backed, survives restarts) ─────────────────────────
+// ── WEBHOOK SYSTEM (DB-backed, signed, bounded retry — issue #6) ──────────
+//
+// Every delivery attempt carries a stable delivery ID (X-Gate-Delivery-ID)
+// and, when the registration included a secret, a timestamped HMAC
+// (X-Gate-Signature: t=<ms>,v1=<hex-hmac-sha256 of "${t}.${rawBody}">) —
+// the same scheme lib/provider-signature.js uses for inbound callbacks, so
+// one verification routine works both directions. A receiver should:
+//
+//   const [t, v1] = sig.split(',').map(kv => kv.split('=')[1]);
+//   const expected = hmacSha256Hex(secret, `${t}.${rawBody}`);
+//   if (!timingSafeEqual(expected, v1)) reject();
+//   if (Math.abs(Date.now() - Number(t)) > toleranceMs) reject();
+//
+// Non-2xx/unreachable deliveries retry on a bounded exponential schedule
+// (GATE_WEBHOOK_RETRY_DELAYS_MS, default "0,5000,30000,120000,600000" —
+// five total attempts) before the webhook is marked permanently `failed`.
+// GET /v1/intents/:id / GET /v1/executions/:id remain the polling fallback
+// if webhooks never succeed.
+
+const WEBHOOK_RETRY_DELAYS_MS = (process.env.GATE_WEBHOOK_RETRY_DELAYS_MS || '0,5000,30000,120000,600000')
+  .split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => Number.isFinite(n) && n >= 0);
 
 function registerWebhook(intentId, url, secret) {
-  const existing = db.prepare('SELECT id FROM webhooks WHERE intent_id = ? AND fired = 0').get(intentId);
+  const existing = db.prepare("SELECT id FROM webhooks WHERE intent_id = ? AND status = 'pending'").get(intentId);
   if (existing) {
-    // Update URL/secret if re-registered
     db.prepare('UPDATE webhooks SET url = ?, secret = ? WHERE id = ?')
       .run(url, secret || null, existing.id);
     return existing.id;
   }
   const id = generateId('whk');
-  db.prepare('INSERT INTO webhooks (id, intent_id, url, secret, fired, created_at) VALUES (?, ?, ?, ?, 0, ?)')
+  db.prepare("INSERT INTO webhooks (id, intent_id, url, secret, fired, status, attempts, created_at) VALUES (?, ?, ?, ?, 0, 'pending', 0, ?)")
     .run(id, intentId, url, secret || null, Date.now());
   return id;
 }
 
-async function fireWebhook(intentId, event, data) {
-  const hook = db.prepare('SELECT * FROM webhooks WHERE intent_id = ? AND fired = 0').get(intentId);
-  if (!hook) return;
+// Single delivery attempt. Resolves { success, statusCode, error } — never
+// rejects, so the retry scheduler always gets a clean result to act on.
+function deliverOnce(hook, rawBody) {
+  return new Promise(async (resolve) => {
+    let req;
+    try {
+      const { default: https } = await import('https');
+      const { default: http } = await import('http');
+      const { URL } = await import('url');
+      const u = new URL(hook.url);
+      const lib = u.protocol === 'https:' ? https : http;
 
-  try {
-    const payload = JSON.stringify({
-      intentId,
-      event,
-      actor: data.approver || data.rejector || 'system',
-      firedAt: new Date().toISOString(),
-      ...data
-    });
-
-    const { default: https } = await import('https');
-    const { default: http } = await import('http');
-    const { URL } = await import('url');
-    const u = new URL(hook.url);
-    const lib = u.protocol === 'https:' ? https : http;
-
-    const req = lib.request({
-      hostname: u.hostname,
-      port: u.port || (u.protocol === 'https:' ? 443 : 80),
-      path: u.pathname + u.search,
-      method: 'POST',
-      headers: {
+      const headers = {
         'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload),
-        ...(hook.secret ? { 'X-Gate-Secret': hook.secret } : {})
+        'Content-Length': Buffer.byteLength(rawBody),
+        'X-Gate-Delivery-ID': hook.delivery_id,
+      };
+      if (hook.secret) {
+        headers['X-Gate-Secret'] = hook.secret; // backward-compat with pre-#6 consumers
+        const t = Date.now();
+        headers['X-Gate-Signature'] = `t=${t},v1=${computeSignature(hook.secret, t, rawBody)}`;
       }
+
+      req = lib.request({
+        hostname: u.hostname,
+        port: u.port || (u.protocol === 'https:' ? 443 : 80),
+        path: u.pathname + u.search,
+        method: 'POST',
+        headers,
+        timeout: 8000,
+      });
+    } catch (e) {
+      return resolve({ success: false, error: `invalid_webhook_url: ${e.message}` });
+    }
+
+    req.on('response', (res) => {
+      res.on('data', () => {});
+      res.on('end', () => {
+        const success = res.statusCode >= 200 && res.statusCode < 300;
+        resolve({ success, statusCode: res.statusCode, error: success ? null : `http_${res.statusCode}` });
+      });
     });
-    req.on('error', (e) => console.error(`[gate] webhook HTTP error for ${intentId}:`, e.message));
-    req.write(payload);
+    req.on('timeout', () => { req.destroy(); resolve({ success: false, error: 'timeout' }); });
+    req.on('error', (e) => resolve({ success: false, error: e.message }));
+    req.write(rawBody);
     req.end();
+  });
+}
 
-    // Mark fired in DB
-    db.prepare('UPDATE webhooks SET fired = 1, fired_at = ? WHERE id = ?')
-      .run(Date.now(), hook.id);
+async function attemptDelivery(webhookId, event, data, attemptIndex) {
+  const hook = db.prepare('SELECT * FROM webhooks WHERE id = ?').get(webhookId);
+  if (!hook || hook.status !== 'pending') return; // cancelled/already-terminal — nothing to do
 
-    console.log(`[gate] webhook fired: ${intentId} → ${event} → ${hook.url}`);
-  } catch (e) {
-    console.error(`[gate] webhook failed for ${intentId}:`, e.message);
+  const payload = JSON.stringify({
+    intentId: hook.intent_id,
+    event,
+    actor: data.approver || data.rejector || 'system',
+    firedAt: new Date().toISOString(),
+    deliveryId: hook.delivery_id,
+    attempt: attemptIndex + 1,
+    ...data,
+  });
+
+  const result = await deliverOnce(hook, payload);
+  const attempts = attemptIndex + 1;
+
+  if (result.success) {
+    db.prepare("UPDATE webhooks SET fired = 1, fired_at = ?, status = 'delivered', attempts = ?, last_error = NULL WHERE id = ?")
+      .run(Date.now(), attempts, webhookId);
+    logEvent(hook.intent_id, 'webhook_delivered', 'system', { webhookId, event, attempts, deliveryId: hook.delivery_id });
+    return;
   }
+
+  logEvent(hook.intent_id, 'webhook_attempt_failed', 'system', { webhookId, event, attempt: attempts, error: result.error });
+
+  if (attempts >= WEBHOOK_RETRY_DELAYS_MS.length) {
+    db.prepare("UPDATE webhooks SET status = 'failed', attempts = ?, last_error = ? WHERE id = ?").run(attempts, result.error, webhookId);
+    logEvent(hook.intent_id, 'webhook_failed', 'system', { webhookId, event, attempts, error: result.error });
+    return;
+  }
+
+  db.prepare('UPDATE webhooks SET attempts = ?, last_error = ? WHERE id = ?').run(attempts, result.error, webhookId);
+  const delay = WEBHOOK_RETRY_DELAYS_MS[attempts];
+  const timer = setTimeout(() => attemptDelivery(webhookId, event, data, attempts), delay);
+  if (typeof timer.unref === 'function') timer.unref();
+}
+
+function fireWebhook(intentId, event, data) {
+  const hook = db.prepare("SELECT * FROM webhooks WHERE intent_id = ? AND status = 'pending'").get(intentId);
+  if (!hook) return;
+  if (!hook.delivery_id) {
+    db.prepare('UPDATE webhooks SET delivery_id = ? WHERE id = ?').run(generateId('del'), hook.id);
+  }
+  setImmediate(() => attemptDelivery(hook.id, event, data, 0));
 }
 
 // ── APPROVE ───────────────────────────────────────────────────────────────
