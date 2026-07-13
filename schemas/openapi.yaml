@@ -1,0 +1,1494 @@
+openapi: 3.1.0
+info:
+  title: Zehrava Gate API
+  version: 0.3.0
+  description: |
+    Zehrava Gate — write-path control plane for AI agents. Agents propose
+    intents; Gate evaluates them against deterministic YAML policies, routes
+    risky ones to a human, and issues one-time signed execution orders
+    (`gex_` tokens) for approved writes.
+
+    This spec is grounded in the actual route handlers
+    (`packages/gate-server/src/index.js` and
+    `packages/gate-server/src/routes/*.js`), not the README. Known
+    README/code discrepancies:
+
+    * The README's "Server options" section documents `--port` defaulting
+      to 4000; the server itself reads `PORT` from the environment and
+      defaults to **3001**.
+    * The README says webhooks fire on `approved | rejected`; the server
+      also fires an `approval_cancelled` event when a reviewer cancels a
+      pending approval.
+    * Several implemented routes are not listed in the README and are out
+      of scope here: `/.well-known/gate`, `GET /v1/nonce`,
+      `GET /v1/policies`, `/v1/approval-links/*`,
+      `/v1/approval-callbacks/{provider}`,
+      `POST /v1/intents/{id}/cancel-approval`, `/v1/standing-approvals*`,
+      `/v1/delegations*`,
+      `/v1/approval-providers/{provider}/revoke-sessions`,
+      `/v1/public/feed`, `/v1/subscribe`, `/v1/download/{token}`,
+      `/v1/proxy/*`, and the internal Run Ledger API (`/internal/runs/*`).
+    * `GET /v1/intents/{id}/decision` can return the reason code
+      `standing_approval_applied`, which `schemas/policy-decision.json`
+      does not list in its `reason_code` enum.
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    url: https://zehrava.com
+
+servers:
+  - url: http://localhost:3001
+    description: Local development server (PORT env var, default 3001)
+  - url: https://zehrava.com
+    description: Hosted demo
+
+security:
+  - apiKey: []
+
+tags:
+  - name: Agents
+    description: Agent registration and lifecycle
+  - name: Intents
+    description: Propose, list, inspect, approve, reject, and execute intents
+  - name: Executions
+    description: Signed execution orders and worker result reporting
+  - name: Webhooks
+    description: Webhook registration for intent state transitions
+  - name: Observability
+    description: Metrics, audit, health
+  - name: Deprecated (V1 compat)
+    description: Backward-compatible V1 routes. Prefer the /v1/intents surface.
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [Observability]
+      summary: Server health check
+      security: []
+      responses:
+        "200":
+          description: Server is up.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  # ── Agents ────────────────────────────────────────────────────────────
+  /v1/agents/register:
+    post:
+      operationId: registerAgent
+      tags: [Agents]
+      summary: Register an agent and receive an API key
+      description: >
+        Unauthenticated (firewall this in production). The `apiKey` is only
+        ever returned by this call; the server stores a hash.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                owner:
+                  type: string
+                allowed_policies:
+                  type: array
+                  items: { type: string }
+                allowed_destinations:
+                  type: array
+                  items: { type: string }
+                framework:
+                  type: string
+                metadata:
+                  type: object
+                  additionalProperties: true
+                riskTier:
+                  type: string
+                  default: standard
+      responses:
+        "201":
+          description: Agent registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRegistration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /v1/agents:
+    get:
+      operationId: listAgents
+      tags: [Agents]
+      summary: List agents (reviewer/admin only)
+      responses:
+        "200":
+          description: All registered agents.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Agent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /v1/agents/{id}:
+    get:
+      operationId: getAgent
+      tags: [Agents]
+      summary: Get one agent
+      description: >
+        A non-reviewer key may only fetch its own agent record; reviewer/admin
+        keys may fetch any.
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Agent record (includes parsed `metadata`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/agents/{id}/revoke:
+    post:
+      operationId: revokeAgent
+      tags: [Agents]
+      summary: Revoke an agent's API key (reviewer/admin only)
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Agent revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id: { type: string }
+                  status: { type: string, const: revoked }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/agents/{id}/suspend:
+    post:
+      operationId: suspendAgent
+      tags: [Agents]
+      summary: Suspend an agent (reviewer/admin only)
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Agent suspended.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent_id: { type: string }
+                  status: { type: string, const: suspended }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Intents ───────────────────────────────────────────────────────────
+  /v1/intents:
+    post:
+      operationId: submitIntent
+      tags: [Intents]
+      summary: Submit an intent for policy evaluation
+      description: >
+        Evaluates the intent against the named YAML policy, scores risk, and
+        either auto-approves, blocks, or parks it pending human approval
+        (dispatching to the configured approval provider). Accepts V2 field
+        aliases: `action` → `destination`, `policy_id` → `policy`,
+        `estimated_records` → `recordCount`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeRequest"
+      responses:
+        "200":
+          description: Policy decision for the new intent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposeResult"
+        "400":
+          description: >
+            Validation failure — missing `destination`/`policy`, or one of
+            `profile_required`, `profile_mismatch`, `invalid_profile_payload`,
+            `invalid_provider`, `invalid_principal`, `invalid_channel`,
+            `unsupported_factor`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Duplicate `idempotency_key` for this agent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateBlocked"
+    get:
+      operationId: listIntents
+      tags: [Intents]
+      summary: List intents (optionally filtered by status)
+      description: >
+        Non-reviewer keys only see their own intents; reviewer/admin keys see
+        all. Single-use approval link tokens are redacted
+        (`has_approval_link` boolean instead).
+      parameters:
+        - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Intents, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IntentSummary"
+                  count:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/intents/{id}:
+    get:
+      operationId: getIntent
+      tags: [Intents]
+      summary: Get full intent details
+      description: >
+        Stored intent plus delivery manifest, approval evidence, approval
+        interactions, and the full audit trail. Non-reviewer keys may only
+        fetch their own intents.
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      responses:
+        "200":
+          description: Intent detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntentDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/intents/{id}/approve:
+    post:
+      operationId: approveIntent
+      tags: [Intents]
+      summary: Approve a pending intent (reviewer/admin only)
+      description: >
+        Records an approval decision (or one vote toward an N-of-M quorum),
+        builds signed approval evidence, fires webhooks, and — where a vault
+        credential or auto-deliver destination applies — triggers execution
+        or delivery. Supports optional replay guards (`nonce`, `decided_at`)
+        and delegated approval (`on_behalf_of_principal`).
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveRequestBody"
+      responses:
+        "200":
+          description: >
+            Decision result — `approved` (idempotent if already approved) or
+            `pending_approval` when quorum is not yet reached.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Reviewer key required, or `delegation_not_found`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            Cannot approve — intent blocked/delivered, approval interaction
+            already answered/cancelled/failed, or `replay_rejected`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Intent (or approval interaction) has expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/intents/{id}/reject:
+    post:
+      operationId: rejectIntent
+      tags: [Intents]
+      summary: Reject a pending intent (reviewer/admin only)
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                nonce:
+                  type: string
+                  description: Single-use nonce from GET /v1/nonce (replay guard).
+                decided_at:
+                  type: integer
+                  description: Decision timestamp in epoch ms (replay guard).
+      responses:
+        "200":
+          description: Intent rejected (status becomes `blocked`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RejectResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            Cannot reject — intent already blocked/delivered/expired, approval
+            interaction terminal, or `replay_rejected`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/intents/{id}/execute:
+    post:
+      operationId: executeIntent
+      tags: [Intents, Executions]
+      summary: Request a signed execution order for an approved intent
+      description: >
+        Issues a one-time `gex_` execution token (15 min TTL) after
+        fail-closed verification that any recorded approval evidence still
+        binds to the intent's exact current canonical state. Returns the
+        existing order (200) if one is already scheduled.
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum: [gate_exec, runner_exec, external_pull]
+                  default: runner_exec
+      responses:
+        "201":
+          description: Execution order issued; intent status becomes `scheduled`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionOrder"
+        "200":
+          description: An execution order was already scheduled for this intent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionOrder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            Intent not in `approved` status, execution already
+            executing/succeeded, or `approval_evidence_invalid`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Intent expired (status set to `expired`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/intents/{id}/audit:
+    get:
+      operationId: getIntentAudit
+      tags: [Intents, Observability]
+      summary: Full audit trail for an intent
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      responses:
+        "200":
+          description: >
+            Chronological audit events. Note the runtime event shape
+            (`id`/`proposal_id`/`actor`/`metadata`) is flatter than
+            schemas/audit-event.json.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposalId: { type: string }
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AuditEvent"
+                  count: { type: integer }
+                  approval_evidence:
+                    oneOf:
+                      - $ref: "#/components/schemas/ApprovalEvidence"
+                      - type: "null"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/intents/{id}/decision:
+    get:
+      operationId: getIntentDecision
+      tags: [Intents]
+      summary: Stored policy decision record for an intent
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      responses:
+        "200":
+          description: The persisted policy decision plus approval evidence.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyDecision"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Executions ────────────────────────────────────────────────────────
+  /v1/executions/{id}:
+    get:
+      operationId: getExecution
+      tags: [Executions]
+      summary: Get execution order status
+      parameters:
+        - $ref: "#/components/parameters/ExecutionId"
+      responses:
+        "200":
+          description: Execution order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionOrder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/executions/{id}/report:
+    post:
+      operationId: reportExecution
+      tags: [Executions]
+      summary: Worker reports execution outcome
+      description: >
+        Authenticated with either the order's one-time `gex_` execution token
+        or a standard agent API key (both as `Authorization: Bearer ...`).
+        Updates the execution and the parent intent to
+        `succeeded` / `failed`.
+      security:
+        - executionToken: []
+        - apiKey: []
+      parameters:
+        - $ref: "#/components/parameters/ExecutionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [succeeded, failed]
+                result:
+                  type: object
+                  additionalProperties: true
+                executed_at:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: Updated execution order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionOrder"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid execution token or API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: Execution token expired (intent marked `failed`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ── Webhooks & metrics ────────────────────────────────────────────────
+  /v1/webhooks/register:
+    post:
+      operationId: registerWebhook
+      tags: [Webhooks]
+      summary: Register a webhook for an intent's state transitions
+      description: >
+        Fires a signed POST to `url` on `approved`, `rejected`, or
+        `approval_cancelled`, with bounded exponential retry. When `secret`
+        is set, deliveries carry `X-Gate-Secret` and a timestamped HMAC in
+        `X-Gate-Signature` (`t=<ms>,v1=<hex hmac-sha256 of "<t>.<rawBody>">`),
+        plus a stable `X-Gate-Delivery-ID`. Re-registering while a pending
+        webhook exists updates it in place.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                intentId:
+                  type: string
+                  description: Required unless `proposalId` is given.
+                proposalId:
+                  type: string
+                  description: V1 alias for `intentId`.
+                url:
+                  type: string
+                  format: uri
+                secret:
+                  type: string
+      responses:
+        "200":
+          description: Webhook registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registered: { type: boolean }
+                  webhookId: { type: string }
+                  intentId: { type: string }
+                  url: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/metrics:
+    get:
+      operationId: getMetrics
+      tags: [Observability]
+      summary: Aggregated all-time counters
+      responses:
+        "200":
+          description: Counters over all stored intents.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Metrics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Deprecated V1 backward-compat routes ──────────────────────────────
+  /v1/propose:
+    post:
+      operationId: proposeV1
+      tags: ["Deprecated (V1 compat)"]
+      summary: Submit a proposal (V1 compat — use POST /v1/intents)
+      deprecated: true
+      description: >
+        Identical handler to `POST /v1/intents`, minus the V2 field aliases
+        (`action`/`policy_id`/`estimated_records` are not mapped).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeRequest"
+      responses:
+        "200":
+          description: Policy decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposeResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Duplicate idempotency key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateBlocked"
+
+  /v1/approve:
+    post:
+      operationId: approveV1
+      tags: ["Deprecated (V1 compat)"]
+      summary: Approve by body proposalId (V1 compat — use POST /v1/intents/{id}/approve)
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [proposalId]
+                  properties:
+                    proposalId: { type: string }
+                - $ref: "#/components/schemas/ApproveRequestBody"
+      responses:
+        "200":
+          description: Decision result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApproveResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Cannot approve in current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Proposal has expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/reject:
+    post:
+      operationId: rejectV1
+      tags: ["Deprecated (V1 compat)"]
+      summary: Reject by body proposalId (V1 compat — use POST /v1/intents/{id}/reject)
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proposalId]
+              properties:
+                proposalId: { type: string }
+                reason: { type: string }
+                nonce: { type: string }
+                decided_at: { type: integer }
+      responses:
+        "200":
+          description: Proposal rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RejectResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Cannot reject in current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/deliver:
+    post:
+      operationId: deliverV1
+      tags: ["Deprecated (V1 compat)"]
+      summary: Get a one-time delivery URL for an approved proposal (V1 compat)
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proposalId]
+              properties:
+                proposalId: { type: string }
+      responses:
+        "200":
+          description: One-time delivery URL (`/v1/download/{token}`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+                  deliveryToken: { type: string }
+                  expiresAt:
+                    type: [string, "null"]
+                    format: date-time
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Proposal is not approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Already delivered — one-time delivery enforced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/proposals:
+    get:
+      operationId: listProposalsV1
+      tags: ["Deprecated (V1 compat)"]
+      summary: List proposals (V1 compat — use GET /v1/intents)
+      deprecated: true
+      parameters:
+        - $ref: "#/components/parameters/StatusFilter"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Proposals, newest first (same shape as intents, minus the `intentId` alias).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposals:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IntentSummary"
+                  count: { type: integer }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/proposals/{id}:
+    get:
+      operationId: getProposalV1
+      tags: ["Deprecated (V1 compat)"]
+      summary: Get proposal details (V1 compat — use GET /v1/intents/{id})
+      deprecated: true
+      parameters:
+        - $ref: "#/components/parameters/IntentId"
+      responses:
+        "200":
+          description: Proposal detail (same handler as GET /v1/intents/{id}).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntentDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: gate_sk API key
+      description: >
+        Agent API key issued by POST /v1/agents/register, sent as
+        `Authorization: Bearer gate_sk_...`. The server matches a SHA-256
+        hash against the agents table (src/middleware/auth.js); suspended or
+        revoked agents get 403 `agent_inactive`. Reviewer-only routes
+        additionally require the key's agent to have role `reviewer` or
+        `admin`.
+    executionToken:
+      type: http
+      scheme: bearer
+      bearerFormat: gex_ execution token
+      description: >
+        One-time execution token from an execution order (15 min TTL).
+        Accepted only by POST /v1/executions/{id}/report.
+
+  parameters:
+    AgentId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: Agent ID (`agt_...`).
+    IntentId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: Intent/proposal ID (`int_...`).
+    ExecutionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      description: Execution order ID (`exe_...`).
+    StatusFilter:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/IntentStatus"
+      description: Filter by intent status.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 50
+      description: Maximum number of rows returned.
+
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid API key.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Authenticated but not allowed (reviewer key required, or accessing another agent's data).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+      additionalProperties: true
+
+    Health:
+      type: object
+      properties:
+        status: { type: string, const: ok }
+        service: { type: string, const: zehrava-gate }
+        version: { type: string }
+        proxy:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            port: {}
+            tls_intercept: { type: boolean }
+
+    RiskLevel:
+      type: string
+      enum: [low, medium, high, critical]
+
+    PolicyEvaluationStatus:
+      description: Outcome of policy evaluation (src/lib/policy.js).
+      type: string
+      enum: [approved, blocked, pending_approval]
+
+    IntentStatus:
+      description: >
+        Lifecycle status of a stored intent. `duplicate_blocked` only appears
+        in the 409 propose response body, never as a stored row status.
+        (schemas/intent.json additionally lists `proposed`, `executing`, and
+        `replay_blocked`, which the current server never sets.)
+      type: string
+      enum:
+        - pending_approval
+        - approved
+        - blocked
+        - scheduled
+        - succeeded
+        - failed
+        - expired
+        - delivered
+        - duplicate_blocked
+
+    ApprovalState:
+      description: A2H-style approval interaction state (src/lib/approval-lifecycle.js).
+      type: string
+      enum: [pending, sent, waiting_input, answered, expired, cancelled, failed]
+
+    ExecutionStatus:
+      type: string
+      enum: [scheduled, executing, succeeded, failed, expired]
+
+    Agent:
+      description: Consistent with schemas/agent.json (the server omits `public_key` and adds `risk_tier`/`role`/`framework`).
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        owner: { type: [string, "null"] }
+        risk_tier: { type: string }
+        role: { type: string, enum: [agent, reviewer, admin] }
+        status: { type: string, enum: [active, suspended, revoked] }
+        framework: { type: [string, "null"] }
+        allowed_policies:
+          type: array
+          items: { type: string }
+        allowed_destinations:
+          type: array
+          items: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+
+    AgentRegistration:
+      type: object
+      properties:
+        agent_id: { type: string }
+        agentId:
+          type: string
+          description: V1 alias for `agent_id`.
+        name: { type: string }
+        owner: { type: [string, "null"] }
+        framework: { type: [string, "null"] }
+        allowed_policies:
+          type: array
+          items: { type: string }
+        allowed_destinations:
+          type: array
+          items: { type: string }
+        status: { type: string, const: active }
+        created_at: { type: string, format: date-time }
+        apiKey:
+          type: string
+          description: Only returned on registration — store it; the server keeps a hash.
+
+    ProposeRequest:
+      description: Request body for POST /v1/intents (matches src/routes/proposals.js).
+      type: object
+      required: [destination, policy]
+      properties:
+        payload:
+          type: string
+          description: >
+            Inline content (text, JSON string, data: URI) or a file path
+            ending in .csv/.json/.txt/.pdf/.xml/.xlsx/.jsonl. Inline content
+            is hashed and stored; file paths are referenced only.
+        destination:
+          type: string
+          description: Target system, e.g. `salesforce.import`. (`action` is accepted as a V2 alias on POST /v1/intents.)
+        policy:
+          type: string
+          description: Policy ID — a YAML file name in the policy dir. (`policy_id` is accepted as a V2 alias on POST /v1/intents.)
+        action:
+          type: string
+          description: Optional action label; defaults to `destination`.
+        recordCount:
+          type: integer
+          description: Batch size for threshold checks. (`estimated_records` is accepted as a V2 alias on POST /v1/intents.)
+        estimated_value_usd:
+          type: number
+        sensitivity_tags:
+          type: array
+          items: { type: string }
+          description: e.g. ["pii", "financial"].
+        idempotency_key:
+          type: string
+          description: A reused key returns 409 with status `duplicate_blocked`.
+        on_behalf_of:
+          type: string
+          description: Orchestrator agent ID (multi-agent audit).
+        expiresIn:
+          type: string
+          default: 1h
+          description: Approval window, e.g. `1h`, `30m`.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Arbitrary key/values; also carries typed-profile fields and `environment`/`scope` policy inputs.
+        profile:
+          type: string
+          description: Typed action-profile ID (required when the policy sets `require_profile`).
+        principal_id:
+          type: string
+          description: Principal on whose authority the write happens (standing approvals / channels).
+        approval_provider:
+          type: string
+          description: Override the policy's approval provider (e.g. `dashboard`, `kaicalls`).
+        approval_channel:
+          type: object
+          properties:
+            type: { type: string }
+            address: { type: string }
+          required: [address]
+        assurance:
+          type: object
+          properties:
+            level: { type: string }
+            required_factors:
+              type: array
+              items: { type: string }
+        runId:
+          type: string
+          description: Optional Run Ledger run ID to record intent events against.
+
+    ProposeResult:
+      description: Response of POST /v1/intents.
+      type: object
+      properties:
+        proposalId: { type: string }
+        intentId:
+          type: string
+          description: Same value as `proposalId` (V2 alias).
+        messageId: { type: string }
+        status:
+          $ref: "#/components/schemas/PolicyEvaluationStatus"
+        approvalState:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalState"
+            - type: "null"
+        approvalLinkToken:
+          type: [string, "null"]
+          description: Single-use approval link token — disclosed only here.
+        approvalInteractionId: { type: [string, "null"] }
+        approvalProvider: { type: [string, "null"] }
+        requiredApprovalFactors:
+          type: array
+          items: { type: string }
+        assuranceLevel: { type: [string, "null"] }
+        profile: { type: [string, "null"] }
+        profileSummary: { type: [string, "null"] }
+        standingApprovalId: { type: [string, "null"] }
+        requiredApprovals:
+          type: integer
+          description: N-of-M quorum size (1 unless the policy sets `require_approvals`).
+        blockReason:
+          type: [string, "null"]
+          description: Set when status is `blocked`.
+        expiresAt: { type: string, format: date-time }
+        riskScore: { type: number, minimum: 0, maximum: 1 }
+        riskLevel:
+          $ref: "#/components/schemas/RiskLevel"
+        riskFactors:
+          type: array
+          items: { type: string }
+
+    DuplicateBlocked:
+      description: 409 body when an idempotency key is reused.
+      type: object
+      properties:
+        proposalId: { type: string }
+        intentId: { type: string }
+        status: { type: string, const: duplicate_blocked }
+        blockReason: { type: string }
+        existingStatus:
+          $ref: "#/components/schemas/IntentStatus"
+
+    IntentSummary:
+      description: One row of GET /v1/intents or GET /v1/proposals (stored row + agent_name; approval link token redacted).
+      type: object
+      properties:
+        id: { type: string }
+        intentId:
+          type: string
+          description: Alias of `id` (only present on GET /v1/intents).
+        agent_name: { type: [string, "null"] }
+        sender_agent_id: { type: string }
+        destination: { type: string }
+        action: { type: [string, "null"] }
+        policy_id: { type: string }
+        status:
+          $ref: "#/components/schemas/IntentStatus"
+        block_reason: { type: [string, "null"] }
+        risk_score: { type: [number, "null"] }
+        risk_level:
+          oneOf:
+            - $ref: "#/components/schemas/RiskLevel"
+            - type: "null"
+        approval_state:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalState"
+            - type: "null"
+        has_approval_link: { type: boolean }
+        estimated_records: { type: [integer, "null"] }
+        estimated_value_usd: { type: [number, "null"] }
+        sensitivity_tags:
+          type: [string, "null"]
+          description: JSON-encoded string array as stored, e.g. '["pii"]'.
+        idempotency_key: { type: [string, "null"] }
+        on_behalf_of: { type: [string, "null"] }
+        message_id: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        expires_at:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: true
+
+    IntentDetail:
+      description: Response of GET /v1/intents/{id} — stored intent plus manifest, evidence, interactions, and audit trail.
+      allOf:
+        - $ref: "#/components/schemas/IntentSummary"
+        - type: object
+          properties:
+            payload_path: { type: [string, "null"] }
+            payload_hash: { type: [string, "null"] }
+            payload_type: { type: [string, "null"] }
+            approval_link_expires_at:
+              type: [string, "null"]
+              format: date-time
+            approval_link_used_at:
+              type: [string, "null"]
+              format: date-time
+            profile_id: { type: [string, "null"] }
+            profile_fields_hash: { type: [string, "null"] }
+            required_approvals: { type: [integer, "null"] }
+            standing_approval_id: { type: [string, "null"] }
+            manifest:
+              oneOf:
+                - $ref: "#/components/schemas/Manifest"
+                - type: "null"
+            approval_evidence:
+              oneOf:
+                - $ref: "#/components/schemas/ApprovalEvidence"
+                - type: "null"
+            approval_interactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApprovalInteraction"
+            auditTrail:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditEvent"
+
+    Manifest:
+      type: object
+      properties:
+        id: { type: string }
+        proposal_id: { type: string }
+        signed_by: { type: string }
+        delivery_token: { type: string }
+        delivered_at: { type: [integer, "null"] }
+      additionalProperties: true
+
+    ApprovalEvidence:
+      description: Signed A2H-shaped approval evidence bundle (src/lib/evidence.js).
+      type: object
+      properties:
+        protocol: { type: string, const: a2h.v1 }
+        interaction_id: { type: string }
+        request_jws: { type: [string, "null"] }
+        response_jws: { type: string }
+        responds_to: { type: string }
+        decision:
+          type: string
+          enum: [APPROVE, REJECT]
+        decided_at: { type: string, format: date-time }
+        factor:
+          type: string
+          description: e.g. `manual.dashboard.v1`, `link.single_use.v1`.
+        proof:
+          type: object
+          additionalProperties: true
+        approved_intent_hash: { type: string }
+        consumed_at:
+          type: [string, "null"]
+          format: date-time
+
+    ApprovalInteraction:
+      description: Durable per-dispatch approval interaction record (src/lib/approval-ledger.js).
+      type: object
+      properties:
+        id: { type: string }
+        intentId: { type: string }
+        provider: { type: string }
+        providerInteractionId: { type: [string, "null"] }
+        messageId: { type: string }
+        state:
+          $ref: "#/components/schemas/ApprovalState"
+        principalId: { type: [string, "null"] }
+        channelType: { type: [string, "null"] }
+        channelAddressRedacted: { type: [string, "null"] }
+        approvedIntentHash: { type: [string, "null"] }
+        requiredFactors:
+          type: array
+          items: { type: string }
+        assuranceLevel: { type: [string, "null"] }
+        evidence:
+          type: [object, "null"]
+          additionalProperties: true
+        createdAt: { type: string, format: date-time }
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+      additionalProperties: true
+
+    AuditEvent:
+      description: >
+        Runtime audit event shape (src/lib/audit.js). Flatter than
+        schemas/audit-event.json — actor is a single string, no
+        actor_type/hash/signature fields.
+      type: object
+      properties:
+        id: { type: string }
+        proposal_id: { type: [string, "null"] }
+        event_type: { type: string }
+        actor: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+
+    ApproveRequestBody:
+      type: object
+      properties:
+        nonce:
+          type: string
+          description: Single-use nonce from GET /v1/nonce (replay guard).
+        decided_at:
+          type: integer
+          description: Decision timestamp in epoch ms; rejected outside the tolerance window.
+        on_behalf_of_principal:
+          type: string
+          description: Approve as a delegate of this principal (requires an active delegation).
+        principal_id:
+          type: string
+
+    ApproveResult:
+      oneOf:
+        - $ref: "#/components/schemas/ApproveResultApproved"
+        - $ref: "#/components/schemas/ApproveResultQuorumPending"
+
+    ApproveResultApproved:
+      type: object
+      properties:
+        status: { type: string, const: approved }
+        approvalState:
+          type: string
+          const: answered
+          description: Absent on the idempotent already-approved short-circuit.
+        approvedAt: { type: string, format: date-time }
+        intentId: { type: string }
+        deliveryToken: { type: string }
+        autoDeliver:
+          type: boolean
+          description: True when the destination auto-delivers on approval.
+        gate_exec:
+          type: boolean
+          description: True when Gate executes the write itself (vault credential + proxy enabled).
+        approvalEvidence:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalEvidence"
+            - type: "null"
+      required: [status, intentId]
+
+    ApproveResultQuorumPending:
+      description: Returned when a vote was recorded but N-of-M quorum is not yet reached.
+      type: object
+      properties:
+        status: { type: string, const: pending_approval }
+        approvalState: { type: string, const: waiting_input }
+        intentId: { type: string }
+        votes: { type: integer }
+        requiredApprovals: { type: integer }
+        votedBy:
+          type: array
+          items: { type: string }
+      required: [status, intentId, votes, requiredApprovals]
+
+    RejectResult:
+      type: object
+      properties:
+        status: { type: string, const: blocked }
+        approvalState: { type: string, const: answered }
+        reason: { type: [string, "null"] }
+        approvalEvidence:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalEvidence"
+            - type: "null"
+      required: [status]
+
+    PolicyDecision:
+      description: >
+        Response of GET /v1/intents/{id}/decision — consistent with
+        schemas/policy-decision.json, except the row's primary key is `id`
+        (not `decision_id`), `policy_snapshot` is returned as the stored JSON
+        string, and `reason_code` may also be `standing_approval_applied`.
+      type: object
+      properties:
+        id: { type: string }
+        intent_id: { type: string }
+        status:
+          $ref: "#/components/schemas/PolicyEvaluationStatus"
+        reason_code:
+          type: string
+          enum:
+            - destination_not_allowed
+            - record_threshold_exceeded
+            - blocked_term_detected
+            - sensitive_data_detected
+            - manual_review_required
+            - approved_by_policy
+            - standing_approval_applied
+        reason_detail: { type: [string, "null"] }
+        risk_score: { type: number, minimum: 0, maximum: 1 }
+        risk_level:
+          $ref: "#/components/schemas/RiskLevel"
+        policy_snapshot:
+          type: string
+          description: JSON-encoded snapshot, e.g. '{"policy":"...","destination":"..."}'.
+        required_approvals: { type: integer }
+        evaluated_at: { type: string, format: date-time }
+        approval_evidence:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalEvidence"
+            - type: "null"
+      additionalProperties: true
+
+    ExecutionOrder:
+      description: >
+        Signed execution order — consistent with schemas/execution-order.json
+        plus the `executionId` camelCase alias and attached
+        `approval_evidence`.
+      type: object
+      properties:
+        executionId: { type: string }
+        execution_id:
+          type: string
+          description: Same value as `executionId`.
+        intent_id: { type: string }
+        mode:
+          type: string
+          enum: [gate_exec, runner_exec, external_pull]
+        destination: { type: string }
+        action: { type: string }
+        payload_ref: { type: [string, "null"] }
+        payload_hash: { type: [string, "null"] }
+        execution_token:
+          type: string
+          description: One-time `gex_` token, 15 minute TTL.
+        retry_policy:
+          type: object
+          properties:
+            max_attempts: { type: integer }
+            backoff_seconds: { type: integer }
+        status:
+          $ref: "#/components/schemas/ExecutionStatus"
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        executed_at:
+          type: [string, "null"]
+          format: date-time
+        result:
+          type: [object, "null"]
+          additionalProperties: true
+        approval_evidence:
+          oneOf:
+            - $ref: "#/components/schemas/ApprovalEvidence"
+            - type: "null"
+
+    Metrics:
+      description: Response of GET /v1/metrics.
+      type: object
+      properties:
+        actions_attempted: { type: integer }
+        actions_blocked: { type: integer }
+        actions_pending: { type: integer }
+        actions_approved: { type: integer }
+        actions_scheduled: { type: integer }
+        actions_succeeded: { type: integer }
+        actions_failed: { type: integer }
+        duplicate_actions: { type: integer }
+        policy_violations: { type: integer }
+        avg_approval_latency_ms: { type: [integer, "null"] }
+        period: { type: string, const: all_time }

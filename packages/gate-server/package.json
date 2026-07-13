@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "Zehrava Gate — the commit checkpoint between AI agents and production systems",
   "main": "src/sdk.js",
+  "types": "src/sdk.d.ts",
   "bin": {
     "zehrava-gate": "bin/cli.js"
   },

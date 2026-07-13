@@ -12,6 +12,7 @@ if (args.includes('--help') || args.includes('-h')) {
 
   Usage:
     npx zehrava-gate [options]      Start the Gate server
+    npx zehrava-gate init [dir]     Scaffold policies/ + .env in dir (default: .)
     npx zehrava-gate demo           Run an interactive demo (no config required)
 
   Server options:
@@ -21,6 +22,7 @@ if (args.includes('--help') || args.includes('-h')) {
     --help                Show this help
 
   Examples:
+    npx zehrava-gate init
     npx zehrava-gate --port 4000
     npx zehrava-gate --port 3001 --policy-dir ./my-policies
     npx zehrava-gate demo
@@ -34,6 +36,10 @@ if (args.includes('--help') || args.includes('-h')) {
 // ─── RUNS SUBCOMMAND ────────────────────────────────────────────────────────
 if (subcommand === 'runs') {
   runRunsCommand(args.slice(1));
+}
+// ─── INIT SUBCOMMAND ────────────────────────────────────────────────────────
+else if (subcommand === 'init') {
+  runInit(args.slice(1));
 }
 // ─── DEMO SUBCOMMAND ────────────────────────────────────────────────────────
 else if (subcommand === 'demo') {
@@ -316,6 +322,108 @@ function runServer () {
   console.log(`  → Dashboard: http://localhost:${port}/dashboard\n`);
 
   require('../src/index.js');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function runInit (initArgs) {
+  const path = require('path');
+  const fs = require('fs');
+
+  // Canonical policies (verbatim copies of the repo's policies/ dir — the
+  // published package does not ship it, so the contents are embedded here).
+  const POLICY_FILES = {
+    'support-reply.yaml': [
+      'id: support-reply',
+      'allowed_types: [text, json]',
+      'destinations: [zendesk.reply, intercom.reply, freshdesk.reply]',
+      'auto_approve_under: 1',
+      'block_if_terms:',
+      '  - "refund guaranteed"',
+      '  - "legal action"',
+      '  - "sue"',
+      'expiry_minutes: 30',
+      '',
+    ].join('\n'),
+    'crm-low-risk.yaml': [
+      'id: crm-low-risk',
+      'allowed_types: [csv, json]',
+      'destinations: [salesforce.import, hubspot.contacts, hubspot.deals]',
+      'auto_approve_under: 100',
+      'require_approval_over: 100',
+      'block_if_pii: false',
+      'expiry_minutes: 60',
+      '',
+    ].join('\n'),
+    'finance-high-risk.yaml': [
+      'id: finance-high-risk',
+      'require_approval: always',
+      'destinations: [netsuite.payout, stripe.payout, quickbooks.batch, finance.payout]',
+      'expiry_minutes: 30',
+      'delivery: one_time_only',
+      '',
+    ].join('\n'),
+  };
+
+  const ENV_FILE = [
+    'PORT=4000',
+    'DATA_DIR=./data',
+    'POLICY_DIR=./policies',
+    '',
+  ].join('\n');
+
+  const targetDir = path.resolve(initArgs[0] || '.');
+  const policyDir = path.join(targetDir, 'policies');
+  const envPath = path.join(targetDir, '.env');
+
+  console.log(`\n  Zehrava Gate v${pkg.version} — init`);
+  console.log(`  → Target: ${targetDir}\n`);
+
+  fs.mkdirSync(policyDir, { recursive: true });
+
+  for (const [name, contents] of Object.entries(POLICY_FILES)) {
+    const dest = path.join(policyDir, name);
+    if (fs.existsSync(dest)) {
+      console.log(`  ↷ skipped   policies/${name} (already exists)`);
+    } else {
+      fs.writeFileSync(dest, contents);
+      console.log(`  ✓ created   policies/${name}`);
+    }
+  }
+
+  if (fs.existsSync(envPath)) {
+    console.log(`  ↷ skipped   .env (already exists)`);
+  } else {
+    fs.writeFileSync(envPath, ENV_FILE);
+    console.log(`  ✓ created   .env`);
+  }
+
+  console.log(`
+  Quickstart
+  ──────────────────────────────────────────────────
+
+  1. Start the server:
+
+     npx zehrava-gate --port 4000 --policy-dir ./policies
+
+  2. Register an agent:
+
+     curl -X POST http://localhost:4000/v1/agents/register \\
+       -H "Content-Type: application/json" \\
+       -d '{"name": "my-agent", "riskTier": "standard"}'
+     # → { "agentId": "agt_…", "apiKey": "gate_sk_…" }
+
+  3. Submit your first intent (use the apiKey from step 2):
+
+     curl -X POST http://localhost:4000/v1/intents \\
+       -H "Content-Type: application/json" \\
+       -H "Authorization: Bearer gate_sk_…" \\
+       -d '{"payload": "Thank you — your issue is resolved.", "destination": "zendesk.reply", "policy": "support-reply", "recordCount": 1}'
+     # → status: "approved" | "blocked" | "pending_approval"
+
+  Dashboard:  http://localhost:4000/dashboard
+  Docs:       https://zehrava.com/docs
+  `);
+  process.exit(0);
 }
 
 // ─── DEMO ────────────────────────────────────────────────────────────────────
