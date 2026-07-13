@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+    name: Node ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Install workspaces
+        run: npm install
+
+      - name: gate-server tests
+        run: npm test --workspace=packages/gate-server
+
+      - name: mcp-gate tests
+        run: npm test --workspace=packages/mcp-gate
+
+      - name: langchain-gate dry-run
+        run: npm test --workspace=packages/langchain-gate
