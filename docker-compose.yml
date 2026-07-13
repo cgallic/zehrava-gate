@@ -1,0 +1,14 @@
+services:
+  gate:
+    build: .
+    ports:
+      - "4000:4000"
+    volumes:
+      # SQLite data persists in a named volume
+      - gate-data:/data
+      # Edit ./policies on the host and the server picks them up live
+      - ./policies:/app/policies
+    restart: unless-stopped
+
+volumes:
+  gate-data:

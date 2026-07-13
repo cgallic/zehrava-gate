@@ -2,7 +2,12 @@
 
 **Write-path control plane for AI agents.**
 
-→ [zehrava.com](https://zehrava.com) · [npm](https://www.npmjs.com/package/zehrava-gate) · [PyPI](https://pypi.org/project/zehrava-gate/) · [Live demo](https://zehrava.com/demo) · [Docs](https://zehrava.com/docs)
+[![CI](https://github.com/cgallic/zehrava-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/cgallic/zehrava-gate/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/zehrava-gate)](https://www.npmjs.com/package/zehrava-gate)
+[![PyPI](https://img.shields.io/pypi/v/zehrava-gate)](https://pypi.org/project/zehrava-gate/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
+→ [zehrava.com](https://zehrava.com) · [npm](https://www.npmjs.com/package/zehrava-gate) · [PyPI](https://pypi.org/project/zehrava-gate/) · [Live demo](https://zehrava.com/demo) · [Docs](./docs/README.md)
 
 ![Zehrava Gate demo](./gate-demo.gif)
 
@@ -53,10 +58,18 @@ pip install zehrava-gate
 npx zehrava-gate demo
 ```
 
-### 1. Start the server
+### 1. Scaffold and start the server
 
 ```bash
+npx zehrava-gate init      # creates ./policies (3 starter policies) + .env
 npx zehrava-gate --port 4000 --policy-dir ./policies
+```
+
+Or with Docker:
+
+```bash
+docker compose up          # from a checkout — SQLite in a named volume,
+                           # ./policies bind-mounted for live edits
 ```
 
 ### 2. Register an agent
@@ -233,6 +246,8 @@ GET  /health                    Server health check
 
 V1 backward-compat routes still work: `/v1/propose`, `/v1/approve`, `/v1/reject`, `/v1/deliver`, `/v1/proposals`
 
+Full API reference: [OpenAPI 3.1 spec](./schemas/openapi.yaml) · JSON Schemas in [`schemas/`](./schemas/)
+
 ## Server options
 
 ```
@@ -240,6 +255,10 @@ V1 backward-compat routes still work: `/v1/propose`, `/v1/approve`, `/v1/reject`
 --data-dir <path>    SQLite + payload storage (default: ./data)
 --policy-dir <path>  YAML policy directory (default: ./policies)
 ```
+
+Subcommands: `init [dir]` (scaffold policies + .env) · `demo` (no-config walkthrough)
+
+TypeScript users: the SDK ships type declarations (`sdk.d.ts`) — `propose`, `execute`, the Run Ledger methods, and all status unions are fully typed.
 
 ## Gate V3: Forward Proxy
 
@@ -270,9 +289,19 @@ Gate doesn't use an LLM to evaluate intents. YAML policy was written by a human 
 
 Gate protects against agent mistakes, not rogue agents. A fully adversarial agent that skips the SDK call is out of scope. [Full FAQ →](https://zehrava.com/#faq)
 
+## Docs & contributing
+
+- [docs/](./docs/README.md) — quickstart, [policy reference](./docs/policy-reference.md) (every YAML field + the exact evaluation order)
+- [llms.txt](./llms.txt) — condensed project reference for coding agents
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — dev setup; the approval-provider interface and policy fields are the best entry points
+- [SECURITY.md](./SECURITY.md) — disclosure policy and threat-model scope
+- [CHANGELOG.md](./CHANGELOG.md) · [ROADMAP.md](./ROADMAP.md)
+
+Monorepo: `npm install && npm test` at the root runs every package's suite.
+
 ## License
 
-MIT — free to self-host forever.
+MIT — free to self-host forever. See [LICENSE](./LICENSE).
 
 ## Related links
 

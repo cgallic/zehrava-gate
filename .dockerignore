@@ -1,0 +1,27 @@
+# Dependencies (reinstalled inside the image)
+node_modules
+**/node_modules
+
+# Runtime data (SQLite lives in the /data volume)
+data
+**/data
+*.db
+*.sqlite
+
+# VCS
+.git
+.gitignore
+
+# Not needed in the server image
+landing/
+gate-demo.gif
+*.log
+dist
+**/dist
+*.egg-info
+**/*.egg-info
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
