@@ -1,5 +1,10 @@
 # @kaicmo/gate
 
+> ⚠️ **Deprecated.** This package has been superseded by
+> [`zehrava-gate`](https://www.npmjs.com/package/zehrava-gate), which ships
+> the SDK and the server together (`npm install zehrava-gate`). No further
+> releases will be published under `@kaicmo/gate`.
+
 **The commit checkpoint between AI agents and production systems.**
 
 Every agent write goes through the same path: `propose → policy → approve → deliver → audit`. No direct commits. No silent writes.

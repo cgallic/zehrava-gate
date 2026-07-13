@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Zehrava Gate documentation
+    url: https://zehrava.com/docs
+    about: Quickstart, policy reference, and API docs
