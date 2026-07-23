@@ -1,4 +1,4 @@
-# @zehrava/langchain-gate
+# zehrava-gate-langchain
 
 Wrap LangChain tools and LangGraph graphs with [Zehrava Gate](https://zehrava.com) — deterministic policy enforcement before any tool executes.
 
@@ -15,7 +15,7 @@ Gate does not rewrite the LangChain API, add latency on auto-approved calls (< 5
 ## Install
 
 ```bash
-npm install @zehrava/langchain-gate zehrava-gate
+npm install zehrava-gate-langchain zehrava-gate
 npm install @langchain/core          # peer dep
 npm install @langchain/langgraph     # only if using graph hooks
 ```
@@ -30,7 +30,7 @@ npx zehrava-gate start --api-key gate_sk_...
 
 ```js
 const { Gate } = require('zehrava-gate');
-const { GateTool, GateBlockedError } = require('@zehrava/langchain-gate');
+const { GateTool, GateBlockedError } = require('zehrava-gate-langchain');
 
 const gate = new Gate({ apiUrl: 'http://localhost:3001', apiKey: 'gate_sk_...' });
 
@@ -53,7 +53,7 @@ try {
 ## Wrap multiple tools (GateToolkit)
 
 ```js
-const { GateToolkit } = require('@zehrava/langchain-gate');
+const { GateToolkit } = require('zehrava-gate-langchain');
 
 const toolkit = new GateToolkit({
   tools: [emailTool, crmTool, slackTool],
@@ -81,7 +81,7 @@ Gate provides two primitives for StateGraph:
 
 ```js
 const { StateGraph, END } = require('@langchain/langgraph');
-const { gateNode, gateRouteAfter } = require('@zehrava/langchain-gate');
+const { gateNode, gateRouteAfter } = require('zehrava-gate-langchain');
 
 const graph = new StateGraph({ channels: { ... } });
 
@@ -131,7 +131,7 @@ Full working example: [`examples/langgraph-crm-agent.js`](./examples/langgraph-c
 ## Error classes
 
 ```js
-const { GateBlockedError, GatePendingError, GateTimeoutError } = require('@zehrava/langchain-gate');
+const { GateBlockedError, GatePendingError, GateTimeoutError } = require('zehrava-gate-langchain');
 
 try {
   await governed._call(input);

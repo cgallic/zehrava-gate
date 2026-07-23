@@ -127,7 +127,7 @@ async function runStateMachineExample() {
    * In a real LangGraph app this would be:
    *
    *   const { StateGraph, END } = require('@langchain/langgraph');
-   *   const { gateRouteAfter, gateNode } = require('@zehrava/langchain-gate');
+   *   const { gateRouteAfter, gateNode } = require('zehrava-gate-langchain');
    *
    *   const graph = new StateGraph({ ... });
    *   graph.addNode('submit_to_gate', gateNode({ gate, buildIntent: (state) => ({

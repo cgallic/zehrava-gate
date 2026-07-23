@@ -1,0 +1,49 @@
+# Zehrava Gate
+
+> Write-path control plane for AI agents. Agents read freely; every
+> real-world write (email, CRM import, refund, publish) must pass through
+> Gate: intent submitted → deterministic YAML policy evaluated (no LLM) →
+> optional human approval → signed execution order (gex_ token, 15-min
+> TTL) → worker executes → outcome reported. Fail-closed, idempotent,
+> fully audited. MIT licensed, self-hostable.
+
+Key facts for integrating:
+- Install: `npm install zehrava-gate` (server + CLI + JS SDK) or
+  `pip install zehrava-gate` (Python SDK)
+- Run: `npx zehrava-gate init && npx zehrava-gate --port 4000 --policy-dir ./policies`
+- Register an agent: `POST /v1/agents/register {"name":"...","riskTier":"standard"}`
+  → `{agentId, apiKey}`; authenticate subsequent calls with the API key
+- Submit: `gate.propose({payload, destination, policy, recordCount})` →
+  status is one of `approved | blocked | pending_approval | duplicate_blocked`
+- Only `approved` intents can be executed: `gate.execute({intentId})` →
+  `execution_token` (gex_). `pending_approval` means stop and wait for a
+  human. Never bypass a `blocked` decision.
+- Policies are YAML files in --policy-dir; fields include `destinations`
+  (allowlist), `block_if_terms`, `auto_approve_under` /
+  `require_approval_over` (record-count thresholds),
+  `require_approval: always`, `field_checks`, `rate_limits`,
+  `environments` overrides, `expiry_minutes`, N-of-M `require_approvals`,
+  and `approval_channel` provider routing.
+- MCP server: `zehrava-gate-mcp` exposes gate_propose_intent,
+  gate_authorize_action (blocks until human decides), gate_get_status,
+  gate_get_audit — no tool can execute a write directly.
+- LangChain/LangGraph: `zehrava-gate-langchain` wraps existing tools so
+  Gate evaluates before the tool runs.
+
+## Docs
+
+- [Quickstart](https://github.com/cgallic/zehrava-gate/blob/master/docs/quickstart.md): first governed write in 5 minutes
+- [Policy reference](https://github.com/cgallic/zehrava-gate/blob/master/docs/policy-reference.md): every YAML field and the exact evaluation order
+- [OpenAPI spec](https://github.com/cgallic/zehrava-gate/blob/master/schemas/openapi.yaml): full HTTP API
+- [README](https://github.com/cgallic/zehrava-gate/blob/master/README.md): overview, SDK methods, API routes
+
+## Integrations
+
+- [MCP server](https://github.com/cgallic/zehrava-gate/blob/master/packages/mcp-gate/README.md): for Claude Desktop/Code and other MCP hosts
+- [LangChain wrapper](https://github.com/cgallic/zehrava-gate/blob/master/packages/langchain-gate/README.md): GateTool, GateToolkit, LangGraph hooks
+
+## Optional
+
+- [Roadmap](https://github.com/cgallic/zehrava-gate/blob/master/ROADMAP.md): direction and planned integrations
+- [Security policy](https://github.com/cgallic/zehrava-gate/blob/master/SECURITY.md): threat model — protects against agent mistakes, not rogue agents that skip the SDK
+- [Contributing](https://github.com/cgallic/zehrava-gate/blob/master/CONTRIBUTING.md): extension points — approval providers, policy fields

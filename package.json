@@ -1,0 +1,27 @@
+{
+  "name": "zehrava-gate-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Zehrava Gate monorepo — server, MCP server, LangChain wrapper, and JS SDK workspaces",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cgallic/zehrava-gate"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "workspaces": [
+    "packages/gate-server",
+    "packages/mcp-gate",
+    "packages/langchain-gate",
+    "packages/gate-sdk-js"
+  ],
+  "scripts": {
+    "test": "npm run test:gate-server && npm run test:mcp-gate && npm run test:langchain-gate",
+    "test:gate-server": "npm test --workspace=packages/gate-server",
+    "test:mcp-gate": "npm test --workspace=packages/mcp-gate",
+    "test:langchain-gate": "npm test --workspace=packages/langchain-gate",
+    "start": "npm start --workspace=packages/gate-server"
+  }
+}

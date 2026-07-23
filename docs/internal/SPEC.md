@@ -1,4 +1,9 @@
-# Zehrava Gate — Full Build Spec
+# Zehrava Gate — Full Build Spec (historical)
+
+> **Historical document.** This was the original build spec for the
+> zehrava.com dashboard/demo rollout, with paths specific to the production
+> box. It is kept for reference only — see [`docs/`](../README.md) for
+> current documentation and [`ROADMAP.md`](../../ROADMAP.md) for direction.
 
 > PRD is the source of truth. This spec translates it into concrete deliverables.
 > Server is live at https://zehrava.com. API running on port 3001.
