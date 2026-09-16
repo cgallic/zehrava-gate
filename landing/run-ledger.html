@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run Ledger — When the run breaks, it doesn't start over | Zehrava Gate</title>
+  <meta property="og:title" content="Run Ledger — Execution continuity for agent runs">
+  <meta property="og:description" content="Checkpoint, verify, resume — without replaying side effects. Run Ledger adds execution continuity to Zehrava Gate.">
+  <meta property="og:image" content="https://zehrava.com/og-run-ledger.png">
+  <meta property="og:url" content="https://zehrava.com/run-ledger">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="When an agent run breaks, it should not start over. Run Ledger adds checkpointing, integrity verification, and side-effect deduplication to governed agent execution.">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple:       #6366f1;
+      --purple-b:     #818cf8;
+      --purple-dim:   rgba(99,102,241,0.2);
+      --green:        #22c55e;
+      --green-dark:   #16a34a;
+      --red:          #f87171;
+      --amber:        #f59e0b;
+      --bg:           #0a0f1a;
+      --bg2:          #111827;
+      --bg3:          #1a2236;
+      --border:       rgba(255,255,255,0.07);
+      --border2:      rgba(255,255,255,0.13);
+      --text:         #f1f5f9;
+      --muted:        #64748b;
+      --muted2:       #94a3b8;
+      --font:         'Plus Jakarta Sans', -apple-system, sans-serif;
+      --mono:         'JetBrains Mono', 'SF Mono', monospace;
+      --r:            12px;
+      --r-sm:         8px;
+      --shadow:       0 4px 24px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.04) inset;
+      --shadow-lg:    0 16px 48px rgba(0,0,0,0.5);
+      --glow-purple:  0 0 0 1px rgba(99,102,241,0.35), 0 8px 24px rgba(99,102,241,0.15);
+      --glow-green:   0 0 0 1px rgba(34,197,94,0.35), 0 8px 24px rgba(22,163,74,0.2);
+    }
+
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: var(--mono); }
+    :focus-visible { outline: 2px solid var(--purple-b); outline-offset: 3px; border-radius: 4px; }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: radial-gradient(circle at 1px 1px, rgba(99,102,241,0.14) 1px, transparent 0);
+      background-size: 36px 36px;
+      -webkit-mask-image: radial-gradient(ellipse 110% 70% at 50% 10%, black 0%, transparent 100%);
+      mask-image: radial-gradient(ellipse 110% 70% at 50% 10%, black 0%, transparent 100%);
+    }
+    body > * { position: relative; z-index: 1; }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,15,26,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    }
+    .nav-logo { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
+    .nav-logo span { background: linear-gradient(135deg, var(--purple-b), #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; gap: 1.75rem; font-size: 0.85rem; }
+    .nav-links a { color: var(--muted2); transition: color 150ms ease-out; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-right { display: flex; gap: 0.875rem; align-items: center; }
+    .btn-nav {
+      background: linear-gradient(135deg, var(--green-dark), #15803d);
+      color: #fff; padding: 0.4rem 1rem; border-radius: var(--r-sm);
+      font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      box-shadow: var(--glow-green); transition: all 150ms ease-out;
+    }
+    .btn-nav:hover { text-decoration: none; transform: translateY(-1px); box-shadow: 0 0 0 1px rgba(34,197,94,0.55), 0 8px 20px rgba(22,163,74,0.3); }
+
+    .btn-primary {
+      position: relative; overflow: hidden; cursor: pointer;
+      background: linear-gradient(135deg, var(--green-dark), #15803d);
+      color: #fff; padding: 0.875rem 2rem; border-radius: var(--r);
+      font-weight: 700; font-size: 1rem; display: inline-flex; align-items: center; gap: 0.5rem;
+      box-shadow: var(--glow-green); transition: all 150ms ease-out;
+    }
+    .btn-primary:hover { text-decoration: none; transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(34,197,94,0.55), 0 12px 32px rgba(22,163,74,0.35); }
+
+    .btn-secondary {
+      cursor: pointer;
+      border: 1px solid var(--border2); color: var(--text);
+      padding: 0.875rem 2rem; border-radius: var(--r);
+      font-weight: 600; font-size: 1rem;
+      background: rgba(255,255,255,0.04); backdrop-filter: blur(8px);
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      transition: all 150ms ease-out;
+    }
+    .btn-secondary:hover { text-decoration: none; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
+
+    /* HERO */
+    .hero-wrapper { position: relative; overflow: hidden; }
+    .hero-bg {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .hero-bg::before {
+      content: '';
+      position: absolute;
+      top: -10%; right: -5%;
+      width: 75%; height: 120%;
+      background: radial-gradient(ellipse at 60% 40%, rgba(99,102,241,0.13) 0%, rgba(99,102,241,0.04) 45%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-fade {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 45%;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+    }
+
+    .hero-cols {
+      position: relative; z-index: 1;
+      max-width: 1200px; margin: 0 auto;
+      padding: 5.5rem 2.5rem 3.5rem;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      background: rgba(99,102,241,0.1); color: var(--purple-b);
+      border: 1px solid rgba(99,102,241,0.22); padding: 0.3rem 0.875rem;
+      border-radius: 999px; margin-bottom: 1.75rem;
+    }
+
+    .hero-h1 { font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 1.5rem; max-width: 980px; }
+    .hero-h1 .accent { background: linear-gradient(135deg, var(--purple-b) 0%, #c4b5fd 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-sub { font-size: 1.1rem; color: var(--muted2); line-height: 1.75; margin-bottom: 2.25rem; max-width: 720px; }
+    .hero-actions { display: flex; gap: 0.875rem; flex-wrap: wrap; }
+
+    /* SECTIONS */
+    .section { max-width: 1100px; margin: 0 auto; padding: 6rem 2.5rem; }
+    .section-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--purple-b); margin-bottom: 1rem; }
+    .section-h2 { font-size: clamp(1.875rem, 3.5vw, 2.75rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.12; margin-bottom: 1.125rem; }
+    .section-lead { font-size: 1.05rem; color: var(--muted2); max-width: 680px; line-height: 1.8; margin-bottom: 3.5rem; }
+    hr.divider { border: none; border-top: 1px solid var(--border); }
+
+    /* PAIN CARDS */
+    .pain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+    .pain-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; box-shadow: var(--shadow); transition: border-color 150ms ease-out; }
+    .pain-card:hover { border-color: rgba(248,113,113,0.3); }
+    .pain-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.625rem; color: var(--text); }
+    .pain-card p { font-size: 0.875rem; color: var(--muted2); line-height: 1.7; margin-bottom: 0.75rem; }
+    .pain-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.625rem; border-radius: 5px; font-family: var(--mono); letter-spacing: 0.02em; background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+
+    /* HOW IT WORKS */
+    .flow-track { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+    .flow-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.75rem; box-shadow: var(--shadow); position: relative; }
+    .flow-box::before {
+      content: attr(data-num);
+      position: absolute; top: -14px; left: 1.5rem;
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8rem; color: var(--purple-b);
+      background: var(--bg); border: 2px solid rgba(99,102,241,0.4);
+    }
+    .flow-box h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .flow-box p { font-size: 0.84rem; color: var(--muted2); line-height: 1.7; }
+    .flow-arrow { text-align: center; font-size: 1.5rem; color: rgba(99,102,241,0.4); align-self: center; }
+
+    /* COMPARE TABLE */
+    .compare-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .compare-table th { text-align: left; padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--border2); color: var(--muted); font-weight: 700; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.09em; background: rgba(255,255,255,0.025); }
+    .compare-table th:last-child { color: var(--purple-b); }
+    .compare-table td { padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.55; color: var(--muted2); }
+    .compare-table td:first-child { font-weight: 700; color: var(--text); }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table tr:hover td { background: rgba(255,255,255,0.01); }
+    .check { color: #4ade80; }
+    .dash { color: var(--muted); }
+
+    /* CODE BLOCKS */
+    .code-block { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin: 1.5rem 0; box-shadow: var(--shadow); transition: border-color 150ms ease-out; }
+    .code-block:hover { border-color: rgba(99,102,241,0.22); }
+    .cb-header { background: rgba(255,255,255,0.025); padding: 0.625rem 1.25rem; font-size: 0.68rem; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .copy-btn { font-size: 0.7rem; color: var(--muted); cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid var(--border2); padding: 0.25rem 0.625rem; border-radius: 5px; font-family: var(--font); font-weight: 600; transition: all 150ms ease-out; }
+    .copy-btn:hover { color: var(--text); background: rgba(255,255,255,0.09); }
+    .code-block pre { padding: 1.375rem; font-size: 0.8rem; line-height: 1.85; color: #a78bfa; overflow-x: auto; }
+    .code-block pre .cm { color: #374151; font-style: italic; }
+    .code-block pre .k { color: #e879f9; }
+    .code-block pre .s { color: #86efac; }
+    .code-block pre .fn { color: #60a5fa; }
+    .code-block pre .v { color: #f1f5f9; }
+
+    /* TERMINAL */
+    .terminal { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-lg); }
+    .t-header {
+      display: flex; align-items: center; gap: 0.875rem;
+      padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .t-dots { display: flex; gap: 0.4rem; }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-dot-r { background: #ff5f57; }
+    .t-dot-y { background: #febc2e; }
+    .t-dot-g { background: #28c840; }
+    .t-title { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); font-weight: 500; }
+    .t-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
+    .t-line { font-family: var(--mono); font-size: 0.78rem; line-height: 1.6; display: flex; align-items: baseline; gap: 0.5rem; }
+    .t-line.cmd { color: var(--muted2); }
+    .t-line.cmd::before { content: '$'; color: var(--purple-b); flex-shrink: 0; }
+    .t-line.ok { color: #4ade80; }
+    .t-line.dim { color: var(--muted); }
+    .t-line.purple { color: var(--purple-b); }
+
+    /* FEATURES GRID */
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; }
+    .feat-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; box-shadow: var(--shadow); transition: all 150ms ease-out; }
+    .feat-box:hover { border-color: rgba(99,102,241,0.25); transform: translateY(-2px); }
+    .feat-box h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
+    .feat-box p { font-size: 0.82rem; color: var(--muted2); line-height: 1.7; }
+
+    /* LIMITS */
+    .limits-list { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 2rem; box-shadow: var(--shadow); }
+    .limits-list ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.875rem; }
+    .limits-list li { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.875rem; color: var(--muted2); padding: 0.625rem 0; border-bottom: 1px solid var(--border); }
+    .limits-list li:last-child { border-bottom: none; }
+    .limits-list li::before { content: ''; width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23f59e0b' stroke-width='1.75' stroke-linecap='round'%3E%3Cpath d='M8 2v12M2 8h12'/%3E%3C/svg%3E"); background-repeat: no-repeat; }
+
+    /* CTA BLOCK */
+    .cta-block { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.18); border-radius: 16px; padding: 3.5rem 2.5rem; text-align: center; max-width: 720px; margin: 0 auto; }
+    .cta-block h2 { font-size: 1.875rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.875rem; }
+    .cta-block p { font-size: 0.95rem; color: var(--muted2); margin-bottom: 2rem; line-height: 1.75; }
+    .cta-block .hero-actions { justify-content: center; }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 2rem 2.5rem; max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
+    .footer-brand { line-height: 1.5; }
+    .footer-links { display: flex; gap: 1.75rem; font-size: 0.875rem; align-items: center; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted2); transition: color 150ms ease-out; white-space: nowrap; }
+    .footer-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* MOBILE */
+    @media (max-width: 900px) {
+      .hero-cols { padding: 3.5rem 1.5rem 2.5rem; }
+      .hero-h1 { font-size: 2.25rem; }
+      .flow-track { grid-template-columns: 1fr; }
+      .flow-arrow { display: none; }
+    }
+    @media (max-width: 768px) {
+      nav { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
+      .section { padding: 4rem 1.5rem; }
+      .section-h2 { font-size: 1.625rem; }
+      footer { flex-direction: column; align-items: flex-start; padding: 2rem 1.5rem; }
+    }
+    @media (max-width: 480px) {
+      .hero-h1 { font-size: 1.875rem; }
+      .hero-sub { font-size: 0.975rem; }
+      .hero-actions { flex-direction: column; }
+      .pain-grid { grid-template-columns: 1fr; }
+      .feat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav aria-label="Site navigation">
+  <div class="nav-logo" style="display:flex;align-items:center;gap:0.625rem">
+    <svg width="30" height="30" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#nlg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs>
+        <linearGradient id="nlg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#a5b4fc"/>
+          <stop offset="100%" stop-color="#4f46e5"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </div>
+  <div class="nav-links">
+    <a href="/">Zehrava</a>
+    <a href="/index.html">Gate</a>
+    <a href="/run-ledger.html" style="color:var(--purple-b);font-weight:700">Run Ledger</a>
+    <a href="/docs">Docs</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="nav-right">
+    <a href="/docs/run-ledger.html" class="btn-nav">Read Run Ledger Docs</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-wrapper">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-fade"></div>
+  </div>
+
+  <div class="hero-cols">
+    <div class="hero-badge">
+      Zehrava · Run Ledger
+    </div>
+    <h1 class="hero-h1">When the run breaks,<br>it <span class="accent">doesn't start over.</span></h1>
+    <p class="hero-sub">Run Ledger adds execution continuity to Gate. It seals checkpoints at safe boundaries, preserves tracked run state across interruption, and blocks replay of side effects that already happened.</p>
+    <div class="hero-actions">
+      <a href="/docs/run-ledger.html" class="btn-primary">Read Run Ledger Docs</a>
+      <a href="/dashboard/" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>
+        View Dashboard
+      </a>
+      <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View Code
+      </a>
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:0.875rem 1.25rem;margin-top:1.5rem;max-width:420px">
+      <pre style="margin:0;padding:0;background:transparent;border:none;font-size:0.8rem;color:var(--muted2);line-height:1.5"><code>npm install zehrava-gate</code></pre>
+      <p style="font-size:0.78rem;color:var(--muted);margin:0.5rem 0 0">Shipped in <code style="font-family:var(--mono);font-size:0.75em;background:rgba(99,102,241,0.1);padding:2px 6px;border-radius:3px;color:var(--purple-b)">zehrava-gate@0.3.0</code> with CLI commands and SDK methods.</p>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ONE UGLY PATH -->
+<section class="section" style="padding-bottom:4rem">
+  <div class="section-label">One ugly path</div>
+  <h2 class="section-h2">Failure happens at the<br>worst boundary.</h2>
+  <p class="section-lead">Not at the beginning. Right after approval. Right after execution request. Right after the side effect. That is where replay becomes dangerous.</p>
+
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:2.5rem 2rem;box-shadow:var(--shadow);max-width:820px;margin:0 auto">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;font-family:var(--mono);font-size:0.8rem;text-align:center">
+      <div style="padding:1rem;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px">
+        <div style="font-weight:700;color:var(--purple-b);margin-bottom:0.5rem">1. Intent proposed</div>
+      </div>
+      <div style="padding:1rem;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px">
+        <div style="font-weight:700;color:var(--purple-b);margin-bottom:0.5rem">2. Policy checked</div>
+      </div>
+      <div style="padding:1rem;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px">
+        <div style="font-weight:700;color:var(--purple-b);margin-bottom:0.5rem">3. Approval granted</div>
+      </div>
+      <div style="padding:1rem;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:10px">
+        <div style="font-weight:700;color:var(--purple-b);margin-bottom:0.5rem">4. Execution requested</div>
+      </div>
+      <div style="padding:1rem;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:10px">
+        <div style="font-weight:700;color:var(--red);margin-bottom:0.5rem">5. Worker interrupted</div>
+      </div>
+      <div style="padding:1rem;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:10px">
+        <div style="font-weight:700;color:#4ade80;margin-bottom:0.5rem">6. Checkpoint sealed</div>
+      </div>
+      <div style="padding:1rem;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:10px">
+        <div style="font-weight:700;color:#4ade80;margin-bottom:0.5rem">7. Run resumed</div>
+      </div>
+      <div style="padding:1rem;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:10px">
+        <div style="font-weight:700;color:#4ade80;margin-bottom:0.5rem">8. Prior side effect skipped</div>
+      </div>
+      <div style="padding:1rem;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:10px">
+        <div style="font-weight:700;color:#4ade80;margin-bottom:0.5rem">9. Execution completes</div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:0.95rem;color:var(--muted2);text-align:center;margin-top:2rem;max-width:720px;margin-left:auto;margin-right:auto;line-height:1.75">This is the entire point of Run Ledger: continue from the last safe boundary instead of rebuilding from transcript and hoping nothing fires twice.</p>
+</section>
+
+<hr class="divider">
+
+<!-- PAIN SECTION -->
+<section class="section" id="why">
+  <div class="section-label">Why this exists</div>
+  <h2 class="section-h2">Starting over is<br>fake recovery.</h2>
+  <p class="section-lead">Agent runs do not fail cleanly. They fail mid-approval, mid-execution, mid-retry, or after the side effect but before the receipt. Starting over from the top is not recovery. It is replay with worse odds.</p>
+
+  <div class="pain-grid">
+    <div class="pain-card">
+      <h3>Network interruption during API call</h3>
+      <p>Agent enriches 847 leads and calls Salesforce. Connection drops halfway. Agent restarts. No checkpoint. Tries again — same 847 records, some already imported.</p>
+      <span class="pain-tag">Replayed write</span>
+    </div>
+    <div class="pain-card">
+      <h3>Approval wait stalls mid-flight</h3>
+      <p>Agent submits high-risk write. Waits for human approval. Worker crashes. Approval comes through. No record of where the run was. Agent restarts from the top.</p>
+      <span class="pain-tag">Lost run state</span>
+    </div>
+    <div class="pain-card">
+      <h3>Worker crashes after execution request</h3>
+      <p>Execution order issued. Worker fetches it. Calls Stripe. Payment succeeds. Worker crashes before reporting. Restart → no receipt. Did it execute? Try again?</p>
+      <span class="pain-tag">Unknown execution state</span>
+    </div>
+    <div class="pain-card">
+      <h3>Deploy restarts process</h3>
+      <p>Agent halfway through a multi-step CRM sync. Deploy rolls out. Process terminates. Agent restarts. No saved state. Starts over. Some records already written.</p>
+      <span class="pain-tag">No checkpoint</span>
+    </div>
+    <div class="pain-card">
+      <h3>Duplicated side effects after retry</h3>
+      <p>Agent calls webhook. Times out. No response. Retries. Webhook actually fired twice — first one just took 90 seconds. Now two notifications sent.</p>
+      <span class="pain-tag">Duplicate side effect</span>
+    </div>
+    <div class="pain-card">
+      <h3>Rebuilding context from transcript is unreliable</h3>
+      <p>Agent crashes. Transcript has 200 messages. Replay from the top? Which tool calls already executed? Which approvals already granted? Transcript doesn't know.</p>
+      <span class="pain-tag">Transcript ≠ execution history</span>
+    </div>
+  </div>
+
+  <div style="background:var(--bg2);border:1px solid rgba(248,113,113,0.25);border-radius:var(--r);padding:1.75rem 2rem;margin-top:2.5rem;max-width:680px">
+    <p style="font-size:0.95rem;color:var(--muted2);line-height:1.75;margin:0"><strong style="color:var(--text)">Transcript replay is not execution continuity.</strong><br>A transcript can tell you what the agent said. It cannot prove what executed, what was approved, what artifact was created, or which side effect must not run again. Run Ledger records receipts. That is the difference.</p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="section-label">How it works</div>
+  <h2 class="section-h2">Ledger. Checkpoint.<br>Resume. Dedupe.</h2>
+  <p class="section-lead">Four components. Ordered event history, sealed resumable state, continue from last safe point, block replayed side effects. That's it.</p>
+
+  <div class="flow-track">
+    <div class="flow-box" data-num="1">
+      <h3>Ledger</h3>
+      <p>Ordered event history for a tracked run. Every meaningful boundary is recorded: plan locked, tool finished, intent proposed, policy checked, approval received, execution requested, execution succeeded, interruption detected.</p>
+    </div>
+    <div class="flow-box" data-num="2">
+      <h3>Checkpoint</h3>
+      <p>Sealed resumable state captured at a safe boundary. Includes receipts, artifacts, unresolved approvals, blocked side-effect keys, and suggested next action.</p>
+    </div>
+    <div class="flow-box" data-num="3">
+      <h3>Resume</h3>
+      <p>Load the latest valid checkpoint, verify integrity, rebuild resume context, and continue from the current step instead of from the beginning.</p>
+    </div>
+    <div class="flow-box" data-num="4">
+      <h3>Dedupe</h3>
+      <p>External mutations, payments, and notifications get side-effect keys. If a key already exists in the ledger, the replay is skipped.</p>
+    </div>
+  </div>
+
+  <p style="font-size:0.95rem;color:var(--muted2);text-align:center;margin-top:2.5rem;max-width:680px;margin-left:auto;margin-right:auto;line-height:1.75">No workflow engine. No transcript replay. No UI-heavy abstraction layer. Just continuity.</p>
+</section>
+
+<hr class="divider">
+
+<!-- COMPETITIVE POSITIONING -->
+<section class="section" id="positioning">
+  <div class="section-label">Where Run Ledger sits</div>
+  <h2 class="section-h2">Temporal, LangGraph, Restate, and Inngest<br>all solve adjacent durability problems.</h2>
+  <p class="section-lead">Run Ledger is narrower than workflow orchestration. It lives at the governed write boundary inside Gate: approvals, execution boundaries, checkpoint integrity, and non-replayable side effects.</p>
+
+  <div class="compare-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Temporal</th>
+          <th>LangGraph</th>
+          <th>Restate</th>
+          <th>Inngest</th>
+          <th>Zehrava</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Durable execution</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Agent-aware</td>
+          <td class="dash">—</td>
+          <td class="check">✓</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Approval gates</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="check">✓</td>
+        </tr>
+        <tr>
+          <td>Side-effect dedupe</td>
+          <td class="dash">—</td>
+          <td>Graph nodes</td>
+          <td class="dash">—</td>
+          <td>Steps</td>
+          <td>Receipts</td>
+        </tr>
+        <tr>
+          <td>Governed writes</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="dash">—</td>
+          <td class="check">✓</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+</section>
+
+<hr class="divider">
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-label">Release v1</div>
+  <h2 class="section-h2">What ships in v1.</h2>
+  <p class="section-lead">Execution continuity. Sealed checkpoints. Side-effect deduplication. CLI inspection. Opt-in integration — backward compatible with existing Gate deployments.</p>
+
+  <div class="feat-grid">
+    <div class="feat-box">
+      <h4>Execution continuity</h4>
+      <p>Resume interrupted tracked runs from the last safe checkpoint.</p>
+    </div>
+    <div class="feat-box">
+      <h4>Checkpoint integrity</h4>
+      <p>Sealed checkpoints fail verification if tampered with.</p>
+    </div>
+    <div class="feat-box">
+      <h4>Side-effect dedupe</h4>
+      <p>Skip non-replayable side effects that already happened.</p>
+    </div>
+    <div class="feat-box">
+      <h4>CLI inspection</h4>
+      <p>Inspect, verify, checkpoint, and resume from terminal.</p>
+    </div>
+    <div class="feat-box">
+      <h4>Backward compatible</h4>
+      <p>Opt-in per run. Existing Gate flows still work.</p>
+    </div>
+    <div class="feat-box">
+      <h4>Governed run history</h4>
+      <p>Intent and execution lifecycle recorded in one run ledger.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- CODE EXAMPLES -->
+<section class="section" id="code">
+  <div class="section-label">SDK usage</div>
+  <h2 class="section-h2">Start run. Work happens.<br>Interruption. Resume.</h2>
+  <p class="section-lead">Run Ledger is live in the package. Start a tracked run, record execution boundaries, seal a checkpoint, and resume from the last safe point.</p>
+
+  <div class="code-block">
+    <div class="cb-header">
+      <span>JavaScript / TypeScript — full flow</span>
+      <button class="copy-btn" onclick="copyCode(this)" aria-label="Copy code">Copy</button>
+    </div>
+    <pre><span class="k">import</span> { <span class="v">Gate</span> } <span class="k">from</span> <span class="s">"zehrava-gate"</span>
+
+<span class="k">const</span> <span class="v">gate</span> = <span class="k">new</span> <span class="fn">Gate</span>({ <span class="v">endpoint</span>: <span class="s">"https://gate.yourco.com"</span>, <span class="v">apiKey</span>: <span class="s">"gate_sk_..."</span> })
+
+<span class="k">const</span> <span class="v">run</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">startRun</span>({
+  <span class="v">agentId</span>: <span class="s">"enrichment-agent"</span>,
+  <span class="v">intentSummary</span>: <span class="s">"Enrich leads and sync approved changes to Salesforce"</span>
+})
+
+<span class="k">await</span> <span class="v">gate</span>.<span class="fn">recordEvent</span>({
+  <span class="v">runId</span>: <span class="v">run</span>.<span class="v">runId</span>,
+  <span class="v">eventType</span>: <span class="s">"plan_locked"</span>,
+  <span class="v">actorId</span>: <span class="s">"enrichment-agent"</span>,
+  <span class="v">stepName</span>: <span class="s">"enrich"</span>,
+  <span class="v">payload</span>: { <span class="v">steps</span>: [<span class="s">"fetch"</span>, <span class="s">"enrich"</span>, <span class="s">"review"</span>, <span class="s">"sync"</span>] },
+  <span class="v">sideEffectClass</span>: <span class="s">"none"</span>
+})
+
+<span class="k">const</span> <span class="v">intent</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">propose</span>({
+  <span class="v">runId</span>: <span class="v">run</span>.<span class="v">runId</span>,
+  <span class="v">payload</span>: <span class="s">"./leads.csv"</span>,
+  <span class="v">destination</span>: <span class="s">"salesforce.import"</span>,
+  <span class="v">policy</span>: <span class="s">"crm-low-risk"</span>,
+  <span class="v">recordCount</span>: <span class="v">847</span>,
+  <span class="v">idempotency_key</span>: <span class="s">"batch-2026-03-22"</span>
+})
+
+<span class="cm">// interruption happens here</span>
+
+<span class="k">await</span> <span class="v">gate</span>.<span class="fn">createCheckpoint</span>({
+  <span class="v">runId</span>: <span class="v">run</span>.<span class="v">runId</span>,
+  <span class="v">reason</span>: <span class="s">"interruption"</span>,
+  <span class="v">suggestedNextAction</span>: <span class="s">"resume_then_execute"</span>
+})
+
+<span class="k">const</span> <span class="v">ctx</span> = <span class="k">await</span> <span class="v">gate</span>.<span class="fn">resumeRun</span>({ <span class="v">runId</span>: <span class="v">run</span>.<span class="v">runId</span> })
+
+<span class="k">if</span> (!<span class="v">ctx</span>.<span class="v">blockedSideEffectKeys</span>.<span class="fn">has</span>(<span class="s">"salesforce.import:batch-2026-03-22"</span>)) {
+  <span class="k">await</span> <span class="v">gate</span>.<span class="fn">execute</span>({ <span class="v">intentId</span>: <span class="v">intent</span>.<span class="v">intentId</span> })
+}</pre>
+  </div>
+
+  <p style="font-size:0.95rem;color:var(--muted2);margin-top:1.75rem;max-width:680px;line-height:1.75">Tracked runs attach continuity to the real Gate lifecycle: propose, approve, execute, report.</p>
+
+  <div style="margin-top:2.5rem"></div>
+
+  <div class="section-label">CLI inspection</div>
+  <h2 class="section-h2">Inspect. Verify. Resume.<br>Terminal-first.</h2>
+  <p class="section-lead">No dashboard in v1. Everything via CLI. Inspect run status, list events, verify checkpoint integrity, resume from last safe point.</p>
+
+  <div class="terminal">
+    <div class="t-header">
+      <div class="t-dots">
+        <div class="t-dot t-dot-r"></div>
+        <div class="t-dot t-dot-y"></div>
+        <div class="t-dot t-dot-g"></div>
+      </div>
+      <span class="t-title">bash</span>
+    </div>
+    <div class="t-body">
+      <div class="t-line cmd">zehrava-gate runs inspect run_abc123</div>
+      <div class="t-line dim">Status: interrupted</div>
+      <div class="t-line dim">Checkpoints: 1</div>
+      <div class="t-line ok">Resumable: Yes</div>
+      <div style="height:0.5rem"></div>
+      <div class="t-line cmd">zehrava-gate runs verify run_abc123</div>
+      <div class="t-line ok">Checkpoint Integrity: Valid</div>
+      <div style="height:0.5rem"></div>
+      <div class="t-line cmd">zehrava-gate runs resume run_abc123</div>
+      <div class="t-line purple">Loaded checkpoint ckpt_xyz789</div>
+      <div class="t-line purple">Blocked side effects: 1</div>
+      <div class="t-line ok">Resume context built</div>
+    </div>
+  </div>
+
+  <p style="font-size:0.95rem;color:var(--muted2);margin-top:1.75rem;max-width:680px;line-height:1.75">The CLI is the proof surface in v1. If a run cannot be inspected, verified, and resumed from terminal, the system is not trustworthy yet.</p>
+</section>
+
+<hr class="divider">
+
+<!-- DASHBOARD -->
+<section class="section" id="dashboard">
+  <div class="section-label">Web UI</div>
+  <h2 class="section-h2">Dashboard</h2>
+  <p class="section-lead">View pending approvals, audit trails, and run history in the web UI. No terminal required.</p>
+
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:2rem;box-shadow:var(--shadow);max-width:680px">
+    <p style="font-size:0.975rem;color:var(--muted2);line-height:1.75;margin-bottom:1.5rem">The Dashboard provides a visual interface for monitoring tracked runs, inspecting checkpoints, and reviewing execution history. Approved intents, blocked side effects, and resumable runs — all visible without touching the CLI.</p>
+    <a href="/dashboard/" class="btn-primary" style="display:inline-flex">Open Dashboard →</a>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- LIMITATIONS -->
+<section class="section" id="limitations">
+  <div class="section-label">What v1 doesn't do</div>
+  <h2 class="section-h2">Honest limitations.</h2>
+  <p class="section-lead">These are not bugs. These are conscious decisions about what ships in v1 versus what waits for v2. If you need one of these, self-host and build it — or wait for the roadmap.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;max-width:920px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No cross-runtime portability</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Resume packets are Zehrava-specific.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No distributed consensus</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Checkpoints are local SQLite. Multi-node needs external coordination.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">Manual review fallback only</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Failed verification requires operator investigation. No auto-repair.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No automated pruning</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Old runs accumulate. Operator cleans up manually.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No transactional writes</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Events recorded individually. Rare partial state possible.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No UI in v1</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">CLI-only inspect/resume. Dashboard ships in v2.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No policy-driven checkpointing</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Checkpoint triggers are manual or event-based.</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;box-shadow:var(--shadow)">
+      <h4 style="font-size:0.875rem;font-weight:700;margin-bottom:0.625rem;color:var(--amber)">No lineage verification</h4>
+      <p style="font-size:0.84rem;color:var(--muted2);line-height:1.7;margin:0">Parent/child integrity checks are roadmap.</p>
+    </div>
+  </div>
+
+  <style>@media(max-width:768px){.section #limitations > div{grid-template-columns:1fr !important}}</style>
+</section>
+
+<hr class="divider">
+
+<!-- CTA -->
+<section class="section">
+  <div class="cta-block">
+    <h2>Run Ledger is done when<br>interrupted runs don't start over.</h2>
+    <p>Self-host free. MIT license. Full docs, SDK, CLI, and integration guide available now.</p>
+    <div class="hero-actions">
+      <a href="/docs/run-ledger.html" class="btn-primary">Read Full Docs</a>
+      <a href="https://github.com/cgallic/zehrava-gate" class="btn-secondary" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">
+    <div style="font-weight:800;color:var(--text);font-size:0.95rem;margin-bottom:0.25rem">Zehrava</div>
+    <div style="font-size:0.8rem;color:var(--muted)">Agent infrastructure · Gate and Run Ledger · MIT License</div>
+  </div>
+  <nav class="footer-links" aria-label="Footer navigation">
+    <a href="/">Zehrava</a>
+    <a href="/index.html">Gate</a>
+    <a href="/run-ledger.html" style="color:var(--purple-b);font-weight:600">Run Ledger</a>
+    <a href="/docs">Docs</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+    <a href="https://meetkai.xyz" target="_blank" rel="noopener">MeetKai</a>
+  </nav>
+</footer>
+
+<script>
+  function copyCode(btn) {
+    const text = btn.closest('.code-block').querySelector('pre').innerText
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent
+      btn.textContent = 'Copied!'
+      btn.style.color = '#4ade80'
+      setTimeout(() => { btn.textContent = orig; btn.style.color = '' }, 1800)
+    })
+  }
+</script>
+</body>
+</html>

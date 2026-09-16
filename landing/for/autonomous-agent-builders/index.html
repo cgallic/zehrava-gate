@@ -1,14 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-BQZHH7EYLF');
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Guardrails for Autonomous AI Agents — Zehrava Gate</title>
+  <title>AI Agent Guardrails — Deterministic Policy Enforcement Before Execution | Zehrava Gate</title>
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <meta name="description" content="Autonomous agents make decisions faster than humans can review them. Gate puts a deterministic checkpoint between every decision and every production write. Policy in YAML. Fail-closed by default.">
-  <meta property="og:title" content="Guardrails for Autonomous AI Agents — Zehrava Gate">
-  <meta property="og:description" content="Build autonomous agents that can't act unilaterally on high-risk decisions. Gate enforces your policies before every action — approved, blocked, or held for human review.">
+  <meta name="description" content="Stop autonomous agents before they write to production incorrectly. Gate intercepts every action, evaluates it against YAML policy, and requires approval before execution. No LLM in the decision path.">
+  <meta property="og:title" content="AI Agent Guardrails — Zehrava Gate">
+  <meta property="og:description" content="Deterministic guardrails for autonomous agents. Every action checked. Every write logged. Human approval before execution.">
   <meta property="og:url" content="https://zehrava.com/for/autonomous-agent-builders/">
   <meta property="og:image" content="https://zehrava.com/og-image.png">
   <style>
@@ -46,25 +54,19 @@
     .snippet-block h2 { margin-top: 0; margin-bottom: 0.875rem; font-size: 1.2rem; }
     .snippet-block p { color: #c8c8c8; margin-bottom: 0.875rem; }
     .snippet-block p:last-child { margin-bottom: 0; }
-    .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0 2rem; }
-    .risk-card { border-radius: 10px; padding: 1.25rem; border: 1px solid; }
-    .risk-card.low  { background: rgba(34,197,94,0.05);  border-color: rgba(34,197,94,0.2);  }
-    .risk-card.high { background: rgba(239,68,68,0.05);  border-color: rgba(239,68,68,0.2);  }
-    .risk-card h3 { margin-top: 0; margin-bottom: 0.4rem; font-size: 0.875rem; }
-    .risk-card.low  h3 { color: var(--green); }
-    .risk-card.high h3 { color: var(--red);   }
-    .risk-card ul { margin-bottom: 0; padding-left: 1.2rem; }
-    .risk-card li { color: var(--muted); font-size: 0.82rem; margin-bottom: 0.3rem; }
-    .flow-steps { display: flex; flex-direction: column; gap: 0; margin: 1.5rem 0 2rem; }
-    .flow-step { display: flex; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    .flow-step:last-child { border-bottom: none; }
-    .step-num { width: 1.75rem; height: 1.75rem; min-width: 1.75rem; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--purple); margin-top: 0.2rem; }
-    .step-content { flex: 1; }
-    .step-content strong { display: block; margin-bottom: 0.2rem; color: var(--text); font-size: 0.9rem; }
-    .step-content span { color: var(--muted); font-size: 0.85rem; }
-    .pattern-block { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
-    .pattern-block h3 { margin-top: 0; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text); }
-    .pattern-block p { color: var(--muted); font-size: 0.85rem; margin-bottom: 0; line-height: 1.6; }
+    .incident-box { background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: 1.25rem 1.5rem; margin: 1.75rem 0; font-size: 0.9rem; }
+    .incident-box strong { color: var(--red); }
+    .incident-box p { color: #c8c8c8; margin-bottom: 0; }
+    .lifecycle { display: flex; flex-direction: column; gap: 0; margin: 1.5rem 0 2rem; }
+    .lc-step { display: flex; gap: 1.25rem; align-items: flex-start; padding: 0.875rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .lc-step:last-child { border-bottom: none; }
+    .lc-num { width: 1.75rem; height: 1.75rem; min-width: 1.75rem; border-radius: 50%; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; color: var(--purple); margin-top: 0.2rem; }
+    .lc-content h3 { margin: 0 0 0.25rem; font-size: 0.9rem; }
+    .lc-content p { color: var(--muted); font-size: 0.85rem; margin: 0; line-height: 1.5; }
+    .proxy-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin: 1.5rem 0; }
+    .proxy-box h3 { margin-top: 0; margin-bottom: 0.625rem; font-size: 0.95rem; }
+    .proxy-box p { color: var(--muted); font-size: 0.875rem; margin-bottom: 0.75rem; }
+    .proxy-box code { font-size: 0.8rem; }
     .cta-block { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 2rem; margin-top: 3rem; text-align: center; }
     .cta-block h3 { margin-top: 0; margin-bottom: 0.625rem; font-size: 1.2rem; }
     .cta-block p { color: var(--muted); margin-bottom: 1.25rem; font-size: 0.925rem; }
@@ -80,7 +82,6 @@
       .nav-links a:not(.nav-cta) { display: none; }
       main { padding: 2.5rem 1.125rem 4rem; }
       h1 { font-size: 1.65rem; }
-      .risk-grid { grid-template-columns: 1fr; }
       .snippet-block { padding: 1.25rem; }
       .btn-outline { margin-left: 0; margin-top: 0.5rem; display: block; }
     }
@@ -100,151 +101,157 @@
 
 <main>
   <div class="page-meta">
-    <span class="tag">Autonomous Agents</span>
+    <span class="tag">Agent Safety</span>
     <span class="tag">Guardrails</span>
-    <span class="tag">Policy Enforcement</span>
-    <span>For agent builders</span>
+    <span class="tag">Runtime Control</span>
+    <span>For autonomous agent builders</span>
   </div>
 
-  <h1>Autonomous agents act fast. Gate decides what they're allowed to act on.</h1>
+  <h1>Autonomous agents make mistakes. Gate catches them before they land.</h1>
 
-  <p>Autonomous agents are useful because they don't wait for instructions. That's also the problem. An agent that can decide and act without a checkpoint between those two things will eventually act on a bad decision. Gate is that checkpoint — between every decision and every production write.</p>
+  <p>Autonomous agents are powerful because they act without waiting for a human. That's also exactly why they need a guardrail. <strong>Gate is a runtime control plane that intercepts every action an agent tries to take</strong> — before the API call fires, before the email sends, before the record writes. Evaluated against policy. Logged. Routable to human review.</p>
+
+  <div class="incident-box">
+    <strong>What happens without a checkpoint:</strong>
+    <p>An agent misreads a condition and fires a bulk email to 47,000 contacts at 2am. A CRM sync agent writes corrupted data to 847 production records. A refund agent processes a $10,000 charge instead of $100. All three happened. All three would have been caught by a record-count or field-value check at the intent layer.</p>
+  </div>
 
   <!-- Featured Snippet block -->
   <div class="snippet-block">
-    <h2>How to add guardrails to autonomous AI agents</h2>
-    <p><strong>Guardrails for autonomous agents work by inserting a policy checkpoint between the agent's decision and the action it wants to execute.</strong> The agent submits an intent — what it wants to do, with what payload, to what destination. Gate evaluates that intent against a YAML policy and returns one of three decisions: approved (proceed), blocked (stop), or pending (wait for a human).</p>
-    <p>Effective guardrails must be deterministic: the same policy always produces the same result for the same input. LLM-based moderation does not meet this bar. Gate uses YAML policies that specify explicit rules: field validation, value bounds, rate limits per agent, and environment-specific approval thresholds. Self-hosted so agent payloads never leave your infrastructure. Fail-closed by design — if Gate is unreachable, actions do not proceed. Add Gate to any agent: <code>npm install zehrava-gate</code>, register your agent, drop a policy file, point the agent at the SDK.</p>
+    <h2>What are AI agent guardrails?</h2>
+    <p><strong>AI agent guardrails are enforcement mechanisms that run between an agent's decision and the action it wants to execute.</strong> They intercept the intended action, evaluate it against a defined policy, and either permit it, block it, or route it to human approval before execution.</p>
+    <p>Effective guardrails share three properties. First, they are <strong>deterministic</strong> — the same input always produces the same decision. LLM-based safety layers drift; YAML policy files do not. Second, they are <strong>fail-closed</strong> — if the guardrail is unreachable or errors, the action does not proceed. Third, they are <strong>auditable</strong> — every intent, every decision, and every execution is logged with the agent identity and timestamp.</p>
+    <p>Gate implements all three. Policies are YAML files you version-control. If Gate is unreachable, agents get a 503 and the action is not forwarded. Every intent produces an immutable audit trail: <code>proposed → policy_checked → approved → execution_succeeded</code>. Install with <code>npm install -g zehrava-gate</code> and start in under 5 minutes.</p>
   </div>
 
-  <h2>The failure mode Gate addresses</h2>
+  <h2>How Gate intercepts an agent action</h2>
 
-  <p>Autonomous agents fail in a specific pattern: they make a locally-reasonable decision that is globally wrong. The model didn't malfunction. The tool call was syntactically valid. The action just shouldn't have happened — because the amount was too high, the scope was too broad, or the timing was wrong.</p>
-
-  <p>Gate catches these failures before they execute. Not by second-guessing the model's reasoning — by checking the action against explicit rules you define.</p>
-
-  <div class="risk-grid">
-    <div class="risk-card low">
-      <h3>Low-risk actions (auto-approve)</h3>
-      <ul>
-        <li>Read operations</li>
-        <li>Internal status updates</li>
-        <li>Single-record writes below threshold</li>
-        <li>Staging/dev environment writes</li>
-      </ul>
-    </div>
-    <div class="risk-card high">
-      <h3>High-risk actions (require approval)</h3>
-      <ul>
-        <li>Bulk writes above N records</li>
-        <li>Outbound emails</li>
-        <li>Financial transactions</li>
-        <li>Production API calls to third parties</li>
-      </ul>
-    </div>
-  </div>
-
-  <p>The split is your call. Define it in YAML. Gate enforces it.</p>
-
-  <h2>How it works</h2>
-
-  <div class="flow-steps">
-    <div class="flow-step">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <strong>Agent submits intent</strong>
-        <span>Agent calls <code>gate.propose()</code> with payload, destination, and policy ID. This takes &lt; 5ms on auto-approve.</span>
+  <div class="lifecycle">
+    <div class="lc-step">
+      <div class="lc-num">1</div>
+      <div class="lc-content">
+        <h3>Agent submits intent</h3>
+        <p>Before calling any external API, agent calls <code>gate.propose()</code> with the action, destination, and payload. Gate receives the intent, records it, and runs policy evaluation synchronously.</p>
       </div>
     </div>
-    <div class="flow-step">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <strong>Gate evaluates the policy</strong>
-        <span>Field checks, rate limits, environment thresholds, sensitive terms — all evaluated deterministically from your YAML file.</span>
+    <div class="lc-step">
+      <div class="lc-num">2</div>
+      <div class="lc-content">
+        <h3>Policy evaluated deterministically</h3>
+        <p>Gate checks the intent against your YAML policy: destination allowlist, field validation, rate limits, environment thresholds, sensitive term scan. Same input, same output, every time. No LLM call in the evaluation path.</p>
       </div>
     </div>
-    <div class="flow-step">
-      <div class="step-num">3</div>
-      <div class="step-content">
-        <strong>Three possible outcomes</strong>
-        <span><code>approved</code> — agent proceeds immediately. <code>blocked</code> — action halted, reason returned. <code>pending_approval</code> — human reviews on dashboard.</span>
+    <div class="lc-step">
+      <div class="lc-num">3</div>
+      <div class="lc-content">
+        <h3>Decision returned immediately</h3>
+        <p><code>approved</code> — agent proceeds. <code>blocked</code> — Gate returns the policy reason, agent halts that action. <code>pending_approval</code> — intent queued for human review; agent polls or waits.</p>
       </div>
     </div>
-    <div class="flow-step">
-      <div class="step-num">4</div>
-      <div class="step-content">
-        <strong>Execution reported back</strong>
-        <span>After running an approved action, agent reports success or failure. Full lifecycle — proposed to succeeded — recorded in audit log.</span>
+    <div class="lc-step">
+      <div class="lc-num">4</div>
+      <div class="lc-content">
+        <h3>Execution token issued on approval</h3>
+        <p>Approved intents get an execution token (<code>gex_...</code>). Agent presents the token to execute. Token is single-use. No token, no execution.</p>
       </div>
     </div>
-    <div class="flow-step">
-      <div class="step-num">5</div>
-      <div class="step-content">
-        <strong>Webhook fires</strong>
-        <span>On any terminal event — approved, blocked, rejected — Gate fires your registered webhook. Route to Slack, PagerDuty, or your own handler.</span>
+    <div class="lc-step">
+      <div class="lc-num">5</div>
+      <div class="lc-content">
+        <h3>Result reported back</h3>
+        <p>After execution, agent reports success or failure. Gate closes the audit trail: <code>execution_succeeded</code> or <code>execution_failed</code> with HTTP status and metadata.</p>
       </div>
     </div>
   </div>
 
-  <h2>SDK: three lines to add a checkpoint</h2>
+  <h2>Two integration paths</h2>
+
+  <h3>SDK integration (greenfield agents)</h3>
+
+  <p>Four lines to add Gate to any agent:</p>
 
   <pre><code>const { Gate } = require('zehrava-gate');
 const gate = new Gate({ endpoint: 'http://localhost:3001', apiKey: process.env.GATE_API_KEY });
 
+// Before every write action:
 const intent = await gate.propose({
-  payload:     JSON.stringify({ records: bulkData, target: 'salesforce' }),
+  payload:     JSON.stringify(actionPayload),
   destination: 'salesforce.api',
   policy:      'crm-low-risk',
-  recordCount: bulkData.length,
+  recordCount: records.length,
 });
 
 if (intent.status === 'approved') {
-  await runSync(bulkData);
+  await salesforce.update(records);      // gate approved — proceed
 } else if (intent.status === 'blocked') {
-  throw new Error(`Gate blocked: ${intent.blockReason}`);
-} else {
-  // pending_approval — poll or use X-Gate-Wait: true to hold connection
-  await waitForApproval(intent.intentId);
-}</code></pre>
+  throw new Error(intent.blockReason);   // gate blocked — halt
+}
+// pending_approval → poll or notify human</code></pre>
 
-  <h2>Patterns for common agent architectures</h2>
-
-  <div class="pattern-block">
-    <h3>Loop agents (plan → act → observe → repeat)</h3>
-    <p>Call <code>gate.propose()</code> at the act step. On <code>pending_approval</code>, pause the loop and wait. Resume on approval using the execution token. The agent's observe step runs after Gate confirms execution.</p>
+  <div class="proxy-box">
+    <h3>HTTP proxy integration (existing agents, no code changes)</h3>
+    <p>Set <code>HTTP_PROXY=http://localhost:4001</code>. Gate intercepts all outbound HTTP/HTTPS traffic from your agent, submits each request as an intent, and forwards only approved requests.</p>
+    <pre><code>HTTP_PROXY=http://localhost:4001 \
+NODE_EXTRA_CA_CERTS=/opt/zehrava-gate/data/proxy-ca/ca.crt \
+node your-agent.js</code></pre>
+    <p>Pending requests can hold the connection open with <code>X-Gate-Wait: true</code> — Gate auto-forwards when approved. Rejected requests get a 403. Gate unreachable returns 503 and does not forward.</p>
   </div>
 
-  <div class="pattern-block">
-    <h3>Multi-agent pipelines (orchestrator + workers)</h3>
-    <p>Register each agent separately. Use <code>on_behalf_of</code> when an orchestrator submits on behalf of a worker — Gate tracks both identities in the audit log. Set per-agent rate limits to prevent runaway workers.</p>
-  </div>
+  <h2>Write the policies that match your risk model</h2>
 
-  <div class="pattern-block">
-    <h3>LangChain / LangGraph agents</h3>
-    <p>Use <code>GateTool</code> from <code>@zehrava/langchain-gate</code> to wrap any LangChain Tool. Use <code>gateNode</code> + <code>gateRouteAfter</code> to branch a StateGraph based on Gate's decision. No changes to your tool logic.</p>
-  </div>
+  <p>Gate ships with no default allow-all policy. Every destination needs a policy. Every policy lives in a YAML file in your repo.</p>
 
-  <div class="pattern-block">
-    <h3>Existing agents (no code changes)</h3>
-    <p>Route outbound HTTP through the Gate proxy: <code>HTTP_PROXY=http://localhost:4001</code>. Gate intercepts all calls, submits intents automatically, and blocks or holds based on your <code>destinations.yaml</code>. Set <code>GATE_TLS_INTERCEPT=true</code> to intercept HTTPS.</p>
-  </div>
+  <pre><code># policies/crm-writes.yaml
+id: crm-writes
+destinations: [salesforce.api, hubspot.api]
 
-  <h2>What Gate is honest about</h2>
+field_checks:
+  - path: "email"
+    required: true
+    pattern: "^[^@]+@[^@]+\\.[^@]+$"
+  - path: "records"
+    max_length: 500    # never more than 500 records in one write
 
-  <p>Gate does not protect against every failure mode. Write your expectations down before deploying:</p>
+rate_limits:
+  per_agent_per_hour: 20
+  per_agent_per_day:  100
 
-  <ul>
-    <li><strong>Gate catches what your policies describe.</strong> An action your YAML doesn't cover gets evaluated against the default policy — pending approval by default, configurable.</li>
-    <li><strong>Gate does not interpret natural language.</strong> Field checks are pattern matches and value comparisons. They catch "amount: 999999", not "please send a large charge".</li>
-    <li><strong>Gate protects against mistakes, not adversarial agents.</strong> A model that modifies the policy files it runs under is out of scope. Gate's trust boundary is the policy directory.</li>
-    <li><strong>Fail-closed is real.</strong> If Gate is unreachable, the SDK throws and the action does not proceed. Build your agent to handle this gracefully.</li>
-  </ul>
+environments:
+  production:
+    require_approval_over: 10   # anything above 10 records → human review
+    auto_approve_under:    1
+  staging:
+    auto_approve_under:    500  # staging: auto-approve everything under 500
+  development:
+    require_approval: never</code></pre>
+
+  <h2>What Gate protects against — and what it doesn't</h2>
+
+  <p>Gate is honest about its scope.</p>
+
+  <p><strong>Gate catches:</strong> volume errors (agent writes 5,000 records when it should write 5), field errors (amount of 10000 when policy caps at 100), rate abuse (agent loops and fires 200 API calls in an hour), actions to unauthorized destinations, and duplicate actions (idempotency blocks retries).</p>
+
+  <p><strong>Gate does not catch:</strong> a model that deliberately modifies the policy files it's governed by, semantic mistakes that pass field validation (wrong contact ID that's still a valid string), or actions through channels Gate isn't intercepting.</p>
+
+  <p>Gate is a commit checkpoint, not a jailbreak defense. It reduces the blast radius of agent mistakes — which is the problem that actually destroys production environments.</p>
+
+  <h2>Start in 5 minutes</h2>
+
+  <pre><code>npm install -g zehrava-gate
+
+# Generate an API key and start
+zehrava-gate start --api-key gate_sk_$(openssl rand -hex 20)
+
+# Open the dashboard
+open http://localhost:3001/dashboard</code></pre>
+
+  <p>Drop policy files in <code>./policies/</code>. Gate hot-reloads them. Register your agents via <code>POST /v1/agents/register</code>. Point your agent at Gate with the SDK or proxy. Done.</p>
 
   <hr>
 
   <div class="cta-block">
-    <h3>Add a checkpoint to your agent</h3>
-    <p>Self-hosted, MIT license. Running in 5 minutes. Handles the happy path in under 5ms.</p>
+    <h3>Add a runtime checkpoint to your agent</h3>
+    <p>Self-hosted. MIT license. Audit-ready from the first intent.</p>
     <a href="https://github.com/cgallic/zehrava-gate" class="btn">View on GitHub</a>
     <a href="/docs/" class="btn btn-outline">Read the docs</a>
   </div>
@@ -252,8 +259,8 @@ if (intent.status === 'approved') {
   <div class="related">
     <h3>Related</h3>
     <div class="related-links">
-      <a href="/blog/five-agent-writes-that-needed-a-checkpoint.html" class="related-link">5 real agent writes that needed a checkpoint →</a>
-      <a href="/blog/why-gate-uses-yaml-not-llms.html" class="related-link">Why Gate uses YAML, not LLMs, for policy →</a>
+      <a href="/blog/five-agent-writes-that-needed-a-checkpoint.html" class="related-link">Five agent writes that needed a checkpoint →</a>
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="related-link">Why AI agents need a commit checkpoint →</a>
       <a href="/for/langchain-developers/" class="related-link">Gate for LangChain developers →</a>
       <a href="/for/enterprise-teams/" class="related-link">Gate for enterprise teams →</a>
     </div>

@@ -605,19 +605,15 @@ n    /* ─── HERO TERMINAL GIF ─── */
     Zehrava <span>Gate</span>
   </div>
   <div class="nav-links">
-    <a href="#problem">Problem</a>
-    <a href="/demo" style="color:var(--purple-b);font-weight:700">Live Demo</a>
-    <a href="#how-it-works">How it works</a>
-    <a href="#v3" style="color:var(--purple-b);font-weight:700">V3 Proxy</a>
-    <a href="/demo-dashboard/">Dashboard</a>
-    <a href="#api">API</a>
-    <a href="#pricing">Pricing</a>
+    <a href="/">Zehrava</a>
+    <a href="/index.html">Gate</a>
+    <a href="/run-ledger.html">Run Ledger</a>
+    <a href="/demo" style="color:var(--purple-b);font-weight:700">Demo</a>
+    <a href="/dashboard/">Dashboard</a>
+    <a href="/docs">Docs</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub</a>
   </div>
   <div class="nav-right">
-    <a href="/docs" style="color:var(--muted2);font-size:.875rem;font-weight:500;transition:color 150ms ease-out" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted2)'">Docs</a>
-    <a href="#faq" style="color:var(--muted2);font-size:.875rem;font-weight:500;transition:color 150ms ease-out" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted2)'">FAQ</a>
-    <a href="/blog" style="color:var(--muted2);font-size:.875rem;font-weight:500;transition:color 150ms ease-out" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted2)'">Blog</a>
-    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
     <a href="/demo" class="btn-nav">Get started free</a>
     <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
       <span></span><span></span><span></span>
@@ -627,16 +623,10 @@ n    /* ─── HERO TERMINAL GIF ─── */
 
 <!-- MOBILE MENU -->
 <div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Navigation menu">
-  <a href="#problem" class="m-link">Problem</a>
-  <a href="/demo" class="m-link">Live Demo</a>
-  <a href="#how-it-works" class="m-link">How it works</a>
-  <a href="#v3" class="m-link" style="color:var(--purple-b)">V3 Proxy</a>
-  <a href="/demo-dashboard/" class="m-link">Dashboard</a>
-  <a href="#api" class="m-link">API</a>
-  <a href="#pricing" class="m-link">Pricing</a>
+  <a href="/" class="m-link">Zehrava</a>
+  <a href="/" class="m-link">Gate</a>
+  <a href="/run-ledger.html" class="m-link" style="color:var(--purple-b)">Run Ledger</a>
   <a href="/docs" class="m-link">Docs</a>
-  <a href="#faq" class="m-link">FAQ</a>
-  <a href="/blog" class="m-link">Blog</a>
   <a href="https://github.com/cgallic/zehrava-gate" class="m-link" target="_blank" rel="noopener">GitHub ↗</a>
   <a href="/demo" class="m-cta">Get started free</a>
 </div>
@@ -1028,6 +1018,18 @@ n    /* ─── HERO TERMINAL GIF ─── */
 
 <hr class="divider">
 
+<!-- RUN LEDGER PRODUCT SECTION -->
+<section class="section" style="background:rgba(99,102,241,0.02);border-top:1px solid rgba(99,102,241,0.12);border-bottom:1px solid rgba(99,102,241,0.12);padding:4rem 2.5rem">
+  <div style="max-width:820px;margin:0 auto;text-align:left">
+    <div style="display:inline-flex;align-items:center;gap:0.5rem;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;background:rgba(99,102,241,0.12);color:var(--purple-b);border:1px solid rgba(99,102,241,0.28);padding:0.3rem 0.875rem;border-radius:999px;margin-bottom:1.5rem">Product 2</div>
+    <h2 style="font-size:clamp(1.875rem,3.5vw,2.5rem);font-weight:800;letter-spacing:-0.035em;line-height:1.12;margin-bottom:1rem">Run Ledger</h2>
+    <p style="font-size:1.05rem;color:var(--muted2);line-height:1.75;margin-bottom:1.75rem">Execution continuity for governed agent runs. When a tracked run breaks during approval, execution, or retry, it resumes from the last safe point without replaying side effects.</p>
+    <a href="/run-ledger.html" class="btn-secondary" style="display:inline-flex">Explore Run Ledger →</a>
+  </div>
+</section>
+
+<hr class="divider">
+
 <!-- API -->
 <section class="section" id="api">
   <div class="section-label reveal">API</div>
@@ -1080,6 +1082,14 @@ n    /* ─── HERO TERMINAL GIF ─── */
 <span class="v">p</span> = <span class="v">gate</span>.<span class="fn">propose</span>(payload=<span class="s">"payout_batch.csv"</span>, destination=<span class="s">"netsuite.payout"</span>, policy=<span class="s">"finance-high-risk"</span>)
 <span class="fn">print</span>(p[<span class="s">"status"</span>])  <span class="cm"># pending_approval — always, for finance-high-risk</span>
     </pre>
+  </div>
+
+  <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:1.25rem 1.75rem;margin-top:2rem;max-width:720px">
+    <p style="font-size:0.9rem;color:var(--muted2);line-height:1.75;margin:0">Need continuity across interruption? Use <a href="/run-ledger.html" style="color:var(--purple-b);font-weight:600">Run Ledger</a> for tracked runs.</p>
+  </div>
+
+  <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:12px;padding:1.25rem 1.75rem;margin-top:1.25rem;max-width:720px">
+    <p style="font-size:0.9rem;color:var(--muted2);line-height:1.75;margin:0">Or use the <a href="/dashboard/" style="color:#4ade80;font-weight:600">Dashboard</a> for approvals, audit trails, and run inspection.</p>
   </div>
 </section>
 

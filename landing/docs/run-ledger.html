@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run Ledger — Zehrava Gate</title>
+  <meta name="description" content="Run Ledger adds execution continuity to Zehrava Gate. Interrupted agent runs can resume from checkpoints without replaying side effects.">
+  <meta property="og:image" content="https://zehrava.com/og-image.png">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+      --text: #f1f5f9; --muted: #94a3b8; --muted2: #64748b;
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --red: #f87171; --amber: #f59e0b;
+      --font: "Plus Jakarta Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", monospace;
+      --sidebar-w: 260px;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.7; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      background: rgba(10,15,26,0.92); backdrop-filter: blur(16px);
+    }
+    .hdr-logo { font-size: .95rem; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: .5rem; }
+    .hdr-logo .gate { background: linear-gradient(135deg, #818cf8, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hdr-right { display: flex; gap: 1.5rem; font-size: .875rem; align-items: center; }
+    .hdr-right a { color: var(--muted); transition: color 150ms; }
+    .hdr-right a:hover { color: var(--text); text-decoration: none; }
+    .badge-docs { background: rgba(99,102,241,0.15); color: var(--purple-b); border: 1px solid rgba(99,102,241,0.3); padding: .15rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; padding-top: 57px; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      position: fixed; top: 57px; left: 0; bottom: 0;
+      overflow-y: auto; padding: 2rem 0 4rem;
+      border-right: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    .nav-group { margin-bottom: 2rem; padding: 0 1.25rem; }
+    .nav-group-label { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted2); margin-bottom: .75rem; }
+    .nav-link {
+      display: block; padding: .45rem .75rem; border-radius: 7px;
+      font-size: .875rem; font-weight: 500; color: var(--muted);
+      transition: all 150ms ease-out; margin-bottom: .125rem;
+      text-decoration: none;
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); text-decoration: none; }
+    .nav-link.active { color: var(--purple-b); background: rgba(99,102,241,0.1); font-weight: 700; }
+
+    /* ── CONTENT ── */
+    .content { margin-left: var(--sidebar-w); flex: 1; padding: 3.5rem 3rem 6rem; max-width: 860px; }
+
+    /* ── TYPOGRAPHY ── */
+    h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -.035em; line-height: 1.15; margin-bottom: 1rem; }
+    h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.025em; margin: 3.5rem 0 1rem; padding-top: 3.5rem; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 2rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.015em; margin: 2rem 0 .75rem; color: var(--text); }
+    p { color: var(--muted); margin-bottom: 1.125rem; font-size: .975rem; }
+    p strong { color: var(--text); font-weight: 700; }
+    ul, ol { color: var(--muted); padding-left: 1.5rem; margin-bottom: 1.125rem; }
+    li { font-size: .975rem; margin-bottom: .375rem; }
+    li strong { color: var(--text); }
+    .lead { font-size: 1.1rem; color: var(--muted); line-height: 1.75; margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border); }
+
+    /* ── CODE ── */
+    pre {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.25rem 1.5rem; font-family: var(--mono); font-size: .8rem;
+      line-height: 1.8; overflow-x: auto; white-space: pre; margin: 1.25rem 0;
+      position: relative;
+    }
+    pre .cm { color: #475569; font-style: italic; }
+    pre .k  { color: #e879f9; }
+    pre .s  { color: #86efac; }
+    pre .n  { color: #fbbf24; }
+    pre .fn { color: #60a5fa; }
+    pre .v  { color: #f1f5f9; }
+    pre .key { color: #a78bfa; }
+    pre .val { color: #86efac; }
+    code { font-family: var(--mono); font-size: .82em; color: var(--purple-b); background: rgba(99,102,241,0.1); padding: .15em .4em; border-radius: 4px; }
+    pre code { background: none; padding: 0; color: #a78bfa; font-size: inherit; }
+
+    /* ── CALLOUTS ── */
+    .callout { border-radius: 10px; padding: 1rem 1.25rem; margin: 1.5rem 0; }
+    .callout p { margin: 0; font-size: .9rem; }
+    .callout-info { background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2); }
+    .callout-warn { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); }
+    .callout-warn p { color: #fbbf24; }
+
+    /* ── FIELD TABLE ── */
+    .field-table { width: 100%; border-collapse: collapse; margin: 0; font-size: .875rem; }
+    .field-table th { text-align: left; padding: .625rem .875rem; border-bottom: 1px solid var(--border2); color: var(--muted2); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; background: rgba(255,255,255,0.02); }
+    .field-table td { padding: .75rem .875rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .field-table td:first-child { font-family: var(--mono); font-size: .8rem; color: var(--purple-b); width: 28%; font-weight: 600; }
+    .field-table td:nth-child(2) { width: 15%; color: var(--amber); font-family: var(--mono); font-size: .78rem; }
+    .field-table td:last-child { color: var(--muted); font-size: .875rem; line-height: 1.6; }
+    .field-table tr:last-child td { border-bottom: none; }
+
+    /* ── TABLE SCROLL WRAPPER ── */
+    .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1.25rem 0; border-radius: 8px; }
+    .table-scroll .field-table { margin: 0; min-width: 520px; width: max-content; max-width: 100%; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .hdr-right { display: none; }
+      .content { margin-left: 0; padding: 1.75rem 1.125rem 5rem; min-width: 0; width: 100%; }
+      .layout { display: block; }
+      h1 { font-size: 1.75rem; }
+      h2 { font-size: 1.35rem; padding-top: 2rem; margin: 2rem 0 .75rem; }
+      h3 { font-size: 1rem; }
+      .lead { font-size: .975rem; margin-bottom: 1.75rem; padding-bottom: 1.75rem; }
+      pre { font-size: .72rem; padding: 1rem; border-radius: 8px; }
+      .table-scroll { border: 1px solid var(--border); border-radius: 8px; }
+      .field-table td { font-size: .78rem; padding: .5rem .625rem; }
+    }
+
+    html, body { overflow-x: hidden; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="hdr-logo">
+    <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#0d1117"/><path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/><path d="M74 28 L26 72" stroke="url(#dg)" stroke-width="13" stroke-linecap="round"/><path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/><defs><linearGradient id="dg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs></svg>
+    Zehrava <span class="gate">Gate</span>
+    <span class="badge-docs">Docs</span>
+  </a>
+  <div class="hdr-right">
+    <a href="/">Home</a>
+    <a href="/docs">Docs</a>
+    <a href="/demo">Live demo</a>
+    <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" aria-label="Documentation navigation">
+    <div class="nav-group">
+      <div class="nav-group-label">Run Ledger</div>
+      <a href="#overview" class="nav-link active">Overview</a>
+      <a href="#why" class="nav-link">Why it matters</a>
+      <a href="#how-it-works" class="nav-link">How it works</a>
+      <a href="#event-model" class="nav-link">Event model</a>
+      <a href="#checkpoints" class="nav-link">Checkpoints</a>
+      <a href="#resume-model" class="nav-link">Resume model</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Integration</div>
+      <a href="#start-run" class="nav-link">Start a run</a>
+      <a href="#record-events" class="nav-link">Record events</a>
+      <a href="#create-checkpoint" class="nav-link">Create checkpoint</a>
+      <a href="#resume-run" class="nav-link">Resume run</a>
+      <a href="#code-examples" class="nav-link">Code examples</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Web UI</div>
+      <a href="#dashboard" class="nav-link">Dashboard</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">CLI</div>
+      <a href="#cli-inspect" class="nav-link">inspect</a>
+      <a href="#cli-events" class="nav-link">events</a>
+      <a href="#cli-checkpoint" class="nav-link">checkpoint</a>
+      <a href="#cli-resume" class="nav-link">resume</a>
+      <a href="#cli-verify" class="nav-link">verify</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">API</div>
+      <a href="#api-start" class="nav-link">POST /start</a>
+      <a href="#api-events" class="nav-link">POST /events</a>
+      <a href="#api-checkpoint" class="nav-link">POST /checkpoint</a>
+      <a href="#api-resume" class="nav-link">POST /resume</a>
+      <a href="#api-get" class="nav-link">GET /:runId</a>
+      <a href="#api-verify" class="nav-link">POST /verify</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Reference</div>
+      <a href="#limitations" class="nav-link">Limitations</a>
+      <a href="#integrity" class="nav-link">Integrity model</a>
+    </div>
+  </nav>
+
+  <!-- CONTENT -->
+  <main class="content">
+    <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:10px;padding:0.875rem 1.25rem;margin-bottom:1.5rem;display:inline-block">
+      <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted2);margin-bottom:0.25rem">Product: Run Ledger</div>
+      <div style="font-size:0.78rem;color:var(--muted)">Part of: <span style="color:var(--purple-b);font-weight:600">Gate</span></div>
+    </div>
+    <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);border-radius:8px;padding:0.625rem 1rem;margin-bottom:1.5rem;display:inline-block">
+      <p style="margin:0;font-size:0.82rem;color:#4ade80;font-weight:600">Available now in <code style="font-family:var(--mono);font-size:0.78em;background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px">zehrava-gate@0.3.0</code></p>
+    </div>
+    <div class="badge-docs" style="margin-bottom:1rem;display:inline-block">Feature</div>
+    <h1>Run Ledger</h1>
+    <p class="lead">Run Ledger adds execution continuity to Gate. When an agent run breaks — crash, interruption, approval wait — it can resume from the last valid checkpoint without replaying side effects or losing progress.</p>
+
+    <!-- ── OVERVIEW ── -->
+    <h2 id="overview">What is Run Ledger?</h2>
+    <p>Run Ledger is an execution continuity system for AI agents. It records every meaningful event in an agent's run, creates sealed checkpoints at safe boundaries, and allows interrupted runs to resume without data loss or duplicate side effects.</p>
+    
+    <p>This is not a new workflow engine, memory system, or transcript replay mechanism. It is a boring, reliable execution ledger with checkpointing, resume, and side-effect deduplication.</p>
+
+    <h2 id="why">Why it matters</h2>
+    <p>Agent runs fail for reasons outside the agent's control:</p>
+    <ul>
+      <li>Network interruptions during API calls</li>
+      <li>Server restarts or deploys</li>
+      <li>Human approval required mid-execution</li>
+      <li>Rate limit backoff that exceeds timeout</li>
+      <li>Process crashes or OOM kills</li>
+    </ul>
+    <p>Without Run Ledger, the agent must start over from the beginning. Work already completed is lost. Side effects already executed — emails sent, database writes, API calls — get replayed, causing duplicates.</p>
+    
+    <p>Run Ledger solves this. Interrupted runs resume from the last checkpoint. Side effects are deduplicated. Progress is preserved.</p>
+
+    <h2 id="how-it-works">How it works</h2>
+    <p>Three components work together:</p>
+
+    <h3>1. Ledger — ordered log of events</h3>
+    <p>Every meaningful event in a run is recorded with a sequence number, event type, actor, payload, and side effect class. Events are immutable once recorded. The ledger is the source of truth for what happened during a run.</p>
+
+    <h3>2. Checkpoint — sealed resumable state</h3>
+    <p>At safe boundaries (interruption, approval request, failure), the system seals a checkpoint. The checkpoint contains everything needed to continue: which events were completed, which artifacts were created, which approvals are pending, and which side effects must not be replayed.</p>
+
+    <h3>3. Resume — restore from checkpoint</h3>
+    <p>When the run resumes, the system loads the latest checkpoint, verifies its integrity, and builds a resume context. The agent sees receipts (what happened), artifacts (what was created), and blocked side effects (what must be skipped). Execution continues from the current step.</p>
+
+    <h2 id="event-model">Event model</h2>
+    <p>Run Ledger tracks 18 event types. Events fall into two categories:</p>
+
+    <h3>Progress events</h3>
+    <p>These indicate meaningful work completed. Only progress events update <code>last_safe_event_id</code>:</p>
+
+    <div class="table-scroll"><table class="field-table">
+      <thead><tr><th>Event</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>plan_locked</td><td>Execution plan finalized</td></tr>
+        <tr><td>tool_call_finished</td><td>Tool invocation completes</td></tr>
+        <tr><td>artifact_created</td><td>File or output created</td></tr>
+        <tr><td>policy_checked</td><td>Policy evaluation complete</td></tr>
+        <tr><td>approval_received</td><td>Human approved</td></tr>
+        <tr><td>execution_succeeded</td><td>Execution completed</td></tr>
+        <tr><td>delegation_finished</td><td>Sub-agent completed</td></tr>
+        <tr><td>run_completed</td><td>Run finished successfully</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Non-progress events</h3>
+    <p>These record state transitions but do not count as safe checkpoints:</p>
+
+    <div class="table-scroll"><table class="field-table">
+      <thead><tr><th>Event</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>run_started</td><td>Run begins</td></tr>
+        <tr><td>tool_call_started</td><td>Tool invocation begins</td></tr>
+        <tr><td>intent_proposed</td><td>Gate intent submitted</td></tr>
+        <tr><td>approval_requested</td><td>Human approval needed</td></tr>
+        <tr><td>execution_requested</td><td>Execution order issued</td></tr>
+        <tr><td>delegation_started</td><td>Work delegated to sub-agent</td></tr>
+        <tr><td>checkpoint_sealed</td><td>Checkpoint created</td></tr>
+        <tr><td>interruption_detected</td><td>Run interrupted</td></tr>
+        <tr><td>run_resumed</td><td>Run resumed from checkpoint</td></tr>
+        <tr><td>run_failed</td><td>Run hard failed</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Side effect classes</h3>
+    <p>Each event declares its side effect class. This determines whether the event can be safely replayed on resume:</p>
+
+    <div class="table-scroll"><table class="field-table">
+      <thead><tr><th>Class</th><th>Replayable</th><th>Examples</th></tr></thead>
+      <tbody>
+        <tr><td>none</td><td>✅ Yes</td><td>Pure computation, logging</td></tr>
+        <tr><td>read</td><td>✅ Yes</td><td>Database reads, API GETs</td></tr>
+        <tr><td>write</td><td>⚠️ Maybe</td><td>Local file writes (idempotent)</td></tr>
+        <tr><td>external_mutation</td><td>❌ No</td><td>Database writes, API POSTs</td></tr>
+        <tr><td>payment</td><td>❌ No</td><td>Stripe charges, refunds</td></tr>
+        <tr><td>notification</td><td>❌ No</td><td>Emails, SMS, webhooks</td></tr>
+        <tr><td>delegation</td><td>⚠️ Maybe</td><td>Sub-agent spawns (if idempotent)</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Side effect deduplication</h3>
+    <p>For events marked <code>external_mutation</code>, <code>payment</code>, or <code>notification</code>, the system computes a deduplication key:</p>
+
+    <pre>side_effect_key = SHA-256({ action, target, payloadHash })</pre>
+
+    <p>Before re-executing on resume, the system checks whether this key was already recorded. If found, the event is skipped and marked <code>status = 'skipped'</code>. This prevents double-sends, double-charges, and duplicate database writes.</p>
+
+    <h2 id="checkpoints">Checkpoints</h2>
+    <p>A checkpoint is a sealed snapshot of a run's state at a specific event. Checkpoints are created when:</p>
+    <ul>
+      <li>Interruption detected (crash, timeout)</li>
+      <li>Approval requested (waiting for human review)</li>
+      <li>Explicit handoff to another agent</li>
+      <li>Manual checkpoint via CLI</li>
+    </ul>
+
+    <h3>Checkpoint structure</h3>
+    <p>Each checkpoint contains a resume packet (JSON) and a sealed hash. The hash is computed over:</p>
+    <pre>sealed_hash = SHA-256({
+  checkpointId,
+  ledgerId,
+  eventId,
+  canonicalize(resumePacket),
+  eventHashes
+})</pre>
+
+    <p>Tampering with the checkpoint or its events breaks the hash. Verification fails.</p>
+
+    <h3>Resume packet</h3>
+    <p>The resume packet is everything needed to continue:</p>
+    <pre>{
+  <span class="key">"runId"</span>: <span class="s">"run_abc123"</span>,
+  <span class="key">"ledgerId"</span>: <span class="s">"ledger_xyz789"</span>,
+  <span class="key">"checkpointEventId"</span>: <span class="s">"evt_..."</span>,
+  <span class="key">"currentStep"</span>: <span class="s">"review"</span>,
+  <span class="key">"receipts"</span>: [ ... ],                    <span class="cm">// what happened</span>
+  <span class="key">"artifacts"</span>: [ ... ],                   <span class="cm">// what was created</span>
+  <span class="key">"unresolvedApprovals"</span>: [ ... ],         <span class="cm">// what's blocked</span>
+  <span class="key">"nonReplayableSideEffects"</span>: [ ... ],    <span class="cm">// what must not repeat</span>
+  <span class="key">"suggestedNextAction"</span>: <span class="s">"await_approval_then_execute"</span>,
+  <span class="key">"schemaVersion"</span>: <span class="n">1</span>
+}</pre>
+
+    <h2 id="resume-model">Resume model</h2>
+    <p>Resume flow in five steps:</p>
+
+    <ol>
+      <li>Load latest checkpoint marked <code>is_resumable = 1</code></li>
+      <li>Verify <code>sealed_hash</code> integrity (fails if tampered)</li>
+      <li>Parse <code>resume_packet_json</code></li>
+      <li>Build blocked side effect keys set for fast lookup</li>
+      <li>Emit <code>run_resumed</code> event and update status to <code>active</code></li>
+    </ol>
+
+    <p>The agent receives a resume context object:</p>
+    <pre>{
+  runId,
+  ledgerId,
+  checkpointId,
+  currentStep,
+  receipts,                      <span class="cm">// Array of completed events</span>
+  artifacts,                     <span class="cm">// Array of created files/outputs</span>
+  unresolvedApprovals,           <span class="cm">// Pending human approvals</span>
+  remainingPermissions,          <span class="cm">// What's still allowed</span>
+  blockedSideEffectKeys,         <span class="cm">// Set of keys to skip</span>
+  suggestedNextAction,
+  resumedAt,
+  schemaVersion
+}</pre>
+
+    <p>Before executing any side effect, check the blocked set:</p>
+    <pre><span class="k">if</span> (resumeContext.blockedSideEffectKeys.has(sideEffectKey)) {
+  <span class="cm">// Skip — already executed before interruption</span>
+  <span class="k">return</span>;
+}
+<span class="cm">// Safe to execute</span>
+execute();</pre>
+
+    <!-- ── INTEGRATION ── -->
+    <h2 id="start-run">Integration — Start a run</h2>
+    <p>Before your agent begins work, start a run:</p>
+
+    <h3>JavaScript</h3>
+    <pre><span class="k">const</span> { Gate } = <span class="fn">require</span>(<span class="s">'zehrava-gate'</span>);
+<span class="k">const</span> gate = <span class="k">new</span> <span class="fn">Gate</span>({ endpoint: <span class="s">'http://localhost:4000'</span>, apiKey: <span class="s">'gate_sk_...'</span> });
+
+<span class="k">const</span> run = <span class="k">await</span> gate.<span class="fn">startRun</span>({
+  agentId: <span class="s">'my-agent'</span>,
+  intentSummary: <span class="s">'Enrich leads and sync to Salesforce'</span>,
+  runtime: <span class="s">'zehrava-gate'</span>,
+  permissions: { allowed_tools: [<span class="s">'fetch'</span>, <span class="s">'enrich'</span>, <span class="s">'sync'</span>] }
+});
+
+<span class="cm">// run.runId → "run_abc123"</span></pre>
+
+    <h3>Python</h3>
+    <pre><span class="k">from</span> zehrava_gate <span class="k">import</span> Gate
+
+gate = Gate(endpoint=<span class="s">"http://localhost:4000"</span>, api_key=<span class="s">"gate_sk_..."</span>)
+
+run = gate.start_run(
+    agent_id=<span class="s">"my-agent"</span>,
+    intent_summary=<span class="s">"Enrich leads and sync to Salesforce"</span>,
+    runtime=<span class="s">"zehrava-gate"</span>,
+    permissions={<span class="s">"allowed_tools"</span>: [<span class="s">"fetch"</span>, <span class="s">"enrich"</span>, <span class="s">"sync"</span>]}
+)
+
+<span class="cm"># run["runId"] → "run_abc123"</span></pre>
+
+    <h2 id="record-events">Integration — Record events</h2>
+    <p>As your agent works, record progress events:</p>
+
+    <h3>JavaScript</h3>
+    <pre><span class="k">const</span> { EVENT_TYPES, SIDE_EFFECT_CLASS } = <span class="fn">require</span>(<span class="s">'zehrava-gate/lib/runs'</span>);
+
+<span class="cm">// Tool call finished</span>
+<span class="k">await</span> gate.<span class="fn">recordEvent</span>({
+  runId: run.runId,
+  eventType: EVENT_TYPES.TOOL_CALL_FINISHED,
+  actorId: <span class="s">'my-agent'</span>,
+  stepName: <span class="s">'fetch'</span>,
+  payload: { tool: <span class="s">'fetch_data'</span>, recordsFetched: <span class="n">847</span> },
+  sideEffectClass: SIDE_EFFECT_CLASS.READ
+});
+
+<span class="cm">// Execution succeeded (with deduplication key)</span>
+<span class="k">await</span> gate.<span class="fn">recordEvent</span>({
+  runId: run.runId,
+  eventType: EVENT_TYPES.EXECUTION_SUCCEEDED,
+  actorId: <span class="s">'salesforce-worker'</span>,
+  stepName: <span class="s">'sync'</span>,
+  payload: { executionId: <span class="s">'exe_...'</span>, recordsSynced: <span class="n">847</span> },
+  sideEffectClass: SIDE_EFFECT_CLASS.EXTERNAL_MUTATION,
+  sideEffectKey: <span class="fn">hash</span>.<span class="fn">sideEffectKey</span>(<span class="s">'salesforce.import'</span>, <span class="s">'salesforce'</span>, { batch: <span class="s">'batch-001'</span> })
+});</pre>
+
+    <h3>Python</h3>
+    <pre><span class="k">from</span> zehrava_gate.runs <span class="k">import</span> EVENT_TYPES, SIDE_EFFECT_CLASS
+
+<span class="cm"># Tool call finished</span>
+gate.record_event(
+    run_id=run[<span class="s">"runId"</span>],
+    event_type=EVENT_TYPES.TOOL_CALL_FINISHED,
+    actor_id=<span class="s">"my-agent"</span>,
+    step_name=<span class="s">"fetch"</span>,
+    payload={<span class="s">"tool"</span>: <span class="s">"fetch_data"</span>, <span class="s">"recordsFetched"</span>: <span class="n">847</span>},
+    side_effect_class=SIDE_EFFECT_CLASS.READ
+)</pre>
+
+    <h2 id="create-checkpoint">Integration — Create checkpoint</h2>
+    <p>Create a checkpoint manually or on interruption:</p>
+
+    <h3>JavaScript</h3>
+    <pre><span class="k">const</span> checkpoint = <span class="k">await</span> gate.<span class="fn">createCheckpoint</span>({
+  runId: run.runId,
+  reason: <span class="s">'approval_requested'</span>,
+  suggestedNextAction: <span class="s">'await_approval_then_execute'</span>
+});
+
+<span class="cm">// checkpoint.checkpointId → "ckpt_xyz789"</span>
+<span class="cm">// checkpoint.isResumable → true</span>
+<span class="cm">// checkpoint.sealedHash → "abc123..."</span></pre>
+
+    <h3>Python</h3>
+    <pre>checkpoint = gate.create_checkpoint(
+    run_id=run[<span class="s">"runId"</span>],
+    reason=<span class="s">"approval_requested"</span>,
+    suggested_next_action=<span class="s">"await_approval_then_execute"</span>
+)</pre>
+
+    <h2 id="resume-run">Integration — Resume run</h2>
+    <p>Resume from the latest checkpoint:</p>
+
+    <h3>JavaScript</h3>
+    <pre><span class="k">const</span> ctx = <span class="k">await</span> gate.<span class="fn">resumeRun</span>({ runId: run.runId });
+
+<span class="cm">// ctx.receipts → what happened before interruption</span>
+<span class="cm">// ctx.artifacts → files created</span>
+<span class="cm">// ctx.unresolvedApprovals → pending approvals</span>
+<span class="cm">// ctx.blockedSideEffectKeys → Set of keys to skip</span>
+<span class="cm">// ctx.suggestedNextAction → where to continue</span>
+
+<span class="k">if</span> (ctx.blockedSideEffectKeys.has(mySideEffectKey)) {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="s">'Already executed — skipping'</span>);
+} <span class="k">else</span> {
+  <span class="fn">execute</span>();
+}</pre>
+
+    <h3>Python</h3>
+    <pre>ctx = gate.resume_run(run_id=run[<span class="s">"runId"</span>])
+
+<span class="k">if</span> my_side_effect_key <span class="k">in</span> ctx[<span class="s">"blockedSideEffectKeys"</span>]:
+    <span class="fn">print</span>(<span class="s">"Already executed — skipping"</span>)
+<span class="k">else</span>:
+    execute()</pre>
+
+    <h2 id="code-examples">Code examples</h2>
+    <p>Full example showing interruption and resume:</p>
+    <pre><span class="cm">// See examples/interrupted_intent_run_resume.js in the repo</span>
+
+<span class="k">const</span> run = <span class="k">await</span> gate.<span class="fn">startRun</span>({ ... });
+
+<span class="cm">// Execute work</span>
+<span class="k">await</span> gate.<span class="fn">recordEvent</span>({ eventType: EVENT_TYPES.TOOL_CALL_FINISHED, ... });
+<span class="k">await</span> gate.<span class="fn">recordEvent</span>({ eventType: EVENT_TYPES.ARTIFACT_CREATED, ... });
+
+<span class="cm">// Propose intent</span>
+<span class="k">const</span> intent = <span class="k">await</span> gate.<span class="fn">propose</span>({ ... });
+
+<span class="cm">// Simulate crash</span>
+<span class="k">await</span> gate.<span class="fn">recordEvent</span>({ eventType: EVENT_TYPES.INTERRUPTION_DETECTED, ... });
+<span class="k">const</span> checkpoint = <span class="k">await</span> gate.<span class="fn">createCheckpoint</span>({ reason: <span class="s">'interruption'</span> });
+
+<span class="cm">// ... time passes, system restarts ...</span>
+
+<span class="cm">// Resume</span>
+<span class="k">const</span> ctx = <span class="k">await</span> gate.<span class="fn">resumeRun</span>({ runId: run.runId });
+
+<span class="cm">// Continue from where we left off</span>
+<span class="k">if</span> (ctx.unresolvedApprovals.length > <span class="n">0</span>) {
+  <span class="k">await</span> <span class="fn">waitForApproval</span>(ctx.unresolvedApprovals[<span class="n">0</span>].intentId);
+}
+
+<span class="cm">// Execute — side effects are deduplicated automatically</span>
+<span class="k">await</span> gate.<span class="fn">execute</span>({ intentId: intent.intentId });</pre>
+
+    <!-- ── DASHBOARD ── -->
+    <h2 id="dashboard">Dashboard</h2>
+    <p>View run history, checkpoints, and audit trails in the web UI:</p>
+    
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.75rem;margin:1.5rem 0;box-shadow:0 4px 12px rgba(0,0,0,0.2)">
+      <p style="font-size:0.95rem;color:var(--muted);line-height:1.75;margin-bottom:1.25rem">The Dashboard provides a visual interface for monitoring tracked runs without CLI commands. View pending approvals, inspect checkpoints, review execution history, and track resumable runs — all in your browser.</p>
+      <a href="/dashboard/" style="display:inline-flex;align-items:center;gap:0.5rem;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:0.75rem 1.5rem;border-radius:8px;font-weight:700;font-size:0.95rem;text-decoration:none;box-shadow:0 0 0 1px rgba(34,197,94,0.3);transition:opacity 150ms">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>
+        Open Dashboard
+      </a>
+    </div>
+
+    <!-- ── CLI ── -->
+    <h2 id="cli-inspect">CLI — inspect</h2>
+    <p>Show run details including events, checkpoints, and resumability:</p>
+    <pre>zehrava-gate runs inspect run_abc123</pre>
+    <pre>Run: run_abc123
+────────────────────────────────────────────
+Status:              active
+Intent:              Enrich leads and sync to Salesforce
+Current Step:        review
+Agent:               lead-enrichment-agent
+Runtime:             zehrava-gate
+
+Events:              12
+Checkpoints:         1
+Artifacts:           1
+Unresolved Approvals: 1
+Blocked Side Effects: 2
+
+Last Safe Event:     evt_xyz789
+Latest Checkpoint:   ckpt_abc123
+Resumable:           Yes
+Lineage Valid:       Yes
+
+Created:             2026-03-22T10:00:00.000Z
+Updated:             2026-03-22T10:05:30.000Z</pre>
+
+    <h2 id="cli-events">CLI — events</h2>
+    <p>List all events for a run in sequence:</p>
+    <pre>zehrava-gate runs events run_abc123</pre>
+    <pre>Events for run: run_abc123
+────────────────────────────────────────────────────────────────────────────────────
+Seq  Event Type                   Actor                    Status      Side Effect
+────────────────────────────────────────────────────────────────────────────────────
+  1  run_started                  my-agent                 recorded    none
+  2  plan_locked                  my-agent                 recorded    none
+  3  tool_call_started            my-agent                 recorded    read
+  4  tool_call_finished           my-agent                 recorded    read
+  5  tool_call_started            my-agent                 recorded    write
+  6  tool_call_finished           my-agent                 recorded    write
+  7  artifact_created             my-agent                 recorded    none
+  8  intent_proposed              my-agent                 recorded    none
+  9  policy_checked               gate                     recorded    none
+ 10  approval_requested           my-agent                 recorded    none
+ 11  interruption_detected        system                   recorded    none
+ 12  checkpoint_sealed            system                   recorded    none</pre>
+
+    <h2 id="cli-checkpoint">CLI — checkpoint</h2>
+    <p>Create a checkpoint manually:</p>
+    <pre>zehrava-gate runs checkpoint run_abc123</pre>
+    <pre>Checkpoint created: ckpt_xyz789
+Sealed Hash:        abc123def456...
+Resumable:          Yes
+Reason:             manual</pre>
+
+    <h2 id="cli-resume">CLI — resume</h2>
+    <p>Resume from the latest checkpoint:</p>
+    <pre>zehrava-gate runs resume run_abc123</pre>
+    <pre>Resumed run: run_abc123
+────────────────────────────────────────────
+Checkpoint:          ckpt_xyz789
+Current Step:        review
+Receipts:            7
+Artifacts:           1
+Unresolved Approvals: 1
+Blocked Side Effects: 2
+Suggested Next:      await_approval_then_execute</pre>
+
+    <h2 id="cli-verify">CLI — verify</h2>
+    <p>Verify run and checkpoint integrity:</p>
+    <pre>zehrava-gate runs verify run_abc123</pre>
+    <pre>Verification for run: run_abc123
+────────────────────────────────────────────
+Ledger Integrity:     Valid
+Checkpoint Integrity: Valid
+Lineage Continuity:   Valid
+
+Total Checkpoints:    1
+Valid Checkpoints:    1</pre>
+
+    <!-- ── API ── -->
+    <h2 id="api-start">API — POST /internal/runs/start</h2>
+    <p>Start a new run. Returns run ID and ledger ID.</p>
+    <pre><span class="k">POST</span> /internal/runs/start
+Content-Type: application/json
+
+{
+  <span class="key">"agentId"</span>: <span class="s">"my-agent"</span>,
+  <span class="key">"intentSummary"</span>: <span class="s">"Enrich leads and sync to Salesforce"</span>,
+  <span class="key">"runtime"</span>: <span class="s">"zehrava-gate"</span>,
+  <span class="key">"parentRunId"</span>: <span class="s">"run_parent"</span>,              <span class="cm">// optional</span>
+  <span class="key">"permissions"</span>: { <span class="key">"allowed_tools"</span>: [<span class="s">"..."</span>] }
+}</pre>
+
+    <p>Response:</p>
+    <pre>{
+  <span class="key">"runId"</span>: <span class="s">"run_abc123"</span>,
+  <span class="key">"ledgerId"</span>: <span class="s">"ledger_xyz789"</span>,
+  <span class="key">"status"</span>: <span class="s">"active"</span>,
+  <span class="key">"createdAt"</span>: <span class="s">"2026-03-22T10:00:00.000Z"</span>
+}</pre>
+
+    <h2 id="api-events">API — POST /internal/runs/:runId/events</h2>
+    <p>Record an event for a run.</p>
+    <pre><span class="k">POST</span> /internal/runs/run_abc123/events
+Content-Type: application/json
+
+{
+  <span class="key">"eventType"</span>: <span class="s">"tool_call_finished"</span>,
+  <span class="key">"actorId"</span>: <span class="s">"my-agent"</span>,
+  <span class="key">"stepName"</span>: <span class="s">"fetch"</span>,
+  <span class="key">"payload"</span>: { <span class="key">"tool"</span>: <span class="s">"fetch_data"</span>, <span class="key">"recordsFetched"</span>: <span class="n">847</span> },
+  <span class="key">"sideEffectClass"</span>: <span class="s">"read"</span>,
+  <span class="key">"sideEffectKey"</span>: <span class="s">"abc123..."</span>           <span class="cm">// optional</span>
+}</pre>
+
+    <p>Response:</p>
+    <pre>{
+  <span class="key">"eventId"</span>: <span class="s">"evt_def456"</span>,
+  <span class="key">"seq"</span>: <span class="n">4</span>,
+  <span class="key">"eventType"</span>: <span class="s">"tool_call_finished"</span>,
+  <span class="key">"status"</span>: <span class="s">"recorded"</span>,
+  <span class="key">"createdAt"</span>: <span class="s">"2026-03-22T10:01:00.000Z"</span>
+}</pre>
+
+    <h2 id="api-checkpoint">API — POST /internal/runs/:runId/checkpoint</h2>
+    <p>Create a checkpoint for a run.</p>
+    <pre><span class="k">POST</span> /internal/runs/run_abc123/checkpoint
+Content-Type: application/json
+
+{
+  <span class="key">"eventId"</span>: <span class="s">"evt_xyz789"</span>,                  <span class="cm">// optional — defaults to most recent</span>
+  <span class="key">"reason"</span>: <span class="s">"approval_requested"</span>,
+  <span class="key">"suggestedNextAction"</span>: <span class="s">"await_approval_then_execute"</span>
+}</pre>
+
+    <p>Response:</p>
+    <pre>{
+  <span class="key">"checkpointId"</span>: <span class="s">"ckpt_abc123"</span>,
+  <span class="key">"sealedHash"</span>: <span class="s">"abc123def456..."</span>,
+  <span class="key">"isResumable"</span>: <span class="k">true</span>,
+  <span class="key">"createdAt"</span>: <span class="s">"2026-03-22T10:05:30.000Z"</span>
+}</pre>
+
+    <h2 id="api-resume">API — POST /internal/runs/:runId/resume</h2>
+    <p>Resume from the latest checkpoint.</p>
+    <pre><span class="k">POST</span> /internal/runs/run_abc123/resume
+Content-Type: application/json
+
+{
+  <span class="key">"fromCheckpointId"</span>: <span class="s">"ckpt_abc123"</span>        <span class="cm">// optional — defaults to latest</span>
+}</pre>
+
+    <p>Response:</p>
+    <pre>{
+  <span class="key">"runId"</span>: <span class="s">"run_abc123"</span>,
+  <span class="key">"checkpointId"</span>: <span class="s">"ckpt_abc123"</span>,
+  <span class="key">"currentStep"</span>: <span class="s">"review"</span>,
+  <span class="key">"receipts"</span>: [ ... ],
+  <span class="key">"artifacts"</span>: [ ... ],
+  <span class="key">"unresolvedApprovals"</span>: [ ... ],
+  <span class="key">"blockedSideEffectKeys"</span>: [ <span class="s">"abc123..."</span>, <span class="s">"def456..."</span> ],
+  <span class="key">"suggestedNextAction"</span>: <span class="s">"await_approval_then_execute"</span>,
+  <span class="key">"resumedAt"</span>: <span class="s">"2026-03-22T11:00:00.000Z"</span>
+}</pre>
+
+    <h2 id="api-get">API — GET /internal/runs/:runId</h2>
+    <p>Get full run details including events, checkpoints, and artifacts.</p>
+    <pre><span class="k">GET</span> /internal/runs/run_abc123</pre>
+
+    <p>Response:</p>
+    <pre>{
+  <span class="key">"run"</span>: {
+    <span class="key">"runId"</span>: <span class="s">"run_abc123"</span>,
+    <span class="key">"ledgerId"</span>: <span class="s">"ledger_xyz789"</span>,
+    <span class="key">"agentId"</span>: <span class="s">"my-agent"</span>,
+    <span class="key">"intentSummary"</span>: <span class="s">"Enrich leads and sync to Salesforce"</span>,
+    <span class="key">"status"</span>: <span class="s">"active"</span>,
+    <span class="key">"currentStep"</span>: <span class="s">"review"</span>,
+    <span class="key">"lastSafeEventId"</span>: <span class="s">"evt_xyz789"</span>,
+    <span class="key">"createdAt"</span>: <span class="s">"2026-03-22T10:00:00.000Z"</span>,
+    <span class="key">"updatedAt"</span>: <span class="s">"2026-03-22T10:05:30.000Z"</span>
+  },
+  <span class="key">"events"</span>: [ ... ],
+  <span class="key">"checkpoints"</span>: [ ... ],
+  <span class="key">"artifacts"</span>: [ ... ],
+  <span class="key">"resumableCheckpoints"</span>: [ <span class="s">"ckpt_abc123"</span> ]
+}</pre>
+
+    <h2 id="api-verify">API — POST /internal/runs/:runId/verify</h2>
+    <p>Verify run and checkpoint integrity.</p>
+    <pre><span class="k">POST</span> /internal/runs/run_abc123/verify</pre>
+
+    <p>Response:</p>
+    <pre>{
+  <span class="key">"runId"</span>: <span class="s">"run_abc123"</span>,
+  <span class="key">"ledgerIntegrity"</span>: {
+    <span class="key">"valid"</span>: <span class="k">true</span>,
+    <span class="key">"hash"</span>: <span class="s">"abc123..."</span>
+  },
+  <span class="key">"checkpointIntegrity"</span>: {
+    <span class="key">"valid"</span>: <span class="k">true</span>,
+    <span class="key">"checkpoints"</span>: [
+      { <span class="key">"checkpointId"</span>: <span class="s">"ckpt_abc123"</span>, <span class="key">"valid"</span>: <span class="k">true</span> }
+    ]
+  },
+  <span class="key">"lineageContinuity"</span>: {
+    <span class="key">"valid"</span>: <span class="k">true</span>,
+    <span class="key">"parentRunId"</span>: <span class="k">null</span>
+  }
+}</pre>
+
+    <!-- ── REFERENCE ── -->
+    <h2 id="limitations">Limitations</h2>
+    <p>Run Ledger v1 has seven known limitations:</p>
+
+    <h3>1. No cross-runtime portability</h3>
+    <p>Resume packets are Zehrava-specific. No protocol or spec for other runtimes.</p>
+
+    <h3>2. No distributed consensus</h3>
+    <p>Checkpoints are stored in local SQLite. Multi-node deployments need external coordination.</p>
+
+    <h3>3. Manual review fallback only</h3>
+    <p>If checkpoint verification fails, the run is marked <code>manual_review_required</code>. No auto-repair.</p>
+
+    <h3>4. No automated pruning</h3>
+    <p>Old runs, events, and checkpoints accumulate. Operator must clean up manually.</p>
+
+    <h3>5. No transactional writes</h3>
+    <p>Events are recorded individually. Interruption mid-checkpoint could leave partial state.</p>
+
+    <h3>6. No UI</h3>
+    <p>Dashboard not built. CLI-only inspect and resume.</p>
+
+    <h3>7. No policy-driven checkpointing</h3>
+    <p>Checkpoint triggers are manual or event-based. No automatic "checkpoint every N progress events" policy.</p>
+
+    <div class="callout callout-warn">
+      <p>⚠ <strong>Run Ledger is opt-in.</strong> Agents must call <code>startRun</code> and <code>recordEvent</code> to be tracked. Runs that do not integrate with Run Ledger cannot use execution continuity.</p>
+    </div>
+
+    <h2 id="integrity">Integrity model</h2>
+    <p>Two types of integrity verification:</p>
+
+    <h3>Ledger integrity hash</h3>
+    <p>Computed once at run creation:</p>
+    <pre>integrity_hash = SHA-256({
+  runId,
+  agentId,
+  intentSummary,
+  schemaVersion
+})</pre>
+    <p>Stored in <code>run_ledgers.integrity_hash</code>. Verifies run identity.</p>
+
+    <h3>Checkpoint sealed hash</h3>
+    <p>Computed at checkpoint creation:</p>
+    <pre>sealed_hash = SHA-256({
+  checkpointId,
+  ledgerId,
+  eventId,
+  canonicalize(resumePacket),
+  eventHashes: events.map(e =&gt; SHA-256({ e.id, e.seq, e.type, e.payload }))
+})</pre>
+    <p>Stored in <code>run_checkpoints.sealed_hash</code>. Verifies checkpoint has not been tampered with.</p>
+
+    <h3>Canonical serialization</h3>
+    <p>Before hashing any object:</p>
+    <ol>
+      <li>Sort keys recursively</li>
+      <li>Remove <code>undefined</code> values</li>
+      <li>Serialize to JSON</li>
+    </ol>
+    <p>This ensures stable hashes across key-order differences.</p>
+
+    <div class="callout callout-info">
+      <p><strong>Verification in production:</strong> Run <code>zehrava-gate runs verify &lt;runId&gt;</code> to check integrity. If verification fails, the checkpoint cannot be trusted. Mark the run <code>manual_review_required</code> and investigate.</p>
+    </div>
+
+    <p style="margin-top:3rem;padding-top:3rem;border-top:1px solid var(--border);color:var(--muted2);font-size:.875rem">
+      Run Ledger is internal to Gate. The <code>/internal/runs/*</code> endpoints are not part of the public API surface and may change.
+    </p>
+
+  </main>
+</div>
+
+<script>
+  // Scrollspy
+  const sections = document.querySelectorAll('h2[id], h3[id]')
+  const navLinks = document.querySelectorAll('.nav-link')
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'))
+        document.querySelectorAll(`.nav-link[href="#${e.target.id}"]`).forEach(l => l.classList.add('active'))
+      }
+    })
+  }, { rootMargin: '-20% 0px -75% 0px' })
+  sections.forEach(s => obs.observe(s))
+</script>
+
+</body>
+</html>
