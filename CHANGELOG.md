@@ -41,6 +41,14 @@ Approval protocol overhaul (July 2026):
   handling. Verified against the twilio-labs reference gateway with a real
   WebAuthn passkey. The pre-spec payload remains available as
   `wire_format: gate-legacy`. Runnable example in `examples/ola-a2h/`.
+- **A2H Layer 2 proposal + reference implementation** —
+  [`docs/a2h-layer2-proposal.md`](docs/a2h-layer2-proposal.md) drafts the
+  authority & policy layer A2H v1.0 defers (POLICY, REVOKE, DELEGATE, SCOPE,
+  multi-party, conditional defaults) and introduces the Enforcer role.
+  `POST /v1/a2h/layer2` accepts POLICY / REVOKE / DELEGATE in that wire
+  format and maps them onto standing approvals and delegations, failing
+  closed (`ERR.UNSUPPORTED_CONDITION`) on any condition Gate can't enforce
+  exactly. Advertised in `/.well-known/gate` and `/.well-known/a2h`.
 
 ### Changed
 - A verified provider **decline** is now honoured even when it carries none

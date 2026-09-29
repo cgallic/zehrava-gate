@@ -99,6 +99,26 @@ router.post('/delegations/:id/revoke', authenticate, (req, res) => {
   res.json({ id: req.params.id, revoked: true });
 });
 
+// ── A2H Layer 2 (draft) ─────────────────────────────────────────────────
+// POLICY / REVOKE / DELEGATE messages in Zehrava's proposed A2H Layer 2 wire
+// format (docs/a2h-layer2-proposal.md), mapped onto the endpoints above.
+
+// POST /v1/a2h/layer2
+router.post('/a2h/layer2', authenticate, (req, res) => {
+  if (!requireReviewer(req, res)) return;
+  const { handleLayer2Message } = require('../lib/a2h-layer2');
+  const outcome = handleLayer2Message(req.body, { actor: req.agent.name });
+  if (outcome.result && !outcome.body.duplicate) {
+    logEvent(null, `a2h_layer2_${outcome.type.toLowerCase()}`, req.agent.name, {
+      messageId: req.body.message_id,
+      principalId: req.body.principal_id || null,
+      evidenceFactor: req.body.evidence?.factor || null,
+      result: { kind: outcome.result.kind, policyId: outcome.result.policy_id, delegationId: outcome.result.delegation_id, target: outcome.result.target },
+    });
+  }
+  res.status(outcome.httpStatus).json(outcome.body);
+});
+
 // ── Approval-provider session revocation ────────────────────────────────
 // Cancels every still-pending/waiting approval interaction dispatched
 // through a given provider — e.g. "KaiCalls credentials may be
