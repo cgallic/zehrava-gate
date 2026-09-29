@@ -1,8 +1,9 @@
 # Demo policy showing the A2H/Ola bridge provider (issue #7). Unlike
-# kaicalls, this provider expects the external gateway to call back
-# POST /v1/approval-callbacks/a2h with its own signed decision — configure
-# GATE_PROVIDER_SECRET_A2H to verify it. Not wired into any real production
-# destination — placeholder gateway URL.
+# kaicalls, the external gateway issues its own signed decision: Gate sends
+# an A2H v1.0 AUTHORIZE and verifies the gateway's RESPONSE (webhook signed
+# with GATE_PROVIDER_SECRET_A2H, or a status poll). Not wired into any real
+# production destination — placeholder gateway URL. For a runnable version
+# against a local gateway, see examples/ola-a2h/.
 id: a2h-bridge-demo
 require_approval: always
 destinations:

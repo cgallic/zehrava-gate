@@ -1,0 +1,38 @@
+# Refunds need a human, reached over Twilio Ola (or any A2H v1.0 gateway).
+#
+# Gate decides *whether* a human is needed and what may execute; Ola decides
+# *how* to reach them (SMS, WhatsApp, voice, passkey) and returns a signed
+# answer. Point gateway_url at Ola, the twilio-labs reference gateway, or the
+# local mock in ../mock-gateway.js.
+id: ola-refunds
+require_approval: always
+destinations:
+  - stripe.refund
+expiry_minutes: 15
+approval_channel:
+  provider: a2h
+  a2h:
+    gateway_url: "http://localhost:4100"
+    gateway_id: ola-mock
+    agent_id: "did:web:refund-agent.example.com"
+    channel:
+      type: sms
+      address: "tel:+15555550100"
+    # Verify the gateway's JWS on every RESPONSE, and refuse unsigned ones.
+    jwks_uri: "http://localhost:4100/.well-known/jwks.json"
+    require_jws: true
+    # A2H requires HTTPS callback URLs, so by default Gate only asks for a
+    # webhook when its own URL is https:// and polls otherwise. The local
+    # demo runs on http://localhost, so force the webhook on.
+    webhook: always
+    # Poll /v1/status as a fallback if a webhook never arrives.
+    poll: true
+    poll_interval_sec: 2
+# Evidence Gate requires before it treats the answer as an approval,
+# by the intent's computed risk level. Human factors (passkey, OTP) are
+# attested by the gateway; a2h.* factors are what Gate verified itself.
+assurance:
+  low: [a2h.signed_response.v1]
+  medium: [a2h.signed_response.v1]
+  high: [a2h.signed_response.v1, passkey.webauthn.v1]
+  critical: [a2h.signed_response.v1, a2h.jws.v1, passkey.webauthn.v1]

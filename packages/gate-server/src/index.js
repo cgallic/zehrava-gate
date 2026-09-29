@@ -337,6 +337,10 @@ app.listen(PORT, () => {
   console.log(`Zehrava Gate running on port ${PORT}`);
   console.log(`Base URL: ${BASE_URL}`);
 
+  // Re-arm status polling for A2H approvals that were open at shutdown.
+  const resumed = require('./lib/a2h-poller').resumePending();
+  if (resumed) console.log(`[gate] Resumed A2H status polling for ${resumed} open approval(s)`);
+
   // Start V3 proxy if PROXY_API_KEY is set
   if (process.env.PROXY_API_KEY) {
     // Initialize CA for TLS intercept (generates once, loads on subsequent starts)

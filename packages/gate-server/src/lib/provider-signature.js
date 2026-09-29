@@ -47,8 +47,13 @@ function timingSafeEqualHex(a, b) {
   }
 }
 
-function verifyProviderSignature({ provider, header, rawBody, toleranceSec = DEFAULT_TOLERANCE_SEC }) {
-  const secret = getProviderSecret(provider);
+// timestampUnit: 'ms' for Gate's own X-Gate-Provider-Signature contract,
+// 's' for A2H's X-A2H-Signature (spec §1.12.4 uses unix seconds). The HMAC
+// always covers the literal `t` value, so only the freshness check differs.
+// `secret` overrides the provider-wide env secret (A2H derives one per
+// interaction — see lib/a2h-protocol.js deriveCallbackSecret).
+function verifyProviderSignature({ provider, header, rawBody, toleranceSec = DEFAULT_TOLERANCE_SEC, timestampUnit = 'ms', secret: explicitSecret }) {
+  const secret = explicitSecret || getProviderSecret(provider);
   if (!secret) return { valid: false, reason: 'provider_secret_not_configured' };
 
   const parsed = parseSignatureHeader(header);
@@ -57,10 +62,11 @@ function verifyProviderSignature({ provider, header, rawBody, toleranceSec = DEF
   const expected = computeSignature(secret, parsed.t, rawBody || '');
   if (!timingSafeEqualHex(expected, parsed.v1)) return { valid: false, reason: 'signature_invalid' };
 
-  const drift = Math.abs(Date.now() - parseInt(parsed.t, 10));
+  const tMs = parseInt(parsed.t, 10) * (timestampUnit === 's' ? 1000 : 1);
+  const drift = Math.abs(Date.now() - tMs);
   if (Number.isNaN(drift) || drift > toleranceSec * 1000) return { valid: false, reason: 'signature_timestamp_stale' };
 
   return { valid: true };
 }
 
-module.exports = { getProviderSecret, computeSignature, verifyProviderSignature };
+module.exports = { getProviderSecret, computeSignature, parseSignatureHeader, verifyProviderSignature };

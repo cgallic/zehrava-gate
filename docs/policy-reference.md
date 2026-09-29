@@ -112,6 +112,33 @@ approval_channel:             # route the approval request to a provider
     voice_call: true
 ```
 
+To reach the human through **Twilio Ola** or any other
+[A2H v1.0](https://github.com/twilio-labs/Agent2Human) gateway, use the
+`a2h` provider. Gate decides whether a human is needed; the gateway
+delivers the request (SMS, WhatsApp, voice, passkey) and returns a signed
+answer, which Gate verifies and binds to the exact intent before issuing an
+execution order:
+
+```yaml
+approval_channel:
+  provider: a2h
+  a2h:
+    gateway_url: "https://gateway.example.com"   # base URL (or .../v1/intent)
+    agent_id: "did:web:agent.example.com"
+    channel: { type: sms, address: "tel:+15551234567" }
+    jwks_uri: "https://gateway.example.com/.well-known/jwks.json"
+    require_jws: true           # reject RESPONSEs without a valid gateway JWS
+    poll: true                  # poll /v1/status if no webhook arrives
+assurance:                      # evidence required to approve, by risk level
+  high: [a2h.signed_response.v1, passkey.webauthn.v1]
+```
+
+Set `A2H_GATEWAY_API_KEY` (outbound auth) and `GATE_PROVIDER_SECRET_A2H`
+(Gate derives a per-interaction `callback.secret` from it to verify
+`X-A2H-Signature` webhooks). Webhooks are requested only when Gate's
+`BASE_URL` is HTTPS, as A2H requires (`webhook: always|never` overrides);
+otherwise Gate polls. Walkthrough: [`examples/ola-a2h/`](../examples/ola-a2h/).
+
 See the annotated demo policies in [`policies/`](../policies/) —
 `finance-quorum-demo.yaml`, `defer-on-timeout-demo.yaml`,
 `email-send-typed-profile-demo.yaml`,

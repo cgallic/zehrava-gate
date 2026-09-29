@@ -496,6 +496,20 @@ router.post('/intents/:id/cancel-approval', authenticate, (req, res) => {
   logEvent(proposalId, 'approval_cancelled', req.agent.name, { reason: reason || null });
   fireWebhook(proposalId, 'approval_cancelled', { reason: reason || null, actor: req.agent.name });
 
+  // Close the ledger interaction too, and tell an A2H gateway to stop
+  // prompting the human (spec §1.7 cancel). Best effort, off the response.
+  const interaction = getLatestInteractionForIntent(proposalId);
+  if (interaction && [INTERACTION_STATES.PENDING, INTERACTION_STATES.SENT, INTERACTION_STATES.WAITING_INPUT].includes(interaction.state)) {
+    updateInteractionState(interaction.id, INTERACTION_STATES.CANCELLED);
+    if (interaction.provider === 'a2h') {
+      require('../lib/a2h-poller').stop(interaction.id);
+      const policyForCancel = loadPolicy(proposal.policy_id);
+      require('../lib/approval-providers/a2h').cancel(interaction, policyForCancel)
+        .then((r) => logEvent(proposalId, 'approval_channel_cancel_sent', 'system', { provider: 'a2h', cancelled: r.cancelled, note: r.note || r.error || null }))
+        .catch(() => {});
+    }
+  }
+
   res.json({ status: 'blocked', approvalState: APPROVAL_STATES.CANCELLED, reason: reason || null });
 });
 
@@ -620,6 +634,9 @@ router.post('/webhooks/register', authenticate, (req, res) => {
 //          X-Gate-Provider-Delivery-ID: <unique-per-delivery>  (optional but recommended)
 // Body: { intent_id, gate_approval_interaction_id?, responds_to, decision,
 //         decided_at, approved_intent_hash, evidence: { factors, proof } }
+//
+// POST /v1/approval-callbacks/a2h with an X-A2H-Signature header is the A2H
+// v1.0 webhook variant instead (spec §1.12) — see handleA2HSpecCallback.
 
 function recordDelivery(provider, deliveryId, intentId) {
   if (!deliveryId) return { duplicate: false };
@@ -632,7 +649,266 @@ function recordDelivery(provider, deliveryId, intentId) {
   }
 }
 
-router.post('/approval-callbacks/:provider', (req, res) => {
+// Shared decision verifier for every externally-issued decision — generic
+// signed callbacks, A2H spec webhooks and A2H status polls all end here, so
+// the binding checks (interaction, provider, responds_to, intent hash,
+// expiry, required factors) can never drift between transports. Callers
+// have already authenticated the transport (HMAC, JWS, or an authenticated
+// poll to the configured gateway). Returns { httpStatus, body }.
+function applyProviderDecision({
+  providerName,
+  intentId,
+  interactionId,
+  respondsTo,
+  decision,
+  decidedAt,
+  approvedIntentHash,
+  suppliedFactors = [],
+  proof = null,
+  reason,
+  checkDecidedAt = true,
+}) {
+  const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(intentId);
+  if (!proposal) return { httpStatus: 404, body: { error: 'intent_not_found' } };
+
+  const interaction = interactionId ? getInteraction(interactionId) : getLatestInteractionForIntent(intentId);
+  if (!interaction || interaction.intentId !== intentId) {
+    return { httpStatus: 404, body: { error: 'approval_interaction_not_found' } };
+  }
+  if (interaction.provider !== providerName) {
+    return { httpStatus: 409, body: { error: 'provider_mismatch', expected: interaction.provider, got: providerName } };
+  }
+  if (![INTERACTION_STATES.PENDING, INTERACTION_STATES.SENT, INTERACTION_STATES.WAITING_INPUT].includes(interaction.state)) {
+    return { httpStatus: 409, body: { error: 'interaction_not_pending', state: interaction.state } };
+  }
+
+  const interactionError = guardApprovalInteraction(proposal);
+  if (interactionError) return interactionError;
+
+  const expectedRespondsTo = proposal.message_id || proposal.id;
+  if (respondsTo !== undefined && respondsTo !== expectedRespondsTo) {
+    return { httpStatus: 409, body: { error: 'responds_to_mismatch', expected: expectedRespondsTo } };
+  }
+
+  const currentHash = canonicalIntentHash(proposal);
+  if (approvedIntentHash !== undefined && approvedIntentHash !== currentHash) {
+    return { httpStatus: 409, body: { error: 'approved_intent_hash_mismatch' } };
+  }
+
+  if (checkDecidedAt && decidedAt !== undefined) {
+    const tsCheck = checkTimestampTolerance(decidedAt);
+    if (!tsCheck.valid) return { httpStatus: 409, body: { error: 'replay_rejected', reason: tsCheck.reason } };
+  }
+
+  if (interaction.expiresAt && Date.now() > new Date(interaction.expiresAt).getTime()) {
+    updateInteractionState(interaction.id, INTERACTION_STATES.EXPIRED);
+    transitionApprovalState(intentId, APPROVAL_STATES.EXPIRED, { actor: `provider:${providerName}`, reason: 'callback_after_expiry' });
+    logEvent(intentId, 'expired', 'system', {});
+    return { httpStatus: 410, body: { error: 'interaction_expired' } };
+  }
+
+  const decisionUpper = String(decision).toUpperCase();
+  if (!['APPROVE', 'DECLINE', 'REJECT'].includes(decisionUpper)) {
+    return { httpStatus: 400, body: { error: 'invalid_decision', message: 'decision must be APPROVE, DECLINE, or REJECT' } };
+  }
+
+  // Required factors gate approvals only. A verified "no" is always honoured:
+  // declining is the safe direction, and gateways (e.g. the A2H reference
+  // gateway) legitimately attach no passkey evidence to a decline.
+  const missingFactors = decisionUpper === 'APPROVE'
+    ? (interaction.requiredFactors || []).filter((f) => !suppliedFactors.includes(f))
+    : [];
+  if (missingFactors.length) {
+    return { httpStatus: 409, body: { error: 'insufficient_evidence_factors', missing: missingFactors, supplied: suppliedFactors } };
+  }
+
+  const factor = suppliedFactors[0] || `${providerName}.callback.v1`;
+  const evidenceUpdate = updateInteractionState(interaction.id, INTERACTION_STATES.ANSWERED, {
+    evidence: { decision: decisionUpper, factors: suppliedFactors, proof },
+  });
+  if (!evidenceUpdate.ok) {
+    return { httpStatus: 409, body: { error: evidenceUpdate.reason, state: evidenceUpdate.previous } };
+  }
+
+  const actor = `provider:${providerName}`;
+  if (decisionUpper === 'APPROVE') {
+    return { httpStatus: 200, body: executeApproveDecision(proposal, { actor, factor }) };
+  }
+  return { httpStatus: 200, body: executeRejectDecision(proposal, { actor, reason: reason || `declined_via_${providerName}`, factor }) };
+}
+
+// Ends a still-open provider interaction without a decision — the gateway
+// reported EXPIRED/CANCELLED/FAILED or sent an A2H ERROR. Never approves.
+function closeProviderInteraction({ providerName, interaction, outcome, reason }) {
+  if (![INTERACTION_STATES.PENDING, INTERACTION_STATES.SENT, INTERACTION_STATES.WAITING_INPUT].includes(interaction.state)) {
+    return { ok: false, reason: 'interaction_not_pending', state: interaction.state };
+  }
+  const expired = outcome === 'expired';
+  updateInteractionState(interaction.id, expired ? INTERACTION_STATES.EXPIRED : INTERACTION_STATES.FAILED);
+  const transition = transitionApprovalState(interaction.intentId, expired ? APPROVAL_STATES.EXPIRED : APPROVAL_STATES.FAILED, {
+    actor: `provider:${providerName}`,
+    reason,
+  });
+  logEvent(interaction.intentId, expired ? 'expired' : 'approval_channel_failed', `provider:${providerName}`, { reason });
+  return { ok: transition.ok, state: expired ? INTERACTION_STATES.EXPIRED : INTERACTION_STATES.FAILED };
+}
+
+// Evidence factors an A2H RESPONSE earns. The human factor the gateway
+// attests to (passkey, OTP, ...) plus what Gate itself verified about the
+// message: `a2h.signed_response.v1` for an HMAC-authenticated webhook or a
+// valid gateway JWS, `a2h.jws.v1` only for a valid JWS.
+function a2hFactors(normalized, { hmacVerified, jws }) {
+  const factors = [];
+  if (normalized.factor) factors.push(normalized.factor);
+  if (hmacVerified || jws?.valid) factors.push('a2h.signed_response.v1');
+  if (jws?.valid) factors.push('a2h.jws.v1');
+  return [...new Set(factors)];
+}
+
+// Verifies the gateway's detached JWS over a RESPONSE/status body when the
+// policy configures a jwks_uri. require_jws turns a missing or unverifiable
+// signature into a rejection; otherwise an absent signature is allowed but a
+// present-and-invalid one is always rejected.
+async function checkA2HJws(body, channelConfig) {
+  const { verifyDetachedJws, fetchJwks } = require('../lib/a2h-protocol');
+  const requireJws = channelConfig?.require_jws === true;
+  if (!channelConfig?.jwks_uri) {
+    if (requireJws) return { ok: false, reason: 'jwks_uri_not_configured' };
+    return { ok: true, jws: null };
+  }
+  if (!body?.signature) {
+    if (requireJws) return { ok: false, reason: 'signature_missing' };
+    return { ok: true, jws: null };
+  }
+  let jwks;
+  try {
+    jwks = await fetchJwks(channelConfig.jwks_uri);
+  } catch (e) {
+    return { ok: false, reason: 'jwks_unavailable', detail: e.message };
+  }
+  let jws = verifyDetachedJws(body, jwks);
+  if (!jws.valid && jws.reason === 'signature_key_not_found') {
+    // Probably a rotated gateway key the cache hasn't seen yet — refetch once.
+    try { jws = verifyDetachedJws(body, await fetchJwks(channelConfig.jwks_uri, { force: true })); } catch {}
+  }
+  if (!jws.valid) return { ok: false, reason: jws.reason };
+  return { ok: true, jws };
+}
+
+// Applies an A2H RESPONSE/status body (already transport-authenticated) to
+// the Gate interaction it answers. Shared by the spec webhook path and the
+// status poller.
+async function applyA2HResponse({ interaction, body, transport, deliveryId = null, hmacVerified = false }) {
+  const { normalizeResponse, A2H_STATES } = require('../lib/a2h-protocol');
+  const normalized = normalizeResponse(body);
+  const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(interaction.intentId);
+  if (!proposal) return { httpStatus: 404, body: { error: 'intent_not_found' } };
+  const channelConfig = loadPolicy(proposal.policy_id)?.approval_channel?.a2h || null;
+
+  if (normalized.interactionId && interaction.providerInteractionId && normalized.interactionId !== interaction.providerInteractionId) {
+    return { httpStatus: 409, body: { error: 'provider_interaction_mismatch', expected: interaction.providerInteractionId } };
+  }
+
+  if (normalized.type === 'ERROR' || [A2H_STATES.EXPIRED, A2H_STATES.CANCELLED, A2H_STATES.FAILED].includes(normalized.state)) {
+    const code = normalized.error?.code || null;
+    const expired = code === 'ERR.EXPIRED' || normalized.state === A2H_STATES.EXPIRED;
+    const closed = closeProviderInteraction({
+      providerName: 'a2h',
+      interaction,
+      outcome: expired ? 'expired' : 'failed',
+      reason: `a2h_${transport}: ${code || normalized.state || 'ERROR'}`,
+    });
+    if (!closed.ok && closed.reason === 'interaction_not_pending') {
+      return { httpStatus: 409, body: { error: 'interaction_not_pending', state: closed.state } };
+    }
+    return { httpStatus: 200, body: { received: true, approvalState: closed.state } };
+  }
+
+  if (normalized.state !== A2H_STATES.ANSWERED || !normalized.decision) {
+    return { httpStatus: 400, body: { error: 'invalid_payload', message: 'expected an ANSWERED RESPONSE with a decision' } };
+  }
+
+  const jwsCheck = await checkA2HJws(body, channelConfig);
+  if (!jwsCheck.ok) {
+    logEvent(interaction.intentId, 'provider_callback_rejected', 'provider:a2h', { reason: jwsCheck.reason, transport });
+    return { httpStatus: 401, body: { error: 'invalid_response_signature', reason: jwsCheck.reason } };
+  }
+
+  return applyProviderDecision({
+    providerName: 'a2h',
+    intentId: interaction.intentId,
+    interactionId: interaction.id,
+    // A status poll carries no responds_to; the provider interaction id
+    // match above already binds it to this Gate interaction.
+    respondsTo: normalized.respondsTo === null ? undefined : normalized.respondsTo,
+    decision: normalized.decision,
+    decidedAt: normalized.decidedAt,
+    suppliedFactors: a2hFactors(normalized, { hmacVerified, jws: jwsCheck.jws }),
+    proof: {
+      a2h: {
+        transport,
+        interaction_id: normalized.interactionId,
+        responds_to: normalized.respondsTo,
+        decided_at: normalized.decidedAt,
+        evidence: normalized.evidence,
+        signature: normalized.signature,
+        jws: jwsCheck.jws ? { alg: jwsCheck.jws.alg, kid: jwsCheck.jws.kid } : null,
+        delivery_id: deliveryId,
+      },
+    },
+    // Webhook retries (spec §1.12.5) and polls legitimately arrive minutes
+    // after the human decided; freshness is enforced on the webhook
+    // signature timestamp instead, and replay by delivery id + terminal state.
+    checkDecidedAt: false,
+  });
+}
+
+// A2H spec webhook (§1.12): X-A2H-Signature (unix seconds) keyed with the
+// callback secret Gate sent in the AUTHORIZE, X-A2H-Delivery-ID for dedup,
+// and a RESPONSE/ERROR body that references Gate only via responds_to.
+async function handleA2HSpecCallback(req) {
+  const { getInteractionByMessageId } = require('../lib/approval-ledger');
+  const body = req.body || {};
+  const deliveryId = req.headers['x-a2h-delivery-id'] || null;
+
+  const { duplicate } = recordDelivery('a2h', deliveryId, null);
+  if (duplicate) {
+    return { httpStatus: 409, body: { error: 'duplicate_delivery', message: 'This delivery_id has already been processed' } };
+  }
+
+  // The webhook key is per interaction, so responds_to (unauthenticated at
+  // this point) only selects which key to verify with; a wrong or forged
+  // responds_to simply fails verification.
+  const { deriveCallbackSecret } = require('../lib/a2h-protocol');
+  const { getProviderSecret } = require('../lib/provider-signature');
+  if (!getProviderSecret('a2h')) {
+    return { httpStatus: 401, body: { error: 'invalid_signature', reason: 'provider_secret_not_configured' } };
+  }
+  if (!body.responds_to) {
+    return { httpStatus: 401, body: { error: 'invalid_signature', reason: 'responds_to_missing' } };
+  }
+  const sig = verifyProviderSignature({
+    provider: 'a2h',
+    header: req.headers['x-a2h-signature'],
+    rawBody: req.rawBody,
+    timestampUnit: 's',
+    secret: deriveCallbackSecret(getProviderSecret('a2h'), body.responds_to),
+  });
+  if (!sig.valid) {
+    logEvent(null, 'provider_callback_rejected', 'provider:a2h', { reason: sig.reason });
+    return { httpStatus: 401, body: { error: 'invalid_signature', reason: sig.reason } };
+  }
+
+  const interaction = getInteractionByMessageId(body.responds_to);
+  if (!interaction || interaction.provider !== 'a2h') {
+    return { httpStatus: 404, body: { error: 'approval_interaction_not_found' } };
+  }
+
+  return applyA2HResponse({ interaction, body, transport: 'webhook', deliveryId, hmacVerified: true });
+}
+
+// Generic signed callback (Gate's own contract, and the pre-spec A2H bridge).
+function handleGenericCallback(req) {
   const providerName = req.params.provider;
   const body = req.body || {};
   const deliveryId = req.headers['x-gate-provider-delivery-id'] || body.delivery_id || null;
@@ -642,7 +918,7 @@ router.post('/approval-callbacks/:provider', (req, res) => {
   // on the replay is (still) valid.
   const { duplicate } = recordDelivery(providerName, deliveryId, body.intent_id);
   if (duplicate) {
-    return res.status(409).json({ error: 'duplicate_delivery', message: 'This delivery_id has already been processed' });
+    return { httpStatus: 409, body: { error: 'duplicate_delivery', message: 'This delivery_id has already been processed' } };
   }
 
   const sig = verifyProviderSignature({
@@ -652,79 +928,37 @@ router.post('/approval-callbacks/:provider', (req, res) => {
   });
   if (!sig.valid) {
     logEvent(body.intent_id || null, 'provider_callback_rejected', `provider:${providerName}`, { reason: sig.reason });
-    return res.status(401).json({ error: 'invalid_signature', reason: sig.reason });
+    return { httpStatus: 401, body: { error: 'invalid_signature', reason: sig.reason } };
   }
 
   const { intent_id, gate_approval_interaction_id, responds_to, decision, decided_at, approved_intent_hash, evidence, reason } = body;
   if (!intent_id || !decision) {
-    return res.status(400).json({ error: 'invalid_payload', message: 'intent_id and decision are required' });
+    return { httpStatus: 400, body: { error: 'invalid_payload', message: 'intent_id and decision are required' } };
   }
 
-  const proposal = db.prepare('SELECT * FROM proposals WHERE id = ?').get(intent_id);
-  if (!proposal) return res.status(404).json({ error: 'intent_not_found' });
-
-  const interaction = gate_approval_interaction_id
-    ? getInteraction(gate_approval_interaction_id)
-    : getLatestInteractionForIntent(intent_id);
-  if (!interaction || interaction.intentId !== intent_id) {
-    return res.status(404).json({ error: 'approval_interaction_not_found' });
-  }
-  if (interaction.provider !== providerName) {
-    return res.status(409).json({ error: 'provider_mismatch', expected: interaction.provider, got: providerName });
-  }
-  if (![INTERACTION_STATES.PENDING, INTERACTION_STATES.SENT, INTERACTION_STATES.WAITING_INPUT].includes(interaction.state)) {
-    return res.status(409).json({ error: 'interaction_not_pending', state: interaction.state });
-  }
-
-  const interactionError = guardApprovalInteraction(proposal);
-  if (interactionError) return res.status(interactionError.httpStatus).json(interactionError.body);
-
-  const expectedRespondsTo = proposal.message_id || proposal.id;
-  if (responds_to !== undefined && responds_to !== expectedRespondsTo) {
-    return res.status(409).json({ error: 'responds_to_mismatch', expected: expectedRespondsTo });
-  }
-
-  const currentHash = canonicalIntentHash(proposal);
-  if (approved_intent_hash !== undefined && approved_intent_hash !== currentHash) {
-    return res.status(409).json({ error: 'approved_intent_hash_mismatch' });
-  }
-
-  if (decided_at !== undefined) {
-    const tsCheck = checkTimestampTolerance(decided_at);
-    if (!tsCheck.valid) return res.status(409).json({ error: 'replay_rejected', reason: tsCheck.reason });
-  }
-
-  if (interaction.expiresAt && Date.now() > new Date(interaction.expiresAt).getTime()) {
-    updateInteractionState(interaction.id, INTERACTION_STATES.EXPIRED);
-    transitionApprovalState(intent_id, APPROVAL_STATES.EXPIRED, { actor: `provider:${providerName}`, reason: 'callback_after_expiry' });
-    logEvent(intent_id, 'expired', 'system', {});
-    return res.status(410).json({ error: 'interaction_expired' });
-  }
-
-  const suppliedFactors = evidence?.factors || [];
-  const missingFactors = (interaction.requiredFactors || []).filter((f) => !suppliedFactors.includes(f));
-  if (missingFactors.length) {
-    return res.status(409).json({ error: 'insufficient_evidence_factors', missing: missingFactors, supplied: suppliedFactors });
-  }
-
-  const decisionUpper = String(decision).toUpperCase();
-  if (!['APPROVE', 'DECLINE', 'REJECT'].includes(decisionUpper)) {
-    return res.status(400).json({ error: 'invalid_decision', message: 'decision must be APPROVE, DECLINE, or REJECT' });
-  }
-
-  const factor = suppliedFactors[0] || `${providerName}.callback.v1`;
-  const evidenceUpdate = updateInteractionState(interaction.id, INTERACTION_STATES.ANSWERED, {
-    evidence: { decision: decisionUpper, factors: suppliedFactors, proof: evidence?.proof || null },
+  return applyProviderDecision({
+    providerName,
+    intentId: intent_id,
+    interactionId: gate_approval_interaction_id,
+    respondsTo: responds_to,
+    decision,
+    decidedAt: decided_at,
+    approvedIntentHash: approved_intent_hash,
+    suppliedFactors: evidence?.factors || [],
+    proof: evidence?.proof || null,
+    reason,
   });
-  if (!evidenceUpdate.ok) {
-    return res.status(409).json({ error: evidenceUpdate.reason, state: evidenceUpdate.previous });
-  }
+}
 
-  const actor = `provider:${providerName}`;
-  if (decisionUpper === 'APPROVE') {
-    return res.json(executeApproveDecision(proposal, { actor, factor }));
+router.post('/approval-callbacks/:provider', async (req, res) => {
+  try {
+    const isA2HSpec = req.params.provider === 'a2h' && !!req.headers['x-a2h-signature'];
+    const result = isA2HSpec ? await handleA2HSpecCallback(req) : handleGenericCallback(req);
+    res.status(result.httpStatus).json(result.body);
+  } catch (e) {
+    console.error('[approval-callbacks] error:', e);
+    res.status(500).json({ error: 'callback_processing_failed' });
   }
-  return res.json(executeRejectDecision(proposal, { actor, reason: reason || `declined_via_${providerName}`, factor }));
 });
 
 module.exports = router;
@@ -733,3 +967,6 @@ module.exports.fireWebhook = fireWebhook;
 module.exports.executeApproveDecision = executeApproveDecision;
 module.exports.executeRejectDecision = executeRejectDecision;
 module.exports.guardApprovalInteraction = guardApprovalInteraction;
+module.exports.applyProviderDecision = applyProviderDecision;
+module.exports.applyA2HResponse = applyA2HResponse;
+module.exports.closeProviderInteraction = closeProviderInteraction;

@@ -32,6 +32,21 @@ Approval protocol overhaul (July 2026):
   factors they can evidence (#15)
 - **A2H/Ola bridge provider** — signed agent-to-human approval responses
   from an external gateway (#7)
+- **A2H v1.0 conformance for the Ola bridge** — the `a2h` provider now
+  speaks the published Agent-to-Human spec (twilio-labs/Agent2Human) that
+  Twilio Ola is built on: spec AUTHORIZE envelope to `POST /v1/intent`,
+  `X-A2H-Signature` webhook RESPONSEs, detached-JWS verification against the
+  gateway's JWKS (`jwks_uri`, `require_jws`), `/v1/status` polling fallback
+  (resumed on restart), `/v1/cancel` propagation, and `ERROR`/expiry
+  handling. Verified against the twilio-labs reference gateway with a real
+  WebAuthn passkey. The pre-spec payload remains available as
+  `wire_format: gate-legacy`. Runnable example in `examples/ola-a2h/`.
+
+### Changed
+- A verified provider **decline** is now honoured even when it carries none
+  of the policy's required approval factors. Required factors gate
+  approvals only; previously a decline without them was rejected with
+  `insufficient_evidence_factors` and the approval stayed open.
 - **Typed action profiles** — schema-validated payloads for known action
   types (e.g. `email.send.v1`, `payment.refund.v1`) with profile-aware
   evidence and tamper binding (#10)

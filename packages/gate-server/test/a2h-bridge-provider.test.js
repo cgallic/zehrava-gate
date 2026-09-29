@@ -103,7 +103,8 @@ async function main() {
     {
       const { body } = await req('GET', '/.well-known/gate');
       assert(body.approval_providers.includes('a2h'), 'approval_providers includes a2h');
-      assert(JSON.stringify(body.approval_provider_capabilities.a2h) === JSON.stringify(['a2h.signed_response.v1']), 'declares a2h.signed_response.v1 capability');
+      assert(body.approval_provider_capabilities.a2h.includes('a2h.signed_response.v1'), 'declares a2h.signed_response.v1 capability');
+      assert(body.approval_provider_capabilities.a2h.includes('passkey.webauthn.v1'), 'declares the human factors an A2H gateway can attest to');
     }
 
     console.log('\nWell-configured a2h policy dispatches AUTHORIZE (stub) and reaches waiting_input...');
