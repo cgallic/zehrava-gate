@@ -57,6 +57,11 @@ function buildCapabilities() {
     approval_channels: ['webhook', 'approval_link', ...providers],
     approval_providers: providers,
     approval_provider_capabilities: providerCapabilities,
+    // Zehrava's proposed A2H Layer 2 (docs/a2h-layer2-proposal.md).
+    a2h_layer2: (() => {
+      const { LAYER2_DRAFT, LAYER2_TYPES } = require('./lib/a2h-layer2');
+      return { draft: LAYER2_DRAFT, types: LAYER2_TYPES, endpoint: '/v1/a2h/layer2' };
+    })(),
     evidence_factors: ['manual.dashboard.v1', 'link.single_use.v1'],
     max_execution_ttl_sec: 900,
     replay_protection: {
@@ -91,6 +96,7 @@ if (process.env.GATE_A2H_COMPAT === 'true') {
       max_ttl_sec: caps.max_execution_ttl_sec,
       replay_protection: caps.replay_protection,
       webhooks: caps.webhooks,
+      layer2: caps.a2h_layer2,
     });
   });
 }

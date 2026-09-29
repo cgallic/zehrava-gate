@@ -7,6 +7,9 @@ material.
 - [Quickstart](./quickstart.md) — first governed write in under 5 minutes
 - [Policy reference](./policy-reference.md) — every YAML field, with the
   exact evaluation order the engine uses
+- [A2H Layer 2 proposal](./a2h-layer2-proposal.md) — standing policies,
+  revocation and delegation for the Agent-to-Human protocol (Twilio Ola),
+  with Gate as the reference implementation
 - [HTTP API](../schemas/openapi.yaml) — OpenAPI 3.1 spec
 - [JSON Schemas](../schemas/) — intent, agent, policy decision, execution
   order, audit event
