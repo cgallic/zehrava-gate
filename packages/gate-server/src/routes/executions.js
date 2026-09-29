@@ -7,12 +7,45 @@ const { authenticate } = require('../middleware/auth');
 const { RunLedger } = require('../lib/runs');
 const { EVENT_TYPES, SIDE_EFFECT_CLASS } = require('../lib/runs/constants');
 const { sideEffectKey } = require('../lib/runs/hash');
-const { verifyApprovalEvidence, consumeApprovalEvidence } = require('../lib/evidence');
+const { verifyApprovalEvidence, consumeApprovalEvidence, canonicalIntentHash } = require('../lib/evidence');
+const { signDetached, verifyDetached } = require('../lib/signing');
+
+// Who may request, or report on, an intent's execution: the agent that
+// proposed it, or a reviewer/admin. Any other registered agent is refused —
+// an API key alone is not authority over someone else's intent.
+function canActOnIntent(agent, intent) {
+  if (!agent || !intent) return false;
+  if (agent.role === 'admin' || agent.role === 'reviewer') return true;
+  // Gate's own gate_exec executor (the proxy identity) runs vault-backed
+  // intents for whoever proposed them.
+  if (process.env.PROXY_API_KEY && agent.api_key_hash && agent.api_key_hash === require('../lib/crypto').hashApiKey(process.env.PROXY_API_KEY)) return true;
+  return !!intent.sender_agent_id && agent.id === intent.sender_agent_id;
+}
+
+// The execution order Gate signs: everything a worker needs to check that
+// what it is about to run is exactly what was approved.
+function executionOrderPayload(e) {
+  return {
+    v: 1,
+    execution_id: e.id,
+    intent_id: e.intent_id,
+    approved_intent_hash: e.approved_intent_hash || null,
+    payload_hash: e.payload_hash || null,
+    destination: e.destination,
+    action: e.action || e.destination,
+    mode: e.mode,
+    issued_at: new Date(e.issued_at).toISOString(),
+    expires_at: new Date(e.expires_at).toISOString(),
+  };
+}
 
 // POST /v1/intents/:id/execute — issue execution order
 router.post('/intents/:id/execute', authenticate, (req, res) => {
   const intent = db.prepare('SELECT * FROM proposals WHERE id = ?').get(req.params.id);
   if (!intent) return res.status(404).json({ error: 'Intent not found' });
+  if (!canActOnIntent(req.agent, intent)) {
+    return res.status(403).json({ error: 'forbidden', message: 'Only the proposing agent or a reviewer can request execution of this intent' });
+  }
 
   // Check expiry
   if (intent.expires_at && Date.now() > intent.expires_at) {
@@ -31,7 +64,7 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
   // Check if execution already exists
   const existing = db.prepare('SELECT * FROM executions WHERE intent_id = ?').get(intent.id);
   if (existing && existing.status === 'scheduled') {
-    return res.json(formatExecution(existing));
+    return res.json(formatExecution(existing, { includeToken: true }));
   }
   if (existing && ['executing','succeeded'].includes(existing.status)) {
     return res.status(409).json({ error: `Execution already ${existing.status}`, execution_id: existing.id, status: existing.status });
@@ -57,9 +90,16 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
   const now = Date.now();
   const expiresAt = now + (15 * 60 * 1000); // 15 min
 
+  const approvedIntentHash = canonicalIntentHash(intent);
+  const orderJws = signDetached(executionOrderPayload({
+    id: executionId, intent_id: intent.id, approved_intent_hash: approvedIntentHash,
+    payload_hash: intent.payload_hash || null, destination: intent.destination,
+    action: intent.action || intent.destination, mode, issued_at: now, expires_at: expiresAt,
+  }));
+
   db.prepare(`
-    INSERT INTO executions (id, intent_id, mode, destination, action, payload_ref, payload_hash, execution_token, status, issued_at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?)
+    INSERT INTO executions (id, intent_id, mode, destination, action, payload_ref, payload_hash, execution_token, status, issued_at, expires_at, approved_intent_hash, order_jws)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?)
   `).run(
     executionId, intent.id, mode,
     intent.destination,
@@ -67,7 +107,9 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
     intent.payload_path || null,
     intent.payload_hash || null,
     executionToken,
-    now, expiresAt
+    now, expiresAt,
+    approvedIntentHash,
+    orderJws
   );
 
   // Update intent status to scheduled
@@ -90,7 +132,25 @@ router.post('/intents/:id/execute', authenticate, (req, res) => {
   }
 
   const execution = db.prepare('SELECT * FROM executions WHERE id = ?').get(executionId);
-  res.status(201).json(formatExecution(execution));
+  res.status(201).json(formatExecution(execution, { includeToken: true }));
+});
+
+// POST /v1/execution-orders/verify — a worker checks, before running
+// anything, that the order it holds was issued by Gate and unaltered.
+// Body: { execution_order, order_signature }
+router.post('/execution-orders/verify', authenticate, (req, res) => {
+  const { execution_order: order, order_signature: signature } = req.body || {};
+  if (!order || !signature) return res.status(400).json({ error: 'execution_order and order_signature are required' });
+  const signatureValid = verifyDetached(signature, order);
+  const execution = order.execution_id ? db.prepare('SELECT * FROM executions WHERE id = ?').get(order.execution_id) : null;
+  const matchesRecord = !!execution && execution.order_jws === signature;
+  res.json({
+    valid: signatureValid && matchesRecord,
+    signature_valid: signatureValid,
+    matches_issued_order: matchesRecord,
+    status: execution?.status || null,
+    expired: execution ? Date.now() > execution.expires_at : null,
+  });
 });
 
 // GET /v1/executions/:id
@@ -106,21 +166,36 @@ router.post('/executions/:id/report', (req, res) => {
   const execution = db.prepare('SELECT * FROM executions WHERE id = ?').get(req.params.id);
   if (!execution) return res.status(404).json({ error: 'Execution not found' });
 
-  // Auth: execution_token or standard API key
+  // Auth: the execution token (Bearer header, or `execution_token` in the
+  // body as gate_exec sends it), or the API key of an agent entitled to act
+  // on this intent (its proposer or a reviewer).
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const isValidToken = token === execution.execution_token;
+  const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const presentedToken = [bearer, req.body?.execution_token].find((t) => t && t === execution.execution_token);
+  const isValidToken = !!presentedToken;
 
-  // Also accept standard API key auth
   let isValidApiKey = false;
-  if (!isValidToken) {
+  if (!isValidToken && bearer) {
     const agent = db.prepare('SELECT * FROM agents WHERE api_key_hash = ?')
-      .get(require('../lib/crypto').hashApiKey(token));
-    isValidApiKey = !!agent;
+      .get(require('../lib/crypto').hashApiKey(bearer));
+    if (agent) {
+      agent.role = agent.role || 'agent';
+      const intentRow = db.prepare('SELECT * FROM proposals WHERE id = ?').get(execution.intent_id);
+      if (!canActOnIntent(agent, intentRow)) {
+        return res.status(403).json({ error: 'forbidden', message: 'Only the execution token holder, the proposing agent or a reviewer can report this execution' });
+      }
+      isValidApiKey = true;
+    }
   }
 
   if (!isValidToken && !isValidApiKey) {
     return res.status(401).json({ error: 'Invalid execution token or API key' });
+  }
+
+  // An outcome is reported once. A succeeded/failed execution can't be
+  // rewritten afterwards.
+  if (execution.status !== 'scheduled') {
+    return res.status(409).json({ error: 'execution_already_reported', status: execution.status });
   }
 
   // Check token expiry
@@ -172,7 +247,9 @@ router.post('/executions/:id/report', (req, res) => {
   res.json(formatExecution(updated));
 });
 
-function formatExecution(e) {
+// The one-time execution token is only ever returned to the caller that
+// requested the execution (includeToken) — never on reads or reports.
+function formatExecution(e, { includeToken = false } = {}) {
   const { getApprovalEvidence } = require('../lib/evidence');
   return {
     executionId: e.id,
@@ -183,7 +260,9 @@ function formatExecution(e) {
     action: e.action,
     payload_ref: e.payload_ref,
     payload_hash: e.payload_hash,
-    execution_token: e.execution_token,
+    execution_token: includeToken ? e.execution_token : undefined,
+    execution_order: e.order_jws ? executionOrderPayload(e) : null,
+    order_signature: e.order_jws || null,
     retry_policy: e.retry_policy ? JSON.parse(e.retry_policy) : { max_attempts: 3, backoff_seconds: 30 },
     status: e.status,
     issued_at: new Date(e.issued_at).toISOString(),
