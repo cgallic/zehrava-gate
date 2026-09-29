@@ -237,7 +237,9 @@ ${rec.state === 'WAITING_INPUT' ? `<button name="decision" value="APPROVE" style
 
   return new Promise((resolve) => {
     server.listen(port, '127.0.0.1', () => {
-      baseUrl = `http://localhost:${server.address().port}`;
+      // 127.0.0.1, not localhost: Node 18's fetch tries ::1 first and does
+      // not fall back to IPv4, so a localhost URL misses this listener.
+      baseUrl = `http://127.0.0.1:${server.address().port}`;
       resolve({
         url: baseUrl,
         apiKey,

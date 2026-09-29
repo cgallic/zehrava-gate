@@ -12,14 +12,14 @@ expiry_minutes: 15
 approval_channel:
   provider: a2h
   a2h:
-    gateway_url: "http://localhost:4100"
+    gateway_url: "http://127.0.0.1:4100"
     gateway_id: ola-mock
     agent_id: "did:web:refund-agent.example.com"
     channel:
       type: sms
       address: "tel:+15555550100"
     # Verify the gateway's JWS on every RESPONSE, and refuse unsigned ones.
-    jwks_uri: "http://localhost:4100/.well-known/jwks.json"
+    jwks_uri: "http://127.0.0.1:4100/.well-known/jwks.json"
     require_jws: true
     # A2H requires HTTPS callback URLs, so by default Gate only asks for a
     # webhook when its own URL is https:// and polls otherwise. The local

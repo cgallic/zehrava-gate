@@ -167,6 +167,10 @@ async function main() {
     console.log('AUTHORIZE envelope matches the A2H v1.0 spec...');
     const a = await propose('a2h-webhook', { expiresIn: '10m' });
     const recA = await gatewayRecordFor(gwSigned, a.messageId);
+    if (!recA) {
+      const intent = await getIntent(a.intentId);
+      throw new Error(`gateway never received the AUTHORIZE (approval_state=${intent?.approval_state}); see server log with DEBUG=1`);
+    }
     {
       const m = recA?.message || {};
       const intake = gwSigned.requests.find((r) => r.path === '/v1/intent' && r.body?.message_id === a.messageId);
@@ -183,7 +187,8 @@ async function main() {
       assert(m.params?.gate?.intent_id === a.intentId && /^[0-9a-f]{64}$/.test(m.params?.gate?.approved_intent_hash || ''), 'params.gate carries the intent id and canonical intent hash');
       assert(intake?.headers['x-a2h-api-key'] === API_KEY && intake?.headers.authorization === `Bearer ${API_KEY}`, 'authenticates with X-A2H-API-Key and Bearer by default');
       const intent = await waitState(a.intentId, 'waiting_input');
-      assert(intent?.approval_interactions?.[0]?.providerInteractionId === recA?.id || intent?.approval_interactions?.[0]?.provider_interaction_id === recA?.id, 'Gate stores the gateway interaction_id');
+      const stored = intent?.approval_interactions?.[0]?.providerInteractionId ?? intent?.approval_interactions?.[0]?.provider_interaction_id;
+      assert(!!recA.id && stored === recA.id, 'Gate stores the gateway interaction_id');
     }
 
     console.log('\nSigned webhook RESPONSE (spec §1.12) is verified before anything changes...');
