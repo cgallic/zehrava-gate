@@ -22,7 +22,9 @@ const PROVIDERS = { dashboard, kaicalls, a2h, noop };
 const DEFAULT_CAPABILITIES = {
   dashboard: ['manual.dashboard.v1'],
   kaicalls: ['voice.ivr.v1', 'voice.spoken.v1', 'sms.otp.v1'],
-  a2h: ['a2h.signed_response.v1'],
+  // Gate-verified message properties plus the human factors an A2H gateway
+  // can attest to (spec §1.11.3).
+  a2h: ['a2h.signed_response.v1', 'a2h.jws.v1', 'passkey.webauthn.v1', 'otp.sms.v1', 'otp.email.v1', 'push.v1', 'voice.ivr.v1'],
   noop: [],
 };
 

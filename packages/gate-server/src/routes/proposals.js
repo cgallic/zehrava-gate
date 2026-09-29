@@ -275,7 +275,10 @@ router.post('/propose', authenticate, (req, res) => {
             {
               approvalUrl, messageId, policy: policyObj, channel: requestedChannel, assurance: requestedAssurance,
               approvalInteractionId: interaction.id,
+              principalId: req.body.principal_id || null,
+              approvedIntentHash: interaction.approvedIntentHash,
               requiredFactors: resolvedRequiredFactors,
+              assuranceLevel: resolvedAssuranceLevel,
               expiresAt: new Date(expiresAt).toISOString(),
               summary: `${req.body.action || destination} via ${policy}`,
               callbackUrl: `${process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`}/v1/approval-callbacks/${providerName}`,
@@ -288,6 +291,9 @@ router.post('/propose', authenticate, (req, res) => {
           if (transition.ok) {
             logEvent(proposalId, 'approval_channel_dispatched', 'system', { provider: providerName });
             updateInteractionState(interaction.id, INTERACTION_STATES.WAITING_INPUT);
+            // A2H gateways must support status polling (spec §1.12.9) — poll as
+            // the fallback for gateways that never call back.
+            if (providerName === 'a2h' && dispatch?.poll) require('../lib/a2h-poller').start(interaction.id);
           }
         } catch (e) {
           const transition = transitionApprovalState(proposalId, APPROVAL_STATES.FAILED, { actor: 'system', reason: `channel_dispatch_failed: ${e.message}` });
