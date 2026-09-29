@@ -10,6 +10,9 @@ material.
 - [A2H Layer 2 proposal](./a2h-layer2-proposal.md) — standing policies,
   revocation and delegation for the Agent-to-Human protocol (Twilio Ola),
   with Gate as the reference implementation
+- [A2H Layer 3 proposal](./a2h-layer3-proposal.md) — execution grants,
+  executor attestations and an offline-verifiable consent → execution →
+  outcome bundle
 - [HTTP API](../schemas/openapi.yaml) — OpenAPI 3.1 spec
 - [JSON Schemas](../schemas/) — intent, agent, policy decision, execution
   order, audit event

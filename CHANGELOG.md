@@ -49,6 +49,24 @@ Approval protocol overhaul (July 2026):
   format and maps them onto standing approvals and delegations, failing
   closed (`ERR.UNSUPPORTED_CONDITION`) on any condition Gate can't enforce
   exactly. Advertised in `/.well-known/gate` and `/.well-known/a2h`.
+- **A2H Layer 3 proposal** —
+  [`docs/a2h-layer3-proposal.md`](docs/a2h-layer3-proposal.md) drafts
+  Execution & Attestation: binding consent → execution grant → executor
+  attestation → enforcer verdict, and an offline-verifiable audit bundle.
+- **Signed execution orders** — `POST /v1/intents/:id/execute` now returns
+  an `execution_order` (bound to the approved intent hash and payload hash)
+  with Gate's detached signature (`order_signature`);
+  `POST /v1/execution-orders/verify` lets a worker check it before running.
+
+### Security
+- Only the proposing agent or a reviewer can request an intent's
+  execution; previously any registered agent could, and receive its token.
+- The one-time execution token is returned only to that requester — no
+  longer on `GET /v1/executions/:id` or in report responses.
+- `POST /v1/executions/:id/report` accepts only the execution token (header
+  or body), the proposing agent's key, or a reviewer's key; previously any
+  agent's API key could report any execution. A reported outcome can no
+  longer be rewritten (409 `execution_already_reported`).
 
 ### Changed
 - A verified provider **decline** is now honoured even when it carries none

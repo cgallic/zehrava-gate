@@ -313,6 +313,11 @@ ensureColumn("ALTER TABLE proposals ADD COLUMN profile_fields_hash TEXT");
 ensureColumn("ALTER TABLE proposals ADD COLUMN required_approvals INTEGER DEFAULT 1");
 ensureColumn("ALTER TABLE proposals ADD COLUMN standing_approval_id TEXT");
 
+// executions: signed execution orders — the approved intent hash the order
+// is bound to, and Gate's detached signature over the order.
+ensureColumn("ALTER TABLE executions ADD COLUMN approved_intent_hash TEXT");
+ensureColumn("ALTER TABLE executions ADD COLUMN order_jws TEXT");
+
 // Layer 2 authority model (issue #8): standing policies, revocation,
 // delegation, N-of-M approvals.
 db.exec(`
