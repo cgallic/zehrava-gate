@@ -146,7 +146,9 @@ expiry_minutes: 30</code></pre>
   <h2>The category this defines</h2>
   <p>There's a spectrum of AI safety approaches: full autonomy on one end, full human review on the other. Most teams live somewhere in the middle — some things are fine to auto-approve, some things need eyes, and some things should never happen regardless.</p>
   <p>Gate is infrastructure for that middle ground. It's not trying to be smarter than your agent. It's trying to be the one thing in your pipeline that <em>doesn't</em> reason — so that when something goes wrong, you know exactly where to look and exactly what happened.</p>
-  <p>YAML policies aren't a limitation. They're the point.</p>
+  <div class="callout" style="margin-top:2rem;">
+    <p><strong>Related Reading:</strong> Compare how deterministic YAML rules contrast with probabilistic prompt guardrails in our analysis: <a href="/blog/prompt-guardrails-vs-write-path-control.html">Semantic Guardrails vs. Deterministic Write-Path Gates</a> and learn how to stop duplicate actions in <a href="/blog/preventing-duplicate-tool-executions-ai-agents.html">Preventing Duplicate Tool Executions and Replay in AI Agents</a>.</p>
+  </div>
 
   <div class="post-footer">
     <a href="/demo" class="btn btn-primary">Try the live demo →</a>

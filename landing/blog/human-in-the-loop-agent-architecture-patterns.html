@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Human-in-the-Loop AI Agent Architecture: Async Approvals & Execution Orders — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="A technical guide to implementing asynchronous human-in-the-loop approvals for autonomous AI agents without blocking worker threads or losing execution state.">
+  <meta property="og:title" content="Human-in-the-Loop AI Agent Architecture: Async Approvals & Execution Orders — Zehrava Gate">
+  <meta property="og:description" content="A technical guide to implementing asynchronous human-in-the-loop approvals for autonomous AI agents without blocking worker threads or losing execution state.">
+  <meta property="og:url" content="https://zehrava.com/blog/human-in-the-loop-agent-architecture-patterns.html">
+  <link rel="canonical" href="https://zehrava.com/blog/human-in-the-loop-agent-architecture-patterns.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Human-in-the-Loop AI Agent Architecture: Async Approvals, Execution Orders, and State Recovery",
+    "datePublished": "2026-10-10",
+    "author": {
+      "@type": "Person",
+      "name": "Connor Gallic",
+      "url": "https://connorgallic.com"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Zehrava",
+      "url": "https://zehrava.com"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8;
+      --font: "Plus Jakarta Sans", -apple-system, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    main { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted2); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple-b); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; color: #fff; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin: 2rem 0 0.75rem; color: #e2e8f0; }
+    p { margin-bottom: 1.25rem; color: #cbd5e1; font-size: 0.96rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.5rem; color: #cbd5e1; font-size: 0.95rem; }
+    code { font-family: var(--mono); font-size: 0.86em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #c7d2fe; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; line-height: 1.55; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e2e8f0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .callout { background: rgba(99,102,241,0.06); border-left: 3px solid var(--purple-b); border-radius: 0 8px 8px 0; padding: 1.1rem 1.25rem; margin: 1.5rem 0; }
+    .callout p { margin: 0; color: #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.75rem 0; font-size: 0.88rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border: 1px solid var(--border); }
+    th { background: var(--bg2); font-weight: 700; color: var(--text); }
+    td { color: #cbd5e1; }
+    .cta-block { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 2.25rem 2rem; margin-top: 3.5rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); font-size: 1.3rem; }
+    .cta-block p { color: var(--muted2); margin-bottom: 1.25rem; font-size: 0.95rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; text-decoration: none; }
+    .btn:hover { opacity: 0.9; text-decoration: none; }
+    .related { margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted2); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; color: #e2e8f0; transition: border-color 0.15s; }
+    .related-link:hover { border-color: rgba(99,102,241,0.4); text-decoration: none; }
+    footer { text-align: center; padding: 2.5rem 1.5rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted2); }
+
+    /* Site Nav */
+    nav[aria-label="Site navigation"] { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,15,26,0.92); backdrop-filter: blur(12px); z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 800; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--purple-b); }
+    .nav-links { display: flex; gap: 1.75rem; font-size: 0.85rem; }
+    .nav-links a { color: var(--muted2); text-decoration: none; transition: color 150ms; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .nav-right { display: flex; gap: 0.875rem; align-items: center; }
+    .nav-gh { font-size: 0.85rem; color: var(--muted2); text-decoration: none; transition: color 150ms; }
+    .nav-gh:hover { color: var(--text); }
+    .btn-nav { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+    .menu-btn { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 0.25rem; }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: var(--muted2); border-radius: 2px; }
+    .mobile-menu { display: none; position: fixed; inset: 0; top: 57px; z-index: 99; background: rgba(10,15,26,0.97); backdrop-filter: blur(20px); padding: 2rem 1.5rem; flex-direction: column; gap: 0; overflow-y: auto; border-top: 1px solid var(--border); }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 1.125rem; font-weight: 600; color: var(--text); padding: 1rem 0; border-bottom: 1px solid var(--border); display: block; text-decoration: none; }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu .m-cta { margin-top: 1.5rem; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; text-align: center; border-bottom: none !important; }
+
+    @media (max-width: 768px) {
+      nav[aria-label="Site navigation"] { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
+      .menu-btn { display: flex; }
+      main { padding: 2rem 1.125rem 3rem; }
+      h1 { font-size: 1.7rem; line-height: 1.25; }
+      h2 { font-size: 1.2rem; }
+      pre { font-size: 0.74rem; padding: 0.875rem; }
+      table { font-size: 0.78rem; }
+      th, td { padding: 0.5rem 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+<nav aria-label="Site navigation">
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#blg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="blg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/demo">Live Demo</a>
+    <a href="/docs">Docs</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/blog" class="active">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/">Home</a>
+  <a href="/demo">Live Demo</a>
+  <a href="/docs">Docs</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/blog">Blog</a>
+  <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  <a href="/demo" class="m-cta">Get started free</a>
+</div>
+
+<main>
+  <div class="post-meta">
+    <span class="tag">Architecture</span>
+    <span>October 10, 2026</span>
+    <span>10 min read</span>
+  </div>
+
+  <h1>Human-in-the-Loop AI Agent Architecture: Async Approvals, Execution Orders, and State Recovery</h1>
+
+  <p>Every autonomous system hits a point where full autonomy becomes an unacceptable business risk. Whether issuing customer credits, deploying cloud infrastructure, sending contract amendments, or modifying healthcare records, some operations demand human verification before execution.</p>
+
+  <p>The standard industry term for this requirement is <strong>Human-in-the-Loop (HITL)</strong>. But while product managers write "requires human sign-off" in specifications, systems engineers face an uncomfortable reality: <strong>LLMs operate on millisecond timescales, while humans operate on minute, hour, or overnight timescales.</strong></p>
+
+  <p>How do you pause an autonomous agent when it proposes a consequential action without locking worker threads, burning compute budget on synchronous sleep loops, or losing execution state when serverless containers terminate? In this architecture guide, we analyze production patterns for asynchronous human approval gates, signed execution tokens, and state recovery.</p>
+
+  <h2>The HITL Engineering Dilemma</h2>
+
+  <p>When prototyping agents locally, developers often build human review as a blocking CLI prompt:</p>
+
+  <pre><code># The local prototype anti-pattern: blocking I/O
+if tool_action == "issue_refund":
+    confirmation = input("Do you approve this refund? [y/N]: ")
+    if confirmation.lower() == "y":
+        stripe.refund(...)</code></pre>
+
+  <p>When moved to production infrastructure, this approach completely collapses:</p>
+
+  <ul>
+    <li><strong>Serverless & Container Timeouts:</strong> Cloud functions (such as AWS Lambda with a 15-minute ceiling, Cloudflare Workers with 30-second ceilings, or Kubernetes pods under autoscaling) will be killed long before an operator reviews the alert in Slack or the management dashboard.</li>
+    <li><strong>Memory Leaks & Zombie Connections:</strong> Holding open HTTP sockets or idle NodeJS event loops while waiting for human response exhausts file descriptors and locks pool connections.</li>
+    <li><strong>State Loss on Restarts:</strong> If the worker process crashes while waiting for human input, the entire agent run history, tool reasoning, and partial results are lost, forcing the run to start over from step zero.</li>
+  </ul>
+
+  <div class="callout">
+    <p><strong>The Core Principle:</strong> In production systems, human approvals must be strictly asynchronous, stateless at the compute layer, and stateful at the ledger layer. The worker must terminate or suspend cleanly, yielding compute until authorization is granted.</p>
+  </div>
+
+  <h2>Three Architectural Patterns for Human Review</h2>
+
+  <p>Production engineering teams employ three primary architectures to reconcile the speed difference between autonomous agents and human reviewers:</p>
+
+  <h3>Pattern 1: Synchronous Polling (Naive Implementation)</h3>
+  <p>The agent loop posts an intent to an approval service and periodically calls <code>GET /intents/:id</code> with an exponential backoff. While simple to implement, it ties up worker process resources and fails on ephemeral serverless platforms whenever review takes longer than a few minutes.</p>
+
+  <h3>Pattern 2: Asynchronous Webhook & Callback Bus</h3>
+  <p>The agent submits its proposed intent to a write-path control plane (Zehrava Gate) and immediately receives a response: <code>status: "pending_approval", approval_interaction_id: "gai_..."</code>. The agent yields control or serializes its task into a job queue (like Celery, BullMQ, or SQS).</p>
+  <p>When an authorized human reviews the intent in the dashboard and clicks "Approve", Gate emits an authenticated webhook with a cryptographic HMAC-SHA256 signature to the agent orchestrator. The orchestrator wakes a fresh worker process, consumes the signed execution order, and finishes the task.</p>
+
+  <h3>Pattern 3: Checkpointed Execution & The Run Ledger Pattern</h3>
+  <p>For complex multi-step workflows (e.g. 20-step analysis pipelines), pausing for human review at Step 12 should not require re-running Steps 1 through 11 upon resumption. In this pattern, the agent persists its execution graph, variable state, and token memory into an immutable <strong>Run Ledger</strong>.</p>
+  <p>When human approval lands, the worker is re-hydrated directly at Step 12 with the exact context it held prior to the gate, carrying a short-lived execution token to complete the action.</p>
+
+  <pre><code>Agent Orchestrator                Zehrava Gate                    Operator Surface
+        │                              │                                 │
+  Step 1│ Propose Consequential Intent │                                 │
+        ├─────────────────────────────>│                                 │
+        │                              │  Policy check: requires review  │
+        │ 202 Accepted (pending)       ├──[Create gai_ interaction]─────>│
+        │<─────────────────────────────┤                                 │ (Slack / Dashboard)
+        │                              │                                 │
+  Step 2│ Worker serializes state      │                                 │
+        │ & exits cleanly              │                                 │
+        ▼                              │                                 │
+  [Sleep/Terminated]                   │                                 │
+                                       │       3. Human reviews & signs  │
+                                       │<────────────────────────────────┤
+                                       │  Validate single-use token      │
+                                       │  Generate execution token (gex_)│
+                                       │                                 │
+        │ 4. Signed Webhook Callback   │                                 │
+        │    (HMAC-SHA256 verified)    │                                 │
+        ├──────────────────────────────┤                                 │
+        │                              │                                 │
+  Step 5│ Wake fresh worker            │                                 │
+        │ Re-hydrate state from Ledger │                                 │
+        │ Execute with gex_ token      │                                 │
+        ▼                              │                                 │
+  [Completed Mutation]                 │                                 │</code></pre>
+
+  <h2>Cryptographic Invariants for Human Approvals</h2>
+
+  <p>Simply having a button in a web dashboard is not enough. Without cryptographic binding, approval workflows introduce dangerous attack vectors:</p>
+
+  <h3>1. Intent-to-Execution Hash Binding</h3>
+  <p>A classic vulnerability in naive approval systems is the <em>Time-of-Check to Time-of-Use (TOCTOU)</em> race condition. If an agent proposes: <code>send_email(to="alice@example.com", body="Contract v1")</code>, the human approves it, but before execution the agent tampers with the payload to send to <code>mallory@attacker.com</code>.</p>
+  <p>Zehrava Gate enforces <strong>canonical payload hash binding</strong>. When an operator approves an intent, the approval signature cryptographically binds to the SHA-256 hash of the exact payload reviewed. When the worker requests or validates the execution token (<code>gex_</code>), Gate re-hashes the payload. Any discrepancy between what was approved and what is executed results in immediate termination with <code>approval_evidence_invalid</code>.</p>
+
+  <h3>2. Single-Use Approval Links & Nonce Protection</h3>
+  <p>When notifications are delivered to email or messaging apps via review links, URLs can be intercepted or inadvertently clicked twice. Zehrava Gate issues single-use approval interaction tokens (<code>gai_...</code>). Once consumed, subsequent attempts return <code>410 Gone</code> with <code>link_already_used</code>. Furthermore, nonces ensure replay attacks are mathematically blocked.</p>
+
+  <h3>3. Strict Short-Lived Execution Tokens (15-Minute TTL)</h3>
+  <p>Once approved, execution authority must not remain permanently open. Gate generates an execution order carrying a 15-minute Time-To-Live. If the downstream worker fails to execute within 15 minutes, the token expires, preventing delayed execution or forgotten background tasks from reviving in unpredictable states.</p>
+
+  <h2>Step-by-Step Implementation: Asynchronous Webhook Integration</h2>
+
+  <p>Here is how to configure an asynchronous approval workflow using the Zehrava Gate API and Node.js webhook listeners.</p>
+
+  <h3>1. Submitting the Intent & Registering Webhook</h3>
+
+  <pre><code>const { Gate } = require('zehrava-gate');
+
+const gate = new Gate({
+  endpoint: 'https://zehrava.mycompany.internal',
+  apiKey: process.env.GATE_API_KEY
+});
+
+async function triggerDatabaseMigration(migrationScript, targetSchema) {
+  // Propose high-risk intent
+  const proposal = await gate.propose({
+    destination: 'postgres.schema_migration',
+    policy: 'database-high-risk',
+    payload: {
+      scriptName: migrationScript,
+      schema: targetSchema,
+      timestamp: new Date().toISOString()
+    },
+    recordCount: 1
+  });
+
+  if (proposal.status === 'approved') {
+    // Under low-risk threshold: auto-approved immediately
+    return await executeMigration(proposal.intentId);
+  }
+
+  if (proposal.status === 'pending_approval') {
+    console.log(`Migration requires sign-off. Intent ID: ${proposal.intentId}`);
+    
+    // Register webhook to wake worker when human approves
+    await gate.registerWebhook({
+      intentId: proposal.intentId,
+      url: 'https://orchestrator.mycompany.internal/api/webhooks/gate-callback',
+      secret: process.env.GATE_WEBHOOK_SECRET
+    });
+
+    // Save job context to Run Ledger and gracefully exit process
+    await saveRunCheckpoint({
+      intentId: proposal.intentId,
+      scriptName: migrationScript,
+      status: 'awaiting_human_approval'
+    });
+
+    return { status: 'suspended', intentId: proposal.intentId };
+  }
+
+  throw new Error(`Migration rejected by policy: ${proposal.blockReason}`);
+}</code></pre>
+
+  <h3>2. Authenticated Webhook Listener (Resumption Worker)</h3>
+
+  <pre><code>const crypto = require('crypto');
+const express = require('express');
+const app = express();
+
+app.post('/api/webhooks/gate-callback', express.raw({ type: 'application/json' }), async (req, res) => {
+  const signature = req.headers['x-gate-signature'];
+  const secret = process.env.GATE_WEBHOOK_SECRET;
+
+  // 1. Verify HMAC-SHA256 signature to guarantee authenticity
+  const expectedSig = crypto
+    .createHmac('sha256', secret)
+    .update(req.body)
+    .digest('hex');
+
+  if (signature !== expectedSig) {
+    return res.status(401).json({ error: 'invalid_signature' });
+  }
+
+  const event = JSON.parse(req.body.toString('utf8'));
+  const { intentId, decision, evidence } = event;
+
+  if (decision === 'REJECT') {
+    console.warn(`Operator rejected intent ${intentId}. Marking workflow cancelled.`);
+    await updateRunCheckpoint(intentId, 'cancelled');
+    return res.status(200).send('ACK');
+  }
+
+  if (decision === 'APPROVE') {
+    console.log(`Intent ${intentId} approved by operator. Requesting execution order...`);
+    
+    // 2. Request short-lived execution order (15-min TTL)
+    const order = await gate.execute({ intentId });
+    
+    // 3. Re-hydrate workflow checkpoint and run migration
+    const checkpoint = await loadRunCheckpoint(intentId);
+    await applyMigrationWorker({
+      scriptName: checkpoint.scriptName,
+      executionToken: order.execution_token
+    });
+
+    // 4. Report final outcome back to Gate audit ledger
+    await gate.reportOutcome({
+      executionId: order.executionId,
+      status: 'execution_succeeded'
+    });
+
+    return res.status(200).json({ status: 'resumed_and_executed' });
+  }
+
+  res.status(400).send('unknown_decision');
+});</code></pre>
+
+  <h2>Regulatory and Governance Standards Alignment</h2>
+
+  <p>Implementing formal write-path checkpoints satisfies critical regulatory and security framework benchmarks:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Framework & Clause</th>
+        <th>Requirement</th>
+        <th>Zehrava Gate Architecture Mapping</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>NIST AI RMF 1.0 (GOVERN 1.2)</strong></td>
+        <td>Establish clear human oversight processes for high-impact automated actions.</td>
+        <td>Conditional policy rules trigger human review gates on sensitive destinations automatically.</td>
+      </tr>
+      <tr>
+        <td><strong>OWASP Top 10 for LLM (LLM06)</strong></td>
+        <td>Prevent Excessive Agency by limiting tool execution scopes and verifying authorization.</td>
+        <td>Agents submit intents without possessing direct infrastructure credentials; execution orders require signed tokens.</td>
+      </tr>
+      <tr>
+        <td><strong>SOC 2 Type II (CC6.1 / CC6.8)</strong></td>
+        <td>Logical access controls and change management approvals before production modifications.</td>
+        <td>Every intent, review decision, approver identity, and execution outcome is logged to an immutable SQLite/WAL ledger.</td>
+      </tr>
+      <tr>
+        <td><strong>EU AI Act (Article 14)</strong></td>
+        <td>Human oversight measures designed into high-risk AI systems during operation.</td>
+        <td>Operators maintain real-time override authority to reject, cancel, or modify execution permissions.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Summary: The Three Rules of Production HITL</h2>
+
+  <p>When designing agentic workflows for mission-critical enterprise environments, adhere to three core architectural principles:</p>
+
+  <ol>
+    <li><strong>Never Block Worker Processes:</strong> Human review times exceed container lifecycles. Always use asynchronous callbacks, message brokers, or checkpointed state ledgers.</li>
+    <li><strong>Bind Approvals to Content Hashes:</strong> Never trust raw intent parameters upon resumption without verifying that the payload matches the exact byte sequence reviewed by the operator.</li>
+    <li><strong>Keep Execution Windows Tight:</strong> Treat execution approval as an ephemeral credential with a strict 15-minute TTL to prevent replay and stale state execution.</li>
+  </ol>
+
+  <div class="cta-block">
+    <h3>Build robust human-in-the-loop workflows today.</h3>
+    <p>Zehrava Gate provides out-of-the-box approval ledgers, webhooks, and signed execution orders.</p>
+    <a href="/demo" class="btn">Test the Approval Queue in the Demo →</a>
+  </div>
+
+  <div class="related">
+    <h3>Related Guides & Architecture References</h3>
+    <div class="related-links">
+      <a href="/docs/run-ledger.html" class="related-link">→ Run Ledger Documentation: Stateful Execution Continuity</a>
+      <a href="/blog/how-to-add-human-approval-gates-to-ai-agents.html" class="related-link">→ Tutorial: How to Add Human Approval Gates to AI Agents</a>
+      <a href="/blog/prompt-guardrails-vs-write-path-control.html" class="related-link">→ Semantic Guardrails vs Deterministic Write-Path Gates</a>
+      <a href="/blog/why-autonomous-governance-needs-human-approval.html" class="related-link">→ Why Autonomous Governance Still Needs Human Approval</a>
+    </div>
+  </div>
+</main>
+
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+
+<script>
+  const btn = document.getElementById('menuBtn');
+  const menu = document.getElementById('mobileMenu');
+  if (btn && menu) {
+    btn.addEventListener('click', () => {
+      const open = menu.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+</script>
+</body>
+</html>

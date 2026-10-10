@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /dashboard/
+Allow: /
+
+Sitemap: https://zehrava.com/sitemap.xml

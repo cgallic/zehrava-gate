@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preventing Duplicate Tool Executions and Replay in AI Agents — Zehrava Gate</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="description" content="How to stop autonomous AI agents from executing duplicate actions, retrying side-effects, and creating race conditions using deterministic idempotency keys and execution gates.">
+  <meta property="og:title" content="Preventing Duplicate Tool Executions and Replay in AI Agents — Zehrava Gate">
+  <meta property="og:description" content="How to stop autonomous AI agents from executing duplicate actions, retrying side-effects, and creating race conditions using deterministic idempotency keys and execution gates.">
+  <meta property="og:url" content="https://zehrava.com/blog/preventing-duplicate-tool-executions-ai-agents.html">
+  <link rel="canonical" href="https://zehrava.com/blog/preventing-duplicate-tool-executions-ai-agents.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Preventing Duplicate Tool Executions and Replay in Autonomous AI Agents",
+    "datePublished": "2026-10-10",
+    "author": {
+      "@type": "Person",
+      "name": "Connor Gallic",
+      "url": "https://connorgallic.com"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Zehrava",
+      "url": "https://zehrava.com"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #6366f1; --purple-b: #818cf8; --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+      --bg: #0a0f1a; --bg2: #111827; --bg3: #1a2236;
+      --border: rgba(255,255,255,0.07); --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8;
+      --font: "Plus Jakarta Sans", -apple-system, sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.8; }
+    a { color: var(--purple-b); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    main { max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .post-meta { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; font-size: 0.82rem; color: var(--muted2); flex-wrap: wrap; }
+    .tag { background: rgba(99,102,241,0.12); color: var(--purple-b); border: 1px solid rgba(99,102,241,0.25); padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    h1 { font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; margin: 2.5rem 0 1rem; color: #fff; }
+    h3 { font-size: 1.05rem; font-weight: 700; margin: 2rem 0 0.75rem; color: #e2e8f0; }
+    p { margin-bottom: 1.25rem; color: #cbd5e1; font-size: 0.96rem; }
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1.25rem; }
+    li { margin-bottom: 0.5rem; color: #cbd5e1; font-size: 0.95rem; }
+    code { font-family: var(--mono); font-size: 0.86em; background: var(--bg3); padding: 0.15em 0.4em; border-radius: 4px; color: #c7d2fe; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; line-height: 1.55; }
+    pre code { background: none; padding: 0; font-size: 0.82rem; color: #e2e8f0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+    strong { color: var(--text); }
+    .callout { background: rgba(99,102,241,0.06); border-left: 3px solid var(--purple-b); border-radius: 0 8px 8px 0; padding: 1.1rem 1.25rem; margin: 1.5rem 0; }
+    .callout p { margin: 0; color: #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; margin: 1.75rem 0; font-size: 0.88rem; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border: 1px solid var(--border); }
+    th { background: var(--bg2); font-weight: 700; color: var(--text); }
+    td { color: #cbd5e1; }
+    .cta-block { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 2.25rem 2rem; margin-top: 3.5rem; text-align: center; }
+    .cta-block h3 { margin-top: 0; color: var(--text); font-size: 1.3rem; }
+    .cta-block p { color: var(--muted2); margin-bottom: 1.25rem; font-size: 0.95rem; }
+    .btn { display: inline-block; background: var(--purple); color: #fff; padding: 0.65rem 1.5rem; border-radius: 7px; font-weight: 700; font-size: 0.9rem; text-decoration: none; }
+    .btn:hover { opacity: 0.9; text-decoration: none; }
+    .related { margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .related h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted2); margin-bottom: 1rem; }
+    .related-links { display: flex; flex-direction: column; gap: 0.75rem; }
+    .related-link { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; font-weight: 600; color: #e2e8f0; transition: border-color 0.15s; }
+    .related-link:hover { border-color: rgba(99,102,241,0.4); text-decoration: none; }
+    footer { text-align: center; padding: 2.5rem 1.5rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted2); }
+
+    /* Site Nav */
+    nav[aria-label="Site navigation"] { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,15,26,0.92); backdrop-filter: blur(12px); z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 800; color: var(--text); text-decoration: none; letter-spacing: -0.02em; }
+    .nav-logo span { color: var(--purple-b); }
+    .nav-links { display: flex; gap: 1.75rem; font-size: 0.85rem; }
+    .nav-links a { color: var(--muted2); text-decoration: none; transition: color 150ms; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .nav-right { display: flex; gap: 0.875rem; align-items: center; }
+    .nav-gh { font-size: 0.85rem; color: var(--muted2); text-decoration: none; transition: color 150ms; }
+    .nav-gh:hover { color: var(--text); }
+    .btn-nav { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.4rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+    .menu-btn { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 0.25rem; }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: var(--muted2); border-radius: 2px; }
+    .mobile-menu { display: none; position: fixed; inset: 0; top: 57px; z-index: 99; background: rgba(10,15,26,0.97); backdrop-filter: blur(20px); padding: 2rem 1.5rem; flex-direction: column; gap: 0; overflow-y: auto; border-top: 1px solid var(--border); }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { font-size: 1.125rem; font-weight: 600; color: var(--text); padding: 1rem 0; border-bottom: 1px solid var(--border); display: block; text-decoration: none; }
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu .m-cta { margin-top: 1.5rem; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; padding: 0.875rem 1.5rem; border-radius: 10px; font-weight: 700; text-align: center; border-bottom: none !important; }
+
+    @media (max-width: 768px) {
+      nav[aria-label="Site navigation"] { padding: 0.875rem 1.25rem; }
+      .nav-links { display: none; }
+      .menu-btn { display: flex; }
+      main { padding: 2rem 1.125rem 3rem; }
+      h1 { font-size: 1.7rem; line-height: 1.25; }
+      h2 { font-size: 1.2rem; }
+      pre { font-size: 0.74rem; padding: 0.875rem; }
+      table { font-size: 0.78rem; }
+      th, td { padding: 0.5rem 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+<nav aria-label="Site navigation">
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="100" height="100" rx="22" fill="#0d1117"/>
+      <path d="M22 28 L78 28" stroke="#a5b4fc" stroke-width="6.5" stroke-linecap="round"/>
+      <path d="M74 28 L26 72" stroke="url(#blg)" stroke-width="13" stroke-linecap="round"/>
+      <path d="M22 72 L78 72" stroke="#4f46e5" stroke-width="6.5" stroke-linecap="round"/>
+      <defs><linearGradient id="blg" x1="74" y1="28" x2="26" y2="72" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a5b4fc"/><stop offset="100%" stop-color="#4f46e5"/></linearGradient></defs>
+    </svg>
+    Zehrava <span>Gate</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/demo">Live Demo</a>
+    <a href="/docs">Docs</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/blog" class="active">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/cgallic/zehrava-gate" class="nav-gh" target="_blank" rel="noopener">GitHub</a>
+    <a href="/demo" class="btn-nav">Get started free</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/">Home</a>
+  <a href="/demo">Live Demo</a>
+  <a href="/docs">Docs</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/blog">Blog</a>
+  <a href="https://github.com/cgallic/zehrava-gate" target="_blank" rel="noopener">GitHub ↗</a>
+  <a href="/demo" class="m-cta">Get started free</a>
+</div>
+
+<main>
+  <div class="post-meta">
+    <span class="tag">Engineering</span>
+    <span>October 10, 2026</span>
+    <span>9 min read</span>
+  </div>
+
+  <h1>Preventing Duplicate Tool Executions and Replay in Autonomous AI Agents</h1>
+
+  <p>Autonomous agents are probabilistic reasoning loops interacting with stateful, side-effect-bearing APIs. When an engineer builds an agent that can modify database records, send emails, trigger webhooks, or process transactions, one subtle architectural vulnerability immediately appears: <strong>uncontrolled tool replay and duplicate execution</strong>.</p>
+
+  <p>Unlike deterministic web applications where form submissions are guarded by CSRF tokens and database constraints, LLM agents make decisions inside non-deterministic execution environments. A brief network hiccup, a context window truncation, an internal retry policy, or a parallel subagent race can cause the agent to submit the exact same consequential mutation twice.</p>
+
+  <p>In this guide, we analyze why agents duplicate actions, why prompt-based instructions fail to stop them, and how deterministic write-path gating with cryptographic idempotency keys provides absolute protection against duplicate tool executions.</p>
+
+  <h2>How Autonomous Agents Produce Duplicate Side-Effects</h2>
+
+  <p>In production agent deployments, duplicate executions rarely happen because an agent "decided" to act maliciously. They emerge from standard system mechanics across four failure modes:</p>
+
+  <h3>1. Transient Network Timeouts & Blind Retries</h3>
+  <p>When an agent calls an external API (such as an email provider or payment processor), the socket might drop after the provider accepted the write but before the HTTP 200 response reached the agent runtime. Most agent orchestration frameworks (such as LangChain, AutoGen, or custom loops) include automated retry handlers. If the framework catches an <code>ECONNRESET</code> or <code>ETIMEDOUT</code>, it re-invokes the tool, executing the mutation a second time.</p>
+
+  <h3>2. Context Compaction and Loss of Tool History</h3>
+  <p>In long-running autonomous workflows that run for hours or execute hundreds of steps, LLM contexts exceed window boundaries. Orchestrators apply sliding-window compaction or summarize prior steps. Once the explicit message containing <code>"tool_call: send_order_confirmation, response: 200"</code> is compressed into a vague summary, the model reasons: <em>"I need to make sure the order confirmation is sent,"</em> and issues the call again.</p>
+
+  <h3>3. Autonomous Polling Loops Without State Deduplication</h3>
+  <p>When agents monitor queues, customer inboxes, or pull requests, they evaluate incoming records against rule sets. If a record lacks an external processed flag or if there is a 30-second replication lag in the read-replica, the agent processes the exact same ticket on subsequent iterations, sending duplicate replies to the same customer.</p>
+
+  <h3>4. Subagent Concurrency & Parallel Race Conditions</h3>
+  <p>Multi-agent swarms frequently dispatch subagents in parallel to research and execute subtasks. If two subagents identify the same missing database entry or customer notification, both will emit a write tool call concurrently. Without a synchronized write gate, both writes land in production.</p>
+
+  <div class="callout">
+    <p><strong>The Core Rule:</strong> An external tool call with real-world side effects (email, database update, payment, SMS) must be treated as an irreversible state mutation. You cannot rely on a probabilistic model to guarantee idempotency.</p>
+  </div>
+
+  <h2>Why Prompt Engineering Cannot Enforce Idempotency</h2>
+
+  <p>A common early pattern is attempting to solve duplication inside the system prompt:</p>
+
+  <pre><code>// The naive approach: prompt-based deduplication
+const systemPrompt = `
+You are a reliable customer operations agent.
+IMPORTANT RULE: Check your past actions. NEVER call the "issue_refund"
+or "send_notification" tool twice for the same order ID under any circumstances.
+`;</code></pre>
+
+  <p>This approach consistently breaks down in production for three reasons:</p>
+
+  <ul>
+    <li><strong>Attention Degradation:</strong> As conversation context expands, LLM attention over distant tokens degrades. Negative constraints ("never do X") are the first instructions lost during multi-turn attention distribution.</li>
+    <li><strong>Network Blindness:</strong> The model cannot observe what happened on the network wire. If the model emits a tool call and the runtime returns a generic error string (such as <code>"Request failed: 504 Gateway Timeout"</code>), the model logically assumes the operation never completed, compelling it to retry.</li>
+    <li><strong>Adversarial & Indirect Prompts:</strong> If customer input processed by the agent contains instructions like <em>"Please re-send the notification email to my inbox,"</em> the prompt injection will override the negative instruction in the system prompt.</li>
+  </ul>
+
+  <p>According to the <strong>IETF RFC 7231 (HTTP Semantics)</strong> specification, safe and idempotent request semantics require explicit idempotency keys and state machines rather than optimistic retries. Gating belongs at the action boundary.</p>
+
+  <h2>The Deterministic Solution: Write-Path Idempotency Keys</h2>
+
+  <p>Zehrava Gate solves tool duplication by enforcing deterministic write-path control before any external execution occurs. Instead of granting the agent direct API keys to third-party services, all tool actions pass through Gate as <strong>Intents</strong>.</p>
+
+  <p>Every intent proposal accepts an explicit <code>idempotency_key</code> and undergoes cryptographic fingerprinting:</p>
+
+  <pre><code>Agent Runtime                      Zehrava Gate                     Production API
+     │                                  │                                  │
+     │  1. Propose Intent               │                                  │
+     │     (idempotencyKey + payload)   │                                  │
+     ├─────────────────────────────────>│                                  │
+     │                                  │  2. Compute canonical hash       │
+     │                                  │     & check active registry      │
+     │                                  │                                  │
+     │                                  ├──[Exists?]──> Return 409 Conflict│
+     │                                  │               status: duplicate  │
+     │                                  │                                  │
+     │  3. Approved (gex_ token issued) │                                  │
+     │<─────────────────────────────────┤                                  │
+     │                                  │                                  │
+     │  4. Execute with gex_ token      │                                  │
+     ├──────────────────────────────────┼─────────────────────────────────>│
+     │                                  │                                  │
+     │  5. Replayed Intent with same key│                                  │
+     ├─────────────────────────────────>│                                  │
+     │  6. BLOCKED: duplicate_blocked   │  (Zero network traffic to API)   │
+     │<─────────────────────────────────┤                                  │</code></pre>
+
+  <h3>How Gate Evaluates Duplication</h3>
+  <ol>
+    <li><strong>Caller Idempotency Key:</strong> The agent or orchestrator assigns a domain-level idempotency key (such as <code>refund:ord_98231</code> or <code>email:ticket_4412:step_1</code>).</li>
+    <li><strong>Canonical Payload Fingerprint:</strong> Gate normalizes the JSON payload, destination endpoint, and policy ID into a deterministic SHA-256 fingerprint.</li>
+    <li><strong>Atomic Ledger Check:</strong> Gate queries its transactional SQLite/WAL ledger. If an intent with the same key or identical hash was submitted within the policy's deduplication window, Gate immediately marks the response as <code>status: "duplicate_blocked"</code>.</li>
+    <li><strong>Zero Tool Side-Effects:</strong> No execution order is created. No third-party API is touched. The downstream worker never receives a execution token (<code>gex_</code>).</li>
+  </ol>
+
+  <h2>Implementation: JavaScript & Python Examples</h2>
+
+  <p>Below is how you implement deterministic deduplication using the Zehrava Gate SDK across Node.js and Python runtimes.</p>
+
+  <h3>JavaScript / Node.js</h3>
+
+  <pre><code>const { Gate, GateError } = require('zehrava-gate');
+
+const gate = new Gate({
+  endpoint: process.env.GATE_ENDPOINT || 'http://localhost:4000',
+  apiKey: process.env.GATE_API_KEY
+});
+
+async function executeCustomerRefund(orderId, amountCents, reason) {
+  // Construct a deterministic domain key
+  const idempotencyKey = `refund:${orderId}:${amountCents}`;
+
+  try {
+    const proposal = await gate.propose({
+      destination: 'stripe.refund',
+      policy: 'finance-refunds',
+      idempotencyKey: idempotencyKey,
+      payload: {
+        orderId,
+        amountCents,
+        reason
+      },
+      recordCount: 1
+    });
+
+    // Handle deduplication and blocked policies
+    if (proposal.status === 'duplicate_blocked') {
+      console.warn(`[Duplicate Prevented] Action already registered: ${proposal.blockReason}`);
+      return { status: 'skipped', reason: 'duplicate_intent' };
+    }
+
+    if (proposal.status === 'blocked') {
+      throw new Error(`Policy violation: ${proposal.blockReason}`);
+    }
+
+    if (proposal.status === 'pending_approval') {
+      console.log(`Intent ${proposal.intentId} requires human sign-off. Awaiting review.`);
+      return { status: 'queued', intentId: proposal.intentId };
+    }
+
+    // Approved: Obtain single-use signed execution token
+    const execution = await gate.execute({ intentId: proposal.intentId });
+    
+    // Worker runs the real mutation using the single-use token
+    const result = await realStripeClient.refund({
+      orderId,
+      amountCents,
+      executionToken: execution.execution_token
+    });
+
+    return { status: 'success', result };
+
+  } catch (err) {
+    if (err.code === 'DUPLICATE_INTENT') {
+      console.warn(`Idempotent block: ${err.message}`);
+      return { status: 'skipped', reason: 'already_executed' };
+    }
+    throw err;
+  }
+}</code></pre>
+
+  <h3>Python</h3>
+
+  <pre><code>import os
+from zehrava_gate import Gate, GateError
+
+gate = Gate(
+    endpoint=os.getenv("GATE_ENDPOINT", "http://localhost:4000"),
+    api_key=os.getenv("GATE_API_KEY")
+)
+
+def dispatch_agent_email(recipient_id: str, campaign_id: str, subject: str, body: str):
+    # Derive an immutable idempotency key for this communication step
+    dedup_key = f"outreach:{campaign_id}:{recipient_id}"
+
+    proposal = gate.propose(
+        destination="sendgrid.outreach",
+        policy="outbound-comms",
+        idempotency_key=dedup_key,
+        payload={
+            "recipient_id": recipient_id,
+            "subject": subject,
+            "body": body
+        },
+        record_count=1
+    )
+
+    if proposal.get("status") == "duplicate_blocked":
+        # Gate halted execution deterministically; no email sent
+        print(f"Duplicate prevented: {proposal.get('blockReason')}")
+        return {"status": "deduplicated", "intent_id": proposal.get("intentId")}
+
+    if proposal.get("status") == "blocked":
+        raise GateError(f"Action blocked: {proposal.get('blockReason')}")
+
+    if proposal.get("status") == "pending_approval":
+        return {"status": "pending_human_review", "intent_id": proposal.get("intentId")}
+
+    # Obtain short-lived execution token (15-min TTL)
+    order = gate.execute(intent_id=proposal["intentId"])
+    return send_via_mail_provider(proposal["payload"], order["execution_token"])</code></pre>
+
+  <h2>Comparison: Naive Agent vs. Gate Write-Path Protection</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Failure Scenario</th>
+        <th>Naive Agent Behavior</th>
+        <th>Zehrava Gate Protection</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Gateway 504 Timeout on API</strong></td>
+        <td>Agent automatically retries tool call; customer receives 2 emails or 2 charges.</td>
+        <td>Second attempt matches <code>idempotency_key</code>; Gate halts call with <code>duplicate_blocked</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>Context Compaction in Long Runs</strong></td>
+        <td>Model forgets tool history, generating duplicate queries and writes.</td>
+        <td>Gate retains immutable state across agent restarts; duplicate intent is rejected.</td>
+      </tr>
+      <tr>
+        <td><strong>Parallel Subagent Races</strong></td>
+        <td>Concurrent agents execute conflicting mutations simultaneously.</td>
+        <td>Transactional ledger locks on intent fingerprint; first wins, second is blocked.</td>
+      </tr>
+      <tr>
+        <td><strong>Double Click in Review Dashboard</strong></td>
+        <td>Operator approves twice; webhook fires twice, replaying order.</td>
+        <td>Single-use approval tokens (<code>gai_...</code>) expire immediately upon first consumption.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Architectural Best Practices for Production Agents</h2>
+
+  <p>When designing autonomous systems that touch production infrastructure, follow these four rules to ensure reliable execution:</p>
+
+  <ol>
+    <li><strong>Derive Keys from Business Entities:</strong> Do not use random UUIDs for idempotency keys. Derive keys deterministically from the business entity and action (e.g., <code>action_type:entity_id:sequence_step</code>). This guarantees that even if the agent is restarted from scratch, it derives the identical key.</li>
+    <li><strong>Enforce Short Execution TTLs:</strong> Once an intent is approved, the signed execution token (<code>gex_</code>) should carry a strict Time-To-Live (Zehrava Gate uses 15 minutes). If a worker does not execute within the window, the token invalidates, preventing delayed zombie executions.</li>
+    <li><strong>Bind Payloads to Tokens Cryptographically:</strong> The execution token must encode the SHA-256 hash of the authorized payload. If an agent tampers with the payload after receiving approval, the execution worker rejects the token.</li>
+    <li><strong>Audit Trail Immutability:</strong> Record every duplicate attempt in the permanent audit ledger. Knowing when and why an agent attempted a duplicate action is essential for debugging agent logic and prompt stability.</li>
+  </ol>
+
+  <div class="cta-block">
+    <h3>Stop duplicate tool calls before they touch production.</h3>
+    <p>Wrap your LangChain, AutoGen, or custom agent runtime with Zehrava Gate in under thirty minutes.</p>
+    <a href="/demo" class="btn">Explore the Interactive Live Demo →</a>
+  </div>
+
+  <div class="related">
+    <h3>Related Guides & Architecture References</h3>
+    <div class="related-links">
+      <a href="/blog/what-is-write-path-control-ai.html" class="related-link">→ What Is Write-Path Control for AI Agents?</a>
+      <a href="/blog/why-ai-agents-need-a-commit-checkpoint.html" class="related-link">→ Why AI Agents Need an AI Agent Commit Checkpoint</a>
+      <a href="/blog/why-gate-uses-yaml-not-llms.html" class="related-link">→ Why Gate Uses YAML Instead of LLMs for Safety Decisions</a>
+      <a href="/run-ledger.html" class="related-link">→ Run Ledger: Resumable Execution State for Autonomous Agents</a>
+    </div>
+  </div>
+</main>
+
+<footer>© 2026 Zehrava · <a href="/">zehrava.com</a> · <a href="https://github.com/cgallic/zehrava-gate">GitHub</a></footer>
+
+<script>
+  const btn = document.getElementById('menuBtn');
+  const menu = document.getElementById('mobileMenu');
+  if (btn && menu) {
+    btn.addEventListener('click', () => {
+      const open = menu.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+</script>
+</body>
+</html>
