@@ -22,6 +22,7 @@
   <meta name="twitter:description" content="Most companies keep AI agents in read-only mode. Gate is the runtime governance layer that changes that. Policy. Approval. Audit. Every agent write.">
   <meta name="twitter:image" content="https://zehrava.com/og-image.png">
   <meta name="description" content="Most companies keep AI agents in read-only mode. Gate is the control plane that changes that — deterministic policy, human approval, full audit trail on every agent write.">
+  <link rel="canonical" href="https://zehrava.com/">
   <meta name="theme-color" content="#0a0a0c">
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -567,6 +568,11 @@
         Star on GitHub
       </a>
     </div>
+    <form class="email-form hero-email-form" id="heroEmailForm" action="/v1/subscribe" method="POST" style="margin-top:1.5rem">
+      <input type="email" class="email-input" id="heroEmailInput" name="email" placeholder="you@company.com" required aria-label="Work email address">
+      <button type="submit" class="email-submit">Join waitlist</button>
+    </form>
+    <p class="email-note" id="heroEmailNote" style="margin-top:0.5rem">Runtime governance for AI agents. Early access waitlist.</p>
     <div class="hero-meta"><span>MIT license</span><span>Self-hosted</span><span>No LLM in the loop</span></div>
   </div>
 
@@ -1176,7 +1182,12 @@ docker compose up</pre>
   <div class="cta reveal">
     <div class="eyebrow scramble" data-scramble>Open source · MIT license</div>
     <h2>Let your agents write.</h2>
-    <p>Gate is free to self-host, forever. For managed hosting, integrations, or enterprise support — let's talk.</p>
+    <p>Gate is free to self-host, forever. Join the waitlist for managed cloud hosting, credential vault integrations, and enterprise support.</p>
+    <form class="email-form cta-email-form" id="ctaEmailForm" action="/v1/subscribe" method="POST" style="margin:1.5rem auto 1rem;max-width:400px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15)">
+      <input type="email" class="email-input" id="ctaEmailInput" name="email" placeholder="you@company.com" required aria-label="Work email address" style="color:#fff">
+      <button type="submit" class="email-submit" style="background:#5b5ef0;color:#fff">Join waitlist</button>
+    </form>
+    <p class="email-note" id="ctaEmailNote" style="color:var(--dim);margin-bottom:1.5rem">No spam. Direct updates when managed cloud & enterprise features ship.</p>
     <div class="hero-actions">
       <a href="/demo" class="btn btn-ink">Get started free</a>
       <a href="mailto:connor@kaicmo.com" class="btn btn-ink-outline">Contact us</a>
@@ -1218,8 +1229,8 @@ docker compose up</pre>
         Zehrava Gate
       </a>
       <p>Gate is moving fast. Get release notes when credential vault integrations, HTTPS tunneling and Kubernetes sidecar support ship. No spam.</p>
-      <form class="email-form" id="emailForm">
-        <input type="email" class="email-input" id="emailInput" placeholder="you@company.com" required aria-label="Email address">
+      <form class="email-form" id="emailForm" action="/v1/subscribe" method="POST">
+        <input type="email" class="email-input" id="emailInput" name="email" placeholder="you@company.com" required aria-label="Email address">
         <button type="submit" class="email-submit">Notify me</button>
       </form>
       <p class="email-note" id="emailNote">No account required. Unsubscribe any time.</p>
@@ -1411,31 +1422,54 @@ docker compose up</pre>
   window.addEventListener('resize', syncArrows)
   syncArrows()
 
-  // ── Email capture
-  document.getElementById('emailForm').addEventListener('submit', async e => {
-    e.preventDefault()
-    const email = document.getElementById('emailInput').value
-    const note = document.getElementById('emailNote')
-    const btn = e.target.querySelector('.email-submit')
-    btn.textContent = 'Submitting…'
-    btn.disabled = true
-    try {
-      const res = await fetch('/v1/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-      if (!res.ok) throw new Error()
-      btn.textContent = '✓ Added'
-      note.textContent = "You're on the list."
-      note.style.color = 'var(--accent)'
-    } catch {
-      btn.textContent = 'Notify me'
-      btn.disabled = false
-      note.textContent = 'Something went wrong — try again.'
-      note.style.color = 'var(--bad)'
-    }
-  })
+  // ── Unified Email Waitlist capture
+  function setupWaitlistForm(formId, inputId, noteId, ctaLabel) {
+    const form = document.getElementById(formId)
+    if (!form) return
+    form.addEventListener('submit', async e => {
+      e.preventDefault()
+      const input = document.getElementById(inputId)
+      const note = document.getElementById(noteId)
+      const btn = form.querySelector('.email-submit') || form.querySelector('button[type="submit"]')
+      const email = input.value.trim()
+      if (!email) return
+
+      btn.textContent = 'Submitting…'
+      btn.disabled = true
+
+      try {
+        const res = await fetch('/v1/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        })
+        if (!res.ok) throw new Error()
+
+        btn.textContent = '✓ Added'
+        if (note) {
+          note.textContent = "You're on the list. We'll be in touch."
+          note.style.color = 'var(--accent)'
+        }
+
+        // Fire GA4 conversion events
+        if (typeof gtag === 'function') {
+          gtag('event', 'sign_up', { method: 'waitlist', form_id: formId })
+          gtag('event', 'generate_lead', { currency: 'USD', value: 0 })
+        }
+      } catch {
+        btn.textContent = ctaLabel || 'Join waitlist'
+        btn.disabled = false
+        if (note) {
+          note.textContent = 'Something went wrong — try again.'
+          note.style.color = 'var(--bad)'
+        }
+      }
+    })
+  }
+
+  setupWaitlistForm('emailForm', 'emailInput', 'emailNote', 'Notify me')
+  setupWaitlistForm('heroEmailForm', 'heroEmailInput', 'heroEmailNote', 'Join waitlist')
+  setupWaitlistForm('ctaEmailForm', 'ctaEmailInput', 'ctaEmailNote', 'Join waitlist')
 </script>
 </body>
 </html>

@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQZHH7EYLF"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-BQZHH7EYLF");
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>What Is Write-Path Control for AI Agents? | Zehrava</title>
@@ -9,8 +17,8 @@
   <meta name="description" content="AI agents that write, send, and execute without checkpoints create silent failure modes. Write-path control adds human approval gates to every consequential AI action.">
   <meta property="og:title" content="What Is Write-Path Control for AI Agents?">
   <meta property="og:description" content="AI agents that write, send, and execute without checkpoints create silent failure modes. Write-path control adds human approval gates to every consequential AI action.">
-  <meta property="og:url" content="https://zehrava.com/blog/what-is-write-path-control-ai">
-  <link rel="canonical" href="https://zehrava.com/blog/what-is-write-path-control-ai">
+  <meta property="og:url" content="https://zehrava.com/blog/what-is-write-path-control-ai.html">
+  <link rel="canonical" href="https://zehrava.com/blog/what-is-write-path-control-ai.html">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -161,7 +169,7 @@
 
   <h2>Real Deployment: KaiCalls</h2>
 
-  <p><a href="https://kaicalls.com">KaiCalls</a> uses Zehrava write-path control for its lead outreach pipeline. When the AI generates and proposes an outreach email for a law firm lead, Zehrava intercepts the send operation and routes it for approval before delivery.</p>
+  <p><a href="https://kaicalls.com/?utm_source=zehrava&utm_medium=referral&utm_campaign=write-path-control-ai">KaiCalls</a> uses Zehrava write-path control for its lead outreach pipeline. When the AI generates and proposes an outreach email for a law firm lead, Zehrava intercepts the send operation and routes it for approval before delivery.</p>
 
   <p>The pipeline runs autonomously up to the send step. Human approval controls whether the email goes out.</p>
 
